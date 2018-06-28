@@ -119,6 +119,8 @@ class CINRAD():
             self.timestr = self.file_name.split('_', 9)[4]
         elif version=='new':
             self.timestr = self.file_name + self.file_type[1:-1]
+        anglelist = np.arange(0, len(self.boundary)-2, 1)
+        self.anglelist = np.delete(anglelist, [1, 3])
     
     def set_stationposition(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -151,6 +153,7 @@ class CINRAD():
         dbz = (self.rraw - 2) / 2 - 32
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
         r1 = r.transpose()[:int(range / self.Rreso)]
+        r1[r1 < 0] = 0
         return r1.transpose()
 
     def velocity(self, level, range):
@@ -205,6 +208,7 @@ class CINRAD():
         length = self.boundary[self.level + 1] - self.boundary[self.level]
         latx = list()
         lonx = list()
+        height = list()
         count = 0
         if type == 'r':
             r = np.arange(self.Rreso, int(self.range) + self.Rreso, self.Rreso)
@@ -217,12 +221,15 @@ class CINRAD():
             for i in r:
                 t = theta[count]
                 lons, lats = self._getcoordinate(i, t)
+                h = i * np.sin(np.deg2rad(self.elev)) + (i * i)/(2 * IR * RE)
                 latx.append(lats)
                 lonx.append(lons)
+                height.append(h)
             count = count + 1
-        latx = np.array(latx)
-        lonx = np.array(lonx)
-        return lonx.reshape(xshape, yshape), latx.reshape(xshape, yshape)
+        lons = np.array(lonx).reshape(xshape, yshape)
+        lats = np.array(latx).reshape(xshape, yshape)
+        hgh = np.array(height).reshape(xshape, yshape)
+        return lons, lats, hgh
 
     def draw_ref(self, level, range, draw_author=False, smooth=False):
         suffix = ''
@@ -272,8 +279,7 @@ class CINRAD():
         xcoor = list()
         ycoor = list()
         dist = np.arange(1, range + 1, 1)
-        anglelist = [0, 2, 4, 5, 6, 7, 8, 9, 10]
-        for i in anglelist[startangle:stopangle]:
+        for i in self.anglelist[startangle:stopangle]:
             cac = self.reflectivity(i, range)
             pos = self._azimuthposition(azimuth)
             if pos == None:
@@ -304,6 +310,7 @@ class CINRAD():
         xc, yc, rhi = self.rhi(azimuth, range)
         tri = mtri.Triangulation(xc.flatten(), yc.flatten())
         plt.tricontourf(tri, rhi.flatten(), cmap=nmcradarc, norm=norm1)
+        #to be continued
         pass
 
     def draw_vel(self, level, range, draw_author=False):
@@ -343,8 +350,25 @@ class CINRAD():
         plt.cla()
         del fig
 
-    def grid(self):
+    def get_all_info(self):
+        datalength = self.boundary[1] - self.boundary[0]
+        ref = list()
+        lon = list()
+        lat = list()
+        height = list()
+        for i in self.anglelist:
+            r = self.reflectivity(i, 230)
+            x, y, h = self.projection()
+            ref.append(r)
+            lon.append(x)
+            lat.append(y)
+            height.append(h.tolist())
+        r = np.concatenate(ref)#.reshape(len(self.anglelist), datalength, 230)
+        x = np.concatenate(lon)
+        y = np.concatenate(lat)
+        h = np.concatenate(height)
         pass
+        #to be continued
 
 #file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
 file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
