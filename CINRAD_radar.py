@@ -222,7 +222,7 @@ class CINRAD():
             count = count + 1
         latx = np.array(latx)
         lonx = np.array(lonx)
-        return latx.reshape(xshape, yshape), lonx.reshape(xshape, yshape)
+        return lonx.reshape(xshape, yshape), latx.reshape(xshape, yshape)
 
     def draw_ref(self, level, range, draw_author=False, smooth=False):
         suffix = ''
@@ -231,7 +231,7 @@ class CINRAD():
         maxvalue = np.max(r1)
         fig = plt.figure(figsize=(10,10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
-        lats, lons = self.projection()
+        lons, lats = self.projection()
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         if smooth:
@@ -310,7 +310,7 @@ class CINRAD():
         v, rf = self.velocity(level, range)
         fig = plt.figure(figsize=(10,10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
-        lats, lons = self.projection(type='v')
+        lons, lats = self.projection(type='v')
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
