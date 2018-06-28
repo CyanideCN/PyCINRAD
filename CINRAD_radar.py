@@ -17,6 +17,7 @@ font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180/4096)*0.125
 IR = 1.21
 RE = 6371
+folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
 
 nmcradar = form_colormap('radarnmc.txt', sep=True)
 nmcradar2 = form_colormap('radarnmc2.txt', sep=False)
@@ -239,8 +240,8 @@ class CINRAD():
         else:
             r[r <= 2] = None
             m.pcolormesh(lons, lats, r, norm=norm1, cmap=nmcradar)
-        m.readshapefile('D:\\Meteorology\\Shapefiles\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
-        m.readshapefile('D:\\Meteorology\\Shapefiles\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
+        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
+        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.17, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=nmcradar, norm=norm1, orientation='vertical', drawedges=False)
@@ -261,7 +262,7 @@ class CINRAD():
             nameblock = self.file_name + self.file_type[1:-1]
         elif self.version == 'old':
             nameblock = self.file_name
-        plt.savefig(('D:\\Meteorology\\Matplotlib\\Basemap\\' + nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + nameblock + '_' + str(np.round_(self.elev, 1)) 
                      + '_' + str(self.range) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
@@ -315,8 +316,8 @@ class CINRAD():
         m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
         rfmap = cmx.ListedColormap('#660066', '#FFFFFF')
         m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
-        m.readshapefile('D:\\Meteorology\\Shapefiles\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
-        m.readshapefile('D:\\Meteorology\\Shapefiles\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
+        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
+        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.17, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=velcbar, norm=cmx.Normalize(0, 1), orientation='vertical', drawedges=False)
@@ -337,7 +338,7 @@ class CINRAD():
             nameblock = self.file_name + self.file_type[1:-1]
         elif self.version == 'old':
             nameblock = self.file_name
-        plt.savefig(('D:\\Meteorology\\Matplotlib\\Basemap\\' + nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + nameblock + '_' + str(np.round_(self.elev, 1)) 
                         + '_' + str(self.range) + '_V.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
