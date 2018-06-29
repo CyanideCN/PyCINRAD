@@ -14,7 +14,7 @@ import os
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
-con = (180/4096)*0.125
+con = (180 / 4096) * 0.125
 IR = 1.21
 RE = 6371
 folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
@@ -117,8 +117,10 @@ class CINRAD():
         self.file_name, self.file_type = os.path.splitext(full_name)
         if version=='old':
             self.timestr = self.file_name.split('_', 9)[4]
+            self.nameblock =self.file_name
         elif version=='new':
             self.timestr = self.file_name + self.file_type[1:-1]
+            self.nameblock = self.timestr
         anglelist = np.arange(0, len(self.boundary)-2, 1)
         self.anglelist = np.delete(anglelist, [1, 3])
     
@@ -236,7 +238,7 @@ class CINRAD():
         r = self.reflectivity(level, range)
         r1 = r[np.logical_not(np.isnan(r))]
         maxvalue = np.max(r1)
-        fig = plt.figure(figsize=(10,10), dpi=350)
+        fig = plt.figure(figsize=(10, 10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats = self.projection()
         plt.style.use('dark_background')
@@ -255,21 +257,17 @@ class CINRAD():
         cbar.ax.tick_params(labelsize=8)
 
         ax2.text(0, 1.84, 'Base Reflectivity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: ' + str(self.range) + ' km', fontproperties=font2)
+        ax2.text(0, 1.80, 'Range: %skm' % self.range, fontproperties=font2)
         ax2.text(0, 1.76, 'Resolution: 1.00 km', fontproperties=font2)
         ax2.text(0, 1.72, 'Date: ' + self.timestr[:4] + '.' + self.timestr[4:6] + '.'+self.timestr[6:8], fontproperties=font2)
         ax2.text(0, 1.68, 'Time: ' + self.timestr[8:10] + ':' + self.timestr[10:12], fontproperties=font2)
         ax2.text(0, 1.64, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.60, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.56, 'Elev: ' + str(np.round_(self.elev, 2)) + 'deg', fontproperties=font2)
-        ax2.text(0, 1.48, 'Max: ' + str(maxvalue) + 'dBz', fontproperties=font2)
+        ax2.text(0, 1.56, 'Elev: %sdeg' % np.round_(self.elev, 2), fontproperties=font2)
+        ax2.text(0, 1.48, 'Max: %sdBz' % np.max(r1), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        if self.version == 'new':
-            nameblock = self.file_name + self.file_type[1:-1]
-        elif self.version == 'old':
-            nameblock = self.file_name
-        plt.savefig((folderpath + nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
                      + '_' + str(self.range) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
@@ -306,12 +304,20 @@ class CINRAD():
         else:
             return xc, yc, rhi
 
-    def draw_rhi(self, azimuth, range):
-        xc, yc, rhi = self.rhi(azimuth, range)
-        tri = mtri.Triangulation(xc.flatten(), yc.flatten())
-        plt.tricontourf(tri, rhi.flatten(), cmap=nmcradarc, norm=norm1)
-        #to be continued
-        pass
+    def draw_rhi(self, azimuth, range, startangle=0, stopangle=8, height=15, interpolation=False):
+        xc, yc, rhi = self.rhi(azimuth, range, startangle=startangle, stopangle=stopangle
+                               , height=height, interpolation=interpolation)
+        plt.style.use('dark_background')
+        fig = plt.figure(figsize=(10, 4), dpi=200)
+        plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
+        plt.ylim(0, height)
+        plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4] + '.' + self.timestr[4:6] + 
+                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % np.max(rhi)))
+        plt.ylabel('Altitude (km)')
+        plt.xlabel('Range (km)')
+        #plt.colorbar(cmap=nmcradarc, norm=norm1)
+        plt.savefig((folderpath + self.nameblock + '_' + 'RHI_'
+                     + str(self.range) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
 
     def draw_vel(self, level, range, draw_author=False):
         v, rf = self.velocity(level, range)
@@ -341,11 +347,7 @@ class CINRAD():
         ax2.text(0, 1.56, 'Elev: ' + str(np.round_(self.elev, 2)) + 'deg', fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        if self.version == 'new':
-            nameblock = self.file_name + self.file_type[1:-1]
-        elif self.version == 'old':
-            nameblock = self.file_name
-        plt.savefig((folderpath + nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
                         + '_' + str(self.range) + '_V.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
@@ -368,19 +370,23 @@ class CINRAD():
         y = np.concatenate(lat)
         h = np.concatenate(height)
         pass
-        #to be continued
 
 #file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
 file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
 radar = CINRAD(file, version='new')
-#r = radar.reflectivity(0, 230)
+radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
+radar.set_stationname('Hefei')
+radar.draw_rhi(230, 230)
+r = radar.reflectivity(0, 230)
 
 from metpy import gridding
-xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=True)
+xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
+'''
 xi = np.arange(0, 230, 1)
 yi = np.arange(0, 15, 0.5)
 x, y = np.meshgrid(xi, yi)
 z = gridding.natural_neighbor(xc.flatten(), yc.flatten(), rhi.flatten(), x, y)
+'''
 plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
 
 tri = mtri.Triangulation(xc.flatten(), yc.flatten())
@@ -395,8 +401,6 @@ plt.tricontourf(tri_refi, z_test_refi, 128, cmap=nmcradarc, norm=norm1)
 plt.ylim(0, 15)
 plt.show()
 '''
-#v, rf = radar.velocity(1, 130)
-
 radar.set_stationname('Qingpu')
 radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
 radar.draw_ref(0, 120, draw_author=True, smooth=True)
