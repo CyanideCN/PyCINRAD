@@ -20,11 +20,11 @@ IR = 1.21
 RE = 6371
 folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
 
-nmcradar = form_colormap('radarnmc.txt', sep=True)
-nmcradar2 = form_colormap('radarnmc2.txt', sep=False)
-velcbar = form_colormap('radarnmc2a.txt', sep=True)
-nmcradarc = form_colormap('radarnmc.txt', sep=False, spacing='v')
-nmcradarc1 = form_colormap('radarnmca.txt', sep=False, spacing='v')
+nmcradar = form_colormap('colormap\\radarnmc.txt', sep=True)
+nmcradar2 = form_colormap('colormap\\radarnmc2.txt', sep=False)
+velcbar = form_colormap('colormap\\radarnmc2a.txt', sep=True)
+nmcradarc = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v')
+nmcradarc1 = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 
@@ -138,6 +138,10 @@ class CINRAD():
         self.range = range
 
     def _azimuthposition(self, azimuth):
+        '''
+        Find the relative position of a certain azimuth angle in the
+        data array.
+        '''
         count = 0
         azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
         if azim[0] < azimuth:
@@ -151,10 +155,16 @@ class CINRAD():
                     return None
 
     def reflectivity(self, level, range):
+        '''
+        Clip desired range of reflectivity data.
+        '''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
-        self.range = range
         self.level = level
+        self.range = range
+        if self.rraw.shape[1] * self.Rreso < range:
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
+            self.range = int(self.rraw.shape[1] * self.Rreso)
         dbz = (self.rraw - 2) / 2 - 32
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
         r1 = r.transpose()[:int(range / self.Rreso)]
@@ -162,10 +172,16 @@ class CINRAD():
         return r1.transpose()
 
     def velocity(self, level, range):
+        '''
+        Clip desired range of velocity data.
+        '''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
         self.range = range
         self.level = level
+        if self.vraw.shape[1] * self.Vreso < range:
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
+            self.range = int(self.vraw.shape[1] * self.Vreso)
         if self.dv == 2:
             v = (self.vraw - 2) / 2 - 63.5
         elif self.dv == 4:
@@ -177,6 +193,9 @@ class CINRAD():
         return v1.transpose(), rf.transpose()
 
     def getrange(self, stationlon, stationlat):
+        '''
+        Calculate the range of coordinates of the basemap projection.
+        '''
         if self.range == None:
             raise RadarError('The range of data should be assigned first')
         self.stationlon = stationlon
@@ -197,6 +216,10 @@ class CINRAD():
         return distance * np.sin(np.deg2rad(angle))
 
     def _getcoordinate(self, range, angle):
+        '''
+        Convert polar coordinates to geographic coordinates with the given radar
+        station position.
+        '''
         if self.range == None:
             raise RadarError('The range of data should be assigned first')
         if self.stationlat == None or self.stationlon == None:
@@ -210,6 +233,9 @@ class CINRAD():
         return actuallon, actuallat
 
     def projection(self, type='r'):
+        '''
+        Calculate the geographic coordinates of the requested data range.
+        '''
         length = self.boundary[self.level + 1] - self.boundary[self.level]
         latx = list()
         lonx = list()
@@ -237,13 +263,16 @@ class CINRAD():
         return lons, lats, hgh
 
     def draw_ref(self, level, range, draw_author=False, smooth=False):
+        '''
+        Plot reflectivity PPI scan with the default plot settings.
+        '''
         suffix = ''
         r = self.reflectivity(level, range)
         r1 = r[np.logical_not(np.isnan(r))]
         maxvalue = np.max(r1)
         fig = plt.figure(figsize=(10, 10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
-        lons, lats = self.projection()
+        lons, lats, hgh = self.projection()
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         if smooth:
@@ -276,6 +305,9 @@ class CINRAD():
         del fig
 
     def rhi(self, azimuth, range, startangle=0, stopangle=5, height=15, interpolation=False):
+        '''
+        Clip the reflectivity data from certain elevation angles in a single azimuth angle.
+        '''
         rhi = list()
         xcoor = list()
         ycoor = list()
@@ -307,6 +339,9 @@ class CINRAD():
             return xc, yc, rhi
 
     def draw_rhi(self, azimuth, range, startangle=0, stopangle=8, height=15, interpolation=False):
+        '''
+        Plot reflectivity RHI scan with the default plot settings.
+        '''
         if self.name == None:
             raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, range, startangle=startangle, stopangle=stopangle
@@ -327,7 +362,7 @@ class CINRAD():
         v, rf = self.velocity(level, range)
         fig = plt.figure(figsize=(10,10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
-        lons, lats = self.projection(type='v')
+        lons, lats, hgh = self.projection(type='v')
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
@@ -375,22 +410,23 @@ class CINRAD():
         h = np.concatenate(height)
         pass
 
-if __name__ == '__main__':
-    #file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
-    file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
-    radar = CINRAD(file)
-    radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
-    radar.set_stationname('Hefei')
-    radar.draw_rhi(230, 230)
-    r = radar.reflectivity(0, 230)
-    xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
-    plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
+'''
+#file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
+file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
+radar = CINRAD(file)
+radar.set_stationposition(PosDict['南京'][0], PosDict['南京'][1])
+radar.set_stationname('Nanjing')
+radar.draw_rhi(230, 230)
+r = radar.reflectivity(0, 230)
+xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
+plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
 
-    tri = mtri.Triangulation(xc.flatten(), yc.flatten())
-    plt.tricontourf(tri, rhi.flatten(), 128, cmap=nmcradarc, norm=norm1)
-    plt.triplot(tri, linewidth=0.3, color='black')
-    plt.ylim(0, 15)
-    plt.show()
-    radar.set_stationname('Qingpu')
-    radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
-    radar.draw_ref(0, 120, draw_author=True, smooth=True)
+tri = mtri.Triangulation(xc.flatten(), yc.flatten())
+plt.tricontourf(tri, rhi.flatten(), 128, cmap=nmcradarc, norm=norm1)
+plt.triplot(tri, linewidth=0.3, color='black')
+plt.ylim(0, 15)
+plt.show()
+radar.set_stationname('Qingpu')
+radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
+radar.draw_ref(0, 120, draw_author=True, smooth=True)
+'''
