@@ -10,6 +10,7 @@ from matplotlib.font_manager import FontProperties
 import datetime
 from tkinter import filedialog
 import os
+import warnings
 
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
@@ -40,7 +41,7 @@ class RadarError(Exception):
         return repr(self.dsc)
 
 class CINRAD():
-    def __init__(self, filepath, radartype='SA', version='old'):
+    def __init__(self, filepath, radartype='SA'):
         f = open(filepath, 'rb')
         g = open(filepath, 'rb')
         azimuthx = list()
@@ -105,7 +106,6 @@ class CINRAD():
 
         self.dv = veloreso[0]
         self.radartype = radartype
-        self.version = version
         self.level = None
         self.range = None
         self.level = None
@@ -115,14 +115,17 @@ class CINRAD():
         self.name = None
         full_name = os.path.split(filepath)[-1]
         self.file_name, self.file_type = os.path.splitext(full_name)
-        if version=='old':
+        if full_name.endswith('BIN') or full_name.endswith('bin'):
             self.timestr = self.file_name.split('_', 9)[4]
-            self.nameblock =self.file_name
-        elif version=='new':
+            self.nameblock = self.file_name
+        elif full_name.endswith('A'):
             self.timestr = self.file_name + self.file_type[1:-1]
             self.nameblock = self.timestr
+        else:
+            raise RadarError('Unrecognized file name')
         anglelist = np.arange(0, len(self.boundary)-2, 1)
         self.anglelist = np.delete(anglelist, [1, 3])
+        self.elevanglelist = self.z[self.boundary]
     
     def set_stationposition(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -223,7 +226,7 @@ class CINRAD():
             for i in r:
                 t = theta[count]
                 lons, lats = self._getcoordinate(i, t)
-                h = i * np.sin(np.deg2rad(self.elev)) + (i * i)/(2 * IR * RE)
+                h = i * np.sin(np.deg2rad(self.elev)) + (i * i) / (2 * IR * RE)
                 latx.append(lats)
                 lonx.append(lons)
                 height.append(h)
@@ -293,7 +296,6 @@ class CINRAD():
         xc = np.array(xcoor)
         yc = np.array(ycoor)
         if interpolation:
-            import warnings
             from metpy import gridding
             warnings.warn('Interpolation takes long time, keep patient')
             xi = np.arange(0, range + 1, 1)
@@ -305,6 +307,8 @@ class CINRAD():
             return xc, yc, rhi
 
     def draw_rhi(self, azimuth, range, startangle=0, stopangle=8, height=15, interpolation=False):
+        if self.name == None:
+            raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, range, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
         plt.style.use('dark_background')
@@ -371,36 +375,22 @@ class CINRAD():
         h = np.concatenate(height)
         pass
 
-#file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
-file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
-radar = CINRAD(file, version='new')
-radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
-radar.set_stationname('Hefei')
-radar.draw_rhi(230, 230)
-r = radar.reflectivity(0, 230)
+if __name__ == '__main__':
+    #file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
+    file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
+    radar = CINRAD(file)
+    radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
+    radar.set_stationname('Hefei')
+    radar.draw_rhi(230, 230)
+    r = radar.reflectivity(0, 230)
+    xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
+    plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
 
-from metpy import gridding
-xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
-'''
-xi = np.arange(0, 230, 1)
-yi = np.arange(0, 15, 0.5)
-x, y = np.meshgrid(xi, yi)
-z = gridding.natural_neighbor(xc.flatten(), yc.flatten(), rhi.flatten(), x, y)
-'''
-plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
-
-tri = mtri.Triangulation(xc.flatten(), yc.flatten())
-plt.tricontourf(tri, rhi.flatten(), 128, cmap=nmcradarc, norm=norm1)
-plt.triplot(tri, linewidth=0.3, color='black')
-plt.ylim(0, 15)
-plt.show()
-'''
-refiner = mtri.UniformTriRefiner(tri)
-tri_refi, z_test_refi = refiner.refine_field(rhi.flatten(), subdiv=2)
-plt.tricontourf(tri_refi, z_test_refi, 128, cmap=nmcradarc, norm=norm1)
-plt.ylim(0, 15)
-plt.show()
-'''
-radar.set_stationname('Qingpu')
-radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
-radar.draw_ref(0, 120, draw_author=True, smooth=True)
+    tri = mtri.Triangulation(xc.flatten(), yc.flatten())
+    plt.tricontourf(tri, rhi.flatten(), 128, cmap=nmcradarc, norm=norm1)
+    plt.triplot(tri, linewidth=0.3, color='black')
+    plt.ylim(0, 15)
+    plt.show()
+    radar.set_stationname('Qingpu')
+    radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
+    radar.draw_ref(0, 120, draw_author=True, smooth=True)
