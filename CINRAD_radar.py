@@ -31,7 +31,7 @@ PosDict = {'杭州': (120.338, 30.274),
            '青浦': (120.959, 31.076), 
            '南京': (118.698, 32.191), 
            '合肥': (117.258, 31.868), 
-           '蚌埠': (0, 0)}
+           '蚌埠': (117.448, 32.918)}
 
 class RadarError(Exception):
     def __init__(self, description):
@@ -137,15 +137,18 @@ class CINRAD():
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
         azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
-        if azim[0] < azimuth:
-            while count < len(azim):
-                count += 1
-                if azim[count] - azimuth < azimuth - azim[count - 1] and azim[count] - azimuth <= 1:
+        azim_r = azim.tolist()
+        azim_r.reverse()
+        while count < len(azim):
+            count += 1
+            if azimuth > azim[0]:
+                if (azimuth - azim[count]) * (azimuth - azim[count + 1]) < 0:
+                    print(azim[count])
                     return count
-                elif azim[count] - azimuth > azimuth - azim[count-1] and azimuth - azim[count - 1] <= 1:
-                    return count - 1
-                else:
-                    return None
+            else:
+                if (azimuth - azim_r[count]) * (azimuth - azim_r[count + 1]) < 0:
+                    print(azim[len(azim) - count - 1])
+                    return len(azim) - count - 1
 
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
@@ -244,13 +247,13 @@ class CINRAD():
         hgh = np.array(height).reshape(xshape, yshape)
         return lons, lats, hgh
 
-    def draw_ref(self, level, drange, draw_author=False, smooth=False):
+    def draw_ref(self, level, drange, draw_author=False, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
         r = self.reflectivity(level, drange)
         r1 = r[np.logical_not(np.isnan(r))]
         maxvalue = np.max(r1)
-        fig = plt.figure(figsize=(10, 10), dpi=350)
+        fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection()
         plt.style.use('dark_background')
@@ -334,10 +337,10 @@ class CINRAD():
         plt.savefig((folderpath + self.nameblock + '_' + 'RHI_'
                      + str(self.drange) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
 
-    def draw_vel(self, level, drange, draw_author=False):
+    def draw_vel(self, level, drange, draw_author=False, dpi=350):
         r'''Plot velocity PPI scan with the default plot settings.'''
         v, rf = self.velocity(level, drange)
-        fig = plt.figure(figsize=(10,10), dpi=350)
+        fig = plt.figure(figsize=(10,10), dpi=dpi)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection(type='v')
         plt.style.use('dark_background')
@@ -386,24 +389,3 @@ class CINRAD():
         y = np.concatenate(lat)
         h = np.concatenate(height)
         pass
-
-'''
-#file=filedialog.askopenfilename(filetypes=[('BIN Files','*.*')],title='Open CINRAD Data')
-file = 'D:\\Meteorology\\雷达基数据\\Z9551_20180518\\2018051807.07A'
-radar = CINRAD(file)
-radar.set_stationposition(PosDict['南京'][0], PosDict['南京'][1])
-radar.set_stationname('Nanjing')
-radar.draw_rhi(230, 230)
-r = radar.reflectivity(0, 230)
-xc, yc, rhi = radar.rhi(230, 230, startangle=0, stopangle=10, interpolation=False)
-plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
-
-tri = mtri.Triangulation(xc.flatten(), yc.flatten())
-plt.tricontourf(tri, rhi.flatten(), 128, cmap=nmcradarc, norm=norm1)
-plt.triplot(tri, linewidth=0.3, color='black')
-plt.ylim(0, 15)
-plt.show()
-radar.set_stationname('Qingpu')
-radar.set_stationposition(PosDict['青浦'][0], PosDict['青浦'][1])
-radar.draw_ref(0, 120, draw_author=True, smooth=True)
-'''
