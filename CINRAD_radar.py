@@ -2,12 +2,12 @@
 from form_colormap import form_colormap
 import numpy as np
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 #import matplotlib.tri as mtri
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
-from tkinter import filedialog
 import os
 import warnings
 
@@ -27,10 +27,10 @@ nmcradarc1 = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 
-PosDict = {'杭州': (120.338, 30.274), 
-           '青浦': (120.959, 31.076), 
-           '南京': (118.698, 32.191), 
-           '合肥': (117.258, 31.868), 
+PosDict = {'杭州': (120.338, 30.274),
+           '青浦': (120.959, 31.076),
+           '南京': (118.698, 32.191),
+           '合肥': (117.258, 31.868),
            '蚌埠': (117.448, 32.918)}
 
 class RadarError(Exception):
@@ -62,20 +62,12 @@ class CINRAD():
         while count < num:
             a = f.read(blocklength)
             radar = np.fromstring(a[14:16], dtype='u2')
-            blurdist = np.fromstring(a[34:36], dtype='u2')
             azimuth = np.fromstring(a[36:38], dtype='u2')
-            dataindex = np.fromstring(a[38:40], dtype='u2')
             datacon = np.fromstring(a[40:42], dtype='u2')
             elevangle = np.fromstring(a[42:44], dtype='u2')
             anglenum = np.fromstring(a[44:46], dtype='u2')
             refdist = np.fromstring(a[46:48], dtype='u2')
-            dopdist = np.fromstring(a[48:50], dtype='u2')
-            refspacing = np.fromstring(a[50:52], dtype='u2')
-            dopspacing = np.fromstring(a[52:54], dtype='u2')
-            refdistnum = np.fromstring(a[54:56], dtype='u2')
-            dopdistnum = np.fromstring(a[56:58], dtype='u2')
             veloreso = np.fromstring(a[70:72], dtype='u2')
-            VCPmode = np.fromstring(a[72:74], dtype='u2')
             if radartype == 'SA' or 'SB':
                 R = np.fromstring(a[128:588], dtype='u1')
                 V = np.fromstring(a[128:1508], dtype='u1')
@@ -186,7 +178,7 @@ class CINRAD():
 
     def getrange(self, stationlon, stationlat):
         r'''Calculate the range of coordinates of the basemap projection.'''
-        if self.drange == None:
+        if self.drange is None:
             raise RadarError('The range of data should be assigned first')
         self.stationlon = stationlon
         self.stationlat = stationlat
@@ -207,9 +199,9 @@ class CINRAD():
 
     def _getcoordinate(self, drange, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
-        if self.drange == None:
+        if self.drange is None:
             raise RadarError('The range of data should be assigned first')
-        if self.stationlat == None or self.stationlon == None:
+        if self.stationlat is None or self.stationlon is None:
             raise RadarError('The position of radar should be assigned before projection')
         deltav = np.cos(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
         deltah = np.sin(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
@@ -219,17 +211,17 @@ class CINRAD():
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
-    def projection(self, type='r'):
+    def projection(self, datatype='r'):
         r'''Calculate the geographic coordinates of the requested data range.'''
         length = self.boundary[self.level + 1] - self.boundary[self.level]
         latx = list()
         lonx = list()
         height = list()
         count = 0
-        if type == 'r':
+        if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
-        elif type == 'v':
+        elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
         theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
@@ -252,7 +244,6 @@ class CINRAD():
         suffix = ''
         r = self.reflectivity(level, drange)
         r1 = r[np.logical_not(np.isnan(r))]
-        maxvalue = np.max(r1)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection()
@@ -270,7 +261,6 @@ class CINRAD():
         ax2 = fig.add_axes([0.92, 0.17, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=nmcradar, norm=norm1, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
-
         ax2.text(0, 1.84, 'Base Reflectivity', fontproperties=font2)
         ax2.text(0, 1.80, 'Range: %skm' % self.drange, fontproperties=font2)
         ax2.text(0, 1.76, 'Resolution: 1.00 km', fontproperties=font2)
@@ -296,7 +286,7 @@ class CINRAD():
         for i in self.anglelist[startangle:stopangle]:
             cac = self.reflectivity(i, drange)
             pos = self._azimuthposition(azimuth)
-            if pos == None:
+            if pos is None:
                 nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
             else:
@@ -321,7 +311,7 @@ class CINRAD():
 
     def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
         r'''Plot reflectivity RHI scan with the default plot settings.'''
-        if self.name == None:
+        if self.name is None:
             raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
@@ -342,7 +332,7 @@ class CINRAD():
         v, rf = self.velocity(level, drange)
         fig = plt.figure(figsize=(10,10), dpi=dpi)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
-        lons, lats, hgh = self.projection(type='v')
+        lons, lats, hgh = self.projection(datatype='v')
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
@@ -388,4 +378,3 @@ class CINRAD():
         x = np.concatenate(lon)
         y = np.concatenate(lat)
         h = np.concatenate(height)
-        pass
