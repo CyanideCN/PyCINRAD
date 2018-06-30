@@ -4,10 +4,9 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
-import matplotlib.tri as mtri
+#import matplotlib.tri as mtri
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
-import datetime
 from tkinter import filedialog
 import os
 import warnings
@@ -63,8 +62,6 @@ class CINRAD():
         while count < num:
             a = f.read(blocklength)
             radar = np.fromstring(a[14:16], dtype='u2')
-            times = np.fromstring(a[28:32], dtype='u4')
-            day = np.fromstring(a[32:34], dtype='u2')
             blurdist = np.fromstring(a[34:36], dtype='u2')
             azimuth = np.fromstring(a[36:38], dtype='u2')
             dataindex = np.fromstring(a[38:40], dtype='u2')
@@ -103,11 +100,10 @@ class CINRAD():
         self.rad = np.deg2rad(self.aziangle)
         self.eleang = np.array(eleang)
         self.vraw = np.array(vraw)
-
         self.dv = veloreso[0]
         self.radartype = radartype
         self.level = None
-        self.range = None
+        self.drange = None
         self.level = None
         self.stationlon = None
         self.stationlat = None
@@ -123,7 +119,7 @@ class CINRAD():
             self.nameblock = self.timestr
         else:
             raise RadarError('Unrecognized file name')
-        anglelist = np.arange(0, len(self.boundary)-2, 1)
+        anglelist = np.arange(0, anglenum[0], 1)
         self.anglelist = np.delete(anglelist, [1, 3])
         self.elevanglelist = self.z[self.boundary]
     
@@ -134,14 +130,11 @@ class CINRAD():
     def set_stationname(self, name):
         self.name = name
 
-    def set_range(self, range):
-        self.range = range
+    def set_drange(self, drange):
+        self.drange = drange
 
     def _azimuthposition(self, azimuth):
-        '''
-        Find the relative position of a certain azimuth angle in the
-        data array.
-        '''
+        r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
         azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
         if azim[0] < azimuth:
@@ -154,57 +147,51 @@ class CINRAD():
                 else:
                     return None
 
-    def reflectivity(self, level, range):
-        '''
-        Clip desired range of reflectivity data.
-        '''
+    def reflectivity(self, level, drange):
+        r'''Clip desired range of reflectivity data.'''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
         self.level = level
-        self.range = range
-        if self.rraw.shape[1] * self.Rreso < range:
+        self.drange = drange
+        if self.rraw.shape[1] * self.Rreso < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
-            self.range = int(self.rraw.shape[1] * self.Rreso)
+            self.drange = int(self.rraw.shape[1] * self.Rreso)
         dbz = (self.rraw - 2) / 2 - 32
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
-        r1 = r.transpose()[:int(range / self.Rreso)]
+        r1 = r.transpose()[:int(drange / self.Rreso)]
         r1[r1 < 0] = 0
         return r1.transpose()
 
-    def velocity(self, level, range):
-        '''
-        Clip desired range of velocity data.
-        '''
+    def velocity(self, level, drange):
+        r'''Clip desired range of velocity data.'''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
-        self.range = range
+        self.drange = drange
         self.level = level
-        if self.vraw.shape[1] * self.Vreso < range:
+        if self.vraw.shape[1] * self.Vreso < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
-            self.range = int(self.vraw.shape[1] * self.Vreso)
+            self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.dv == 2:
             v = (self.vraw - 2) / 2 - 63.5
         elif self.dv == 4:
             v = (self.vraw - 2) -127
         v = v[self.boundary[level]:self.boundary[level + 1]]
-        v1 = v.transpose()[:int(range / self.Vreso)]
+        v1 = v.transpose()[:int(drange / self.Vreso)]
         v1[v1 == -64.5] = None
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
 
     def getrange(self, stationlon, stationlat):
-        '''
-        Calculate the range of coordinates of the basemap projection.
-        '''
-        if self.range == None:
+        r'''Calculate the range of coordinates of the basemap projection.'''
+        if self.drange == None:
             raise RadarError('The range of data should be assigned first')
         self.stationlon = stationlon
         self.stationlat = stationlat
         km2lat = 1 / 111
-        uplat = stationlat + self.range * km2lat
-        lowlat = stationlat - self.range * km2lat
-        leftlon = stationlon + self.range / (111 * np.cos(np.deg2rad(stationlat)))
-        rightlon = stationlon - self.range / (111 * np.cos(np.deg2rad(stationlat)))
+        uplat = stationlat + self.drange * km2lat
+        lowlat = stationlat - self.drange * km2lat
+        leftlon = stationlon + self.drange / (111 * np.cos(np.deg2rad(stationlat)))
+        rightlon = stationlon - self.drange / (111 * np.cos(np.deg2rad(stationlat)))
         return leftlon, rightlon, uplat, lowlat
         
     @staticmethod
@@ -215,17 +202,14 @@ class CINRAD():
     def elev2height(angle, distance):
         return distance * np.sin(np.deg2rad(angle))
 
-    def _getcoordinate(self, range, angle):
-        '''
-        Convert polar coordinates to geographic coordinates with the given radar
-        station position.
-        '''
-        if self.range == None:
+    def _getcoordinate(self, drange, angle):
+        r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
+        if self.drange == None:
             raise RadarError('The range of data should be assigned first')
         if self.stationlat == None or self.stationlon == None:
             raise RadarError('The position of radar should be assigned before projection')
-        deltav = np.cos(angle) * range * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
-        deltah = np.sin(angle) * range * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
+        deltav = np.cos(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
+        deltah = np.sin(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
         deltalon = deltah / (111 * np.cos(np.deg2rad(actuallat)))
@@ -233,20 +217,18 @@ class CINRAD():
         return actuallon, actuallat
 
     def projection(self, type='r'):
-        '''
-        Calculate the geographic coordinates of the requested data range.
-        '''
+        r'''Calculate the geographic coordinates of the requested data range.'''
         length = self.boundary[self.level + 1] - self.boundary[self.level]
         latx = list()
         lonx = list()
         height = list()
         count = 0
         if type == 'r':
-            r = np.arange(self.Rreso, int(self.range) + self.Rreso, self.Rreso)
-            xshape, yshape = (length, int(self.range / self.Rreso))
+            r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
+            xshape, yshape = (length, int(self.drange / self.Rreso))
         elif type == 'v':
-            r = np.arange(self.Vreso, int(self.range) + self.Vreso, self.Vreso)
-            xshape, yshape = (length, int(self.range / self.Vreso))
+            r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
+            xshape, yshape = (length, int(self.drange / self.Vreso))
         theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
         while count < len(theta):
             for i in r:
@@ -262,12 +244,10 @@ class CINRAD():
         hgh = np.array(height).reshape(xshape, yshape)
         return lons, lats, hgh
 
-    def draw_ref(self, level, range, draw_author=False, smooth=False):
-        '''
-        Plot reflectivity PPI scan with the default plot settings.
-        '''
+    def draw_ref(self, level, drange, draw_author=False, smooth=False):
+        r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
-        r = self.reflectivity(level, range)
+        r = self.reflectivity(level, drange)
         r1 = r[np.logical_not(np.isnan(r))]
         maxvalue = np.max(r1)
         fig = plt.figure(figsize=(10, 10), dpi=350)
@@ -289,7 +269,7 @@ class CINRAD():
         cbar.ax.tick_params(labelsize=8)
 
         ax2.text(0, 1.84, 'Base Reflectivity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: %skm' % self.range, fontproperties=font2)
+        ax2.text(0, 1.80, 'Range: %skm' % self.drange, fontproperties=font2)
         ax2.text(0, 1.76, 'Resolution: 1.00 km', fontproperties=font2)
         ax2.text(0, 1.72, 'Date: ' + self.timestr[:4] + '.' + self.timestr[4:6] + '.'+self.timestr[6:8], fontproperties=font2)
         ax2.text(0, 1.68, 'Time: ' + self.timestr[8:10] + ':' + self.timestr[10:12], fontproperties=font2)
@@ -300,23 +280,21 @@ class CINRAD():
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
         plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
-                     + '_' + str(self.range) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
+                     + '_' + str(self.drange) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
-    def rhi(self, azimuth, range, startangle=0, stopangle=5, height=15, interpolation=False):
-        '''
-        Clip the reflectivity data from certain elevation angles in a single azimuth angle.
-        '''
+    def rhi(self, azimuth, drange, startangle=0, stopangle=5, height=15, interpolation=False):
+        r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
         ycoor = list()
-        dist = np.arange(1, range + 1, 1)
+        dist = np.arange(1, drange + 1, 1)
         for i in self.anglelist[startangle:stopangle]:
-            cac = self.reflectivity(i, range)
+            cac = self.reflectivity(i, drange)
             pos = self._azimuthposition(azimuth)
             if pos == None:
-                nanarray = np.zeros((range))
+                nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
             else:
                 rhi.append(cac[pos])
@@ -330,7 +308,7 @@ class CINRAD():
         if interpolation:
             from metpy import gridding
             warnings.warn('Interpolation takes long time, keep patient')
-            xi = np.arange(0, range + 1, 1)
+            xi = np.arange(0, drange + 1, 1)
             yi = np.arange(0, height + 0.5, 0.5)
             x, y = np.meshgrid(xi, yi)
             z = gridding.natural_neighbor(xc.flatten(), yc.flatten(), rhi.flatten(), x, y)
@@ -338,13 +316,11 @@ class CINRAD():
         else:
             return xc, yc, rhi
 
-    def draw_rhi(self, azimuth, range, startangle=0, stopangle=8, height=15, interpolation=False):
-        '''
-        Plot reflectivity RHI scan with the default plot settings.
-        '''
+    def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
+        r'''Plot reflectivity RHI scan with the default plot settings.'''
         if self.name == None:
             raise RadarError('Name of radar is not defined')
-        xc, yc, rhi = self.rhi(azimuth, range, startangle=startangle, stopangle=stopangle
+        xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
         plt.style.use('dark_background')
         fig = plt.figure(figsize=(10, 4), dpi=200)
@@ -356,10 +332,11 @@ class CINRAD():
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
         plt.savefig((folderpath + self.nameblock + '_' + 'RHI_'
-                     + str(self.range) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
+                     + str(self.drange) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
 
-    def draw_vel(self, level, range, draw_author=False):
-        v, rf = self.velocity(level, range)
+    def draw_vel(self, level, drange, draw_author=False):
+        r'''Plot velocity PPI scan with the default plot settings.'''
+        v, rf = self.velocity(level, drange)
         fig = plt.figure(figsize=(10,10), dpi=350)
         lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection(type='v')
@@ -377,7 +354,7 @@ class CINRAD():
         cbar.set_ticks(np.linspace(0, 1, 16))
         cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
         ax2.text(0, 1.84, 'Base Velocity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: ' + str(self.range) + ' km', fontproperties=font2)
+        ax2.text(0, 1.80, 'Range: ' + str(self.drange) + ' km', fontproperties=font2)
         ax2.text(0, 1.76, 'Resolution: 0.25 km', fontproperties=font2)
         ax2.text(0, 1.72, 'Date: ' + self.timestr[:4] + '.' + self.timestr[4:6] + '.'+self.timestr[6:8], fontproperties=font2)
         ax2.text(0, 1.68, 'Time: ' + self.timestr[8:10] + ':' + self.timestr[10:12], fontproperties=font2)
@@ -387,7 +364,7 @@ class CINRAD():
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
         plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
-                        + '_' + str(self.range) + '_V.png'), bbox_inches='tight', pad_inches = 0)
+                        + '_' + str(self.drange) + '_V.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
