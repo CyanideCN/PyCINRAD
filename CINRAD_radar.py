@@ -293,7 +293,7 @@ class CINRAD():
                 rhi.append(cac[pos])
             theta = np.deg2rad(self.elev)
             xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append((dist * np.sin(theta) +(dist * dist)/(2 * IR * RE)).tolist())
+            ycoor.append((dist * np.sin(theta) + (dist * dist) / (2 * IR * RE)).tolist())
         rhi = np.array(rhi)
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
@@ -315,12 +315,13 @@ class CINRAD():
             raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
+        rmax = np.round_(rhi[np.logical_not(np.isnan(rhi))], 1)
         plt.style.use('dark_background')
         fig = plt.figure(figsize=(10, 4), dpi=200)
         plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
         plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4] + '.' + self.timestr[4:6] + 
-                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % np.max(rhi)))
+                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % rmax))
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
