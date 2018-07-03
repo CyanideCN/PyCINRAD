@@ -27,12 +27,6 @@ nmcradarc1 = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 
-PosDict = {'杭州': (120.338, 30.274),
-           '青浦': (120.959, 31.076),
-           '南京': (118.698, 32.191),
-           '合肥': (117.258, 31.868),
-           '蚌埠': (117.448, 32.918)}
-
 class RadarError(Exception):
     def __init__(self, description):
         self.dsc = description
@@ -47,6 +41,7 @@ class CINRAD():
         eleang = list()
         vraw = list()
         rraw = list()
+        blur = list()
         self.boundary = list()
         count = 0
         if radartype == 'SA' or 'SB':
@@ -62,6 +57,7 @@ class CINRAD():
         while count < num:
             a = f.read(blocklength)
             radar = np.fromstring(a[14:16], dtype='u2')
+            blurdist = np.fromstring(a[34:36], dtype='u2')
             azimuth = np.fromstring(a[36:38], dtype='u2')
             datacon = np.fromstring(a[40:42], dtype='u2')
             elevangle = np.fromstring(a[42:44], dtype='u2')
@@ -78,6 +74,7 @@ class CINRAD():
             eleang.append(elevangle[0])
             vraw.append(V.tolist())
             rraw.append(R.tolist())
+            blur.append(blurdist[0] / 10)
             if datacon[0] == 3:
                 self.boundary.append(0)
             elif datacon[0] == 0:
@@ -93,6 +90,7 @@ class CINRAD():
         self.eleang = np.array(eleang)
         self.vraw = np.array(vraw)
         self.dv = veloreso[0]
+        self.blurdist = np.array(blur)
         self.radartype = radartype
         self.level = None
         self.drange = None
@@ -112,7 +110,8 @@ class CINRAD():
         else:
             raise RadarError('Unrecognized file name')
         anglelist = np.arange(0, anglenum[0], 1)
-        self.anglelist = np.delete(anglelist, [1, 3])
+        self.anglelist_r = np.delete(anglelist, [1, 3])
+        self.anglelist_v = np.delete(anglelist, [0, 2])
         self.elevanglelist = self.z[self.boundary]
     
     def set_stationposition(self, stationlon, stationlat):
@@ -148,13 +147,19 @@ class CINRAD():
         self.elev = self.z[self.boundary[level]]
         self.level = level
         self.drange = drange
-        if self.rraw.shape[1] * self.Rreso < drange:
+        length = self.rraw.shape[1] * self.Rreso
+        blur = self.blurdist[self.boundary[level]]
+        if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.rraw.shape[1] * self.Rreso)
         dbz = (self.rraw - 2) / 2 - 32
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
         r1 = r.transpose()[:int(drange / self.Rreso)]
         r1[r1 < 0] = 0
+        if drange > blur:
+            rm = r1[:int(blur / self.Rreso)]
+            nanmatrix = np.ones((int((drange - blur) / self.Rreso), r1.shape[1])) * np.nan
+            r1 = np.concatenate((rm, nanmatrix))
         return r1.transpose()
 
     def velocity(self, level, drange):
@@ -163,16 +168,22 @@ class CINRAD():
         self.elev = self.z[self.boundary[level]]
         self.drange = drange
         self.level = level
+        length = self.vraw.shape[1] * self.Vreso
+        blur = self.blurdist[self.boundary[level]]
         if self.vraw.shape[1] * self.Vreso < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.dv == 2:
             v = (self.vraw - 2) / 2 - 63.5
         elif self.dv == 4:
-            v = (self.vraw - 2) -127
+            v = (self.vraw - 2) - 127
         v = v[self.boundary[level]:self.boundary[level + 1]]
         v1 = v.transpose()[:int(drange / self.Vreso)]
-        v1[v1 == -64.5] = None
+        v1[v1 == -64.5] = np.nan
+        if drange > blur:
+            vm = v1[:int(blur / self.Vreso)]
+            nanmatrix = np.ones((int((drange - blur) / self.Vreso), v1.shape[1])) * np.nan
+            v1 = np.concatenate((vm, nanmatrix))
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
 
@@ -283,7 +294,7 @@ class CINRAD():
         xcoor = list()
         ycoor = list()
         dist = np.arange(1, drange + 1, 1)
-        for i in self.anglelist[startangle:stopangle]:
+        for i in self.anglelist_r[startangle:stopangle]:
             cac = self.reflectivity(i, drange)
             pos = self._azimuthposition(azimuth)
             if pos is None:
@@ -315,13 +326,13 @@ class CINRAD():
             raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
-        rmax = np.round_(rhi[np.logical_not(np.isnan(rhi))], 1)
+        rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
         plt.style.use('dark_background')
         fig = plt.figure(figsize=(10, 4), dpi=200)
         plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
         plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4] + '.' + self.timestr[4:6] + 
-                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % rmax))
+                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % rmax), fontproperties=font2)
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
@@ -379,3 +390,9 @@ class CINRAD():
         x = np.concatenate(lon)
         y = np.concatenate(lat)
         h = np.concatenate(height)
+
+    def quickplot(self, radius=230):
+        for i in self.anglelist_r:
+            self.draw_ref(i, radius, dpi=150, draw_author=True)
+        for j in self.anglelist_v:
+            self.draw_vel(j, radius, dpi=150, draw_author=True)
