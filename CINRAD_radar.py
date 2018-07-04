@@ -2,10 +2,9 @@
 from form_colormap import form_colormap
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
-#import matplotlib.tri as mtri
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
 import os
@@ -141,14 +140,14 @@ class CINRAD():
                     print(azim[len(azim) - count - 1])
                     return len(azim) - count - 1
 
-    def reflectivity(self, level, drange):
+    def reflectivity(self, level, drange, maskdelta=0):
         r'''Clip desired range of reflectivity data.'''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
-        blur = self.blurdist[self.boundary[level]]
+        blur = self.blurdist[self.boundary[level]] - maskdelta
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.rraw.shape[1] * self.Rreso)
