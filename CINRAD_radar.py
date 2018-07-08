@@ -23,6 +23,7 @@ nmcradar2 = form_colormap('colormap\\radarnmc2.txt', sep=False)
 velcbar = form_colormap('colormap\\radarnmc2a.txt', sep=True)
 nmcradarc = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v')
 nmcradarc1 = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
+radarinfo = np.load('RadarStation.npy')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 
@@ -33,7 +34,26 @@ class RadarError(Exception):
         return repr(self.dsc)
 
 class CINRAD():
-    def __init__(self, filepath, radartype='SA'):
+    def __init__(self, filepath):
+        filename, filetype = os.path.splitext(filepath)
+        filename = filename.split('/')[-1]
+        if filename.startswith('RADA'):
+            spart = filename.split('-')
+            self.code = spart[1]
+            radartype = spart[2]
+            self.timestr = spart[-1].split('.')[0]
+        elif filename.startswith('Z'):
+            spart = filename.split('_')
+            self.code = spart[3]
+            self.timestr = spart[4]
+            radartype = spart[7]
+        elif filename.endswith('A'):
+            spart = filename.split('.')
+            self.code = None
+            self.timestr = spart[0] + spart[1][:-1] + '00'
+            radartype ='SA'
+        else:
+            raise RadarError('Unrecognized file name')
         f = open(filepath, 'rb')
         g = open(filepath, 'rb')
         azimuthx = list()
@@ -98,20 +118,12 @@ class CINRAD():
         self.stationlat = None
         self.elev = None
         self.name = None
-        full_name = os.path.split(filepath)[-1]
-        self.file_name, self.file_type = os.path.splitext(full_name)
-        if full_name.endswith('BIN') or full_name.endswith('bin'):
-            self.timestr = self.file_name.split('_', 9)[4]
-            self.nameblock = self.file_name
-        elif full_name.endswith('A'):
-            self.timestr = self.file_name + self.file_type[1:-1]
-            self.nameblock = self.timestr
-        else:
-            raise RadarError('Unrecognized file name')
+
         anglelist = np.arange(0, anglenum[0], 1)
         self.anglelist_r = np.delete(anglelist, [1, 3])
         self.anglelist_v = np.delete(anglelist, [0, 2])
         self.elevanglelist = self.z[self.boundary]
+        self._update_radarinfo()
     
     def set_stationposition(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -122,6 +134,24 @@ class CINRAD():
 
     def set_drange(self, drange):
         self.drange = drange
+
+    def set_code(self, code):
+        self.code = code
+
+    def _get_radarinfo(self):
+        if self.code is None:
+            raise RadarError('Radar code undefined')
+        pos = np.where(radarinfo[0] == self.code)[0]
+        name = radarinfo[1][pos][0]
+        lon = radarinfo[2][pos][0]
+        lat = radarinfo[3][pos][0]
+        radartype = radarinfo[4][pos][0]
+        return name, lon, lat, radartype
+
+    def _update_radarinfo(self):
+        info = self._get_radarinfo()
+        self.set_stationposition(info[1], info[2])
+        self.set_stationname(info[0])
 
     def _azimuthposition(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -198,14 +228,6 @@ class CINRAD():
         leftlon = stationlon + self.drange / (111 * np.cos(np.deg2rad(stationlat)))
         rightlon = stationlon - self.drange / (111 * np.cos(np.deg2rad(stationlat)))
         return leftlon, rightlon, uplat, lowlat
-        
-    @staticmethod
-    def polar2cart(angle, distance):
-        return distance * np.cos(np.deg2rad(angle)), distance * np.sin(np.deg2rad(angle))
-
-    @staticmethod
-    def elev2height(angle, distance):
-        return distance * np.sin(np.deg2rad(angle))
 
     def _getcoordinate(self, drange, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
@@ -282,7 +304,7 @@ class CINRAD():
         ax2.text(0, 1.48, 'Max: %sdBz' % np.max(r1), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + str(np.round_(self.elev, 1)) 
                      + '_' + str(self.drange) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
@@ -335,7 +357,7 @@ class CINRAD():
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
-        plt.savefig((folderpath + self.nameblock + '_' + 'RHI_'
+        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + 'RHI_'
                      + str(self.drange) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
 
     def draw_vel(self, level, drange, draw_author=False, dpi=350):
@@ -367,7 +389,7 @@ class CINRAD():
         ax2.text(0, 1.56, 'Elev: ' + str(np.round_(self.elev, 2)) + 'deg', fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        plt.savefig((folderpath + self.nameblock + '_' + str(np.round_(self.elev, 1)) 
+        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + str(np.round_(self.elev, 1)) 
                         + '_' + str(self.drange) + '_V.png'), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
