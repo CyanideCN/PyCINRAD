@@ -9,6 +9,7 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
 import os
 import warnings
+import datetime
 
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
@@ -41,16 +42,13 @@ class CINRAD():
             spart = filename.split('-')
             self.code = spart[1]
             radartype = spart[2]
-            self.timestr = spart[-1].split('.')[0]
         elif filename.startswith('Z'):
             spart = filename.split('_')
             self.code = spart[3]
-            self.timestr = spart[4]
             radartype = spart[7]
         elif filename.endswith('A'):
             spart = filename.split('.')
             self.code = None
-            self.timestr = spart[0] + spart[1][:-1] + '00'
             radartype ='SA'
         else:
             warnings.warn('Unrecognized filename, please update radar station info manually')
@@ -71,11 +69,18 @@ class CINRAD():
             blocklength = 4132
             self.Rreso = 0.5
             self.Vreso = 0.125
-        datalength = len(g.read())
+        copy = g.read()
+        deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
+        deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
+        start = datetime.datetime(1970, 1, 1)
+        deltday = datetime.timedelta(days=int(deltdays))
+        deltsec = datetime.timedelta(milliseconds=int(deltsecs))
+        scantime = start + deltday + deltsec
+        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        datalength = len(copy)
         num = int(datalength / blocklength)
         while count < num:
             a = f.read(blocklength)
-            radar = np.fromstring(a[14:16], dtype='u2')
             blurdist = np.fromstring(a[34:36], dtype='u2')
             azimuth = np.fromstring(a[36:38], dtype='u2')
             datacon = np.fromstring(a[40:42], dtype='u2')
@@ -118,7 +123,6 @@ class CINRAD():
         self.stationlat = None
         self.elev = None
         self.name = None
-
         anglelist = np.arange(0, anglenum[0], 1)
         self.anglelist_r = np.delete(anglelist, [1, 3])
         self.anglelist_v = np.delete(anglelist, [0, 2])
@@ -278,7 +282,7 @@ class CINRAD():
         hgh = np.array(height).reshape(xshape, yshape)
         return lons, lats, hgh
 
-    def draw_ref(self, level, drange, draw_author=False, smooth=False, dpi=350):
+    def draw_ref(self, level, drange, draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
         r = self.reflectivity(level, drange)
@@ -301,18 +305,18 @@ class CINRAD():
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=nmcradar, norm=norm1, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
         ax2.text(0, 1.84, 'Base Reflectivity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: %skm' % self.drange, fontproperties=font2)
-        ax2.text(0, 1.76, 'Resolution: 1.00 km', fontproperties=font2)
-        ax2.text(0, 1.72, 'Date: ' + self.timestr[:4] + '.' + self.timestr[4:6] + '.'+self.timestr[6:8], fontproperties=font2)
-        ax2.text(0, 1.68, 'Time: ' + self.timestr[8:10] + ':' + self.timestr[10:12], fontproperties=font2)
+        ax2.text(0, 1.80, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
+        ax2.text(0, 1.76, 'Resolution: {:.2f}km'.format(self.Rreso) , fontproperties=font2)
+        ax2.text(0, 1.72, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
+        ax2.text(0, 1.68, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
         ax2.text(0, 1.64, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.60, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.56, 'Elev: %sdeg' % np.round_(self.elev, 2), fontproperties=font2)
-        ax2.text(0, 1.48, 'Max: %sdBz' % np.max(r1), fontproperties=font2)
+        ax2.text(0, 1.56, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
+        ax2.text(0, 1.48, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + str(np.round_(self.elev, 1)) 
-                     + '_' + str(self.drange) + '_R'+ suffix +'.png'), bbox_inches='tight', pad_inches = 0)
+        plt.savefig('{}{}_{}_{:.1f}_{}_R.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange)
+                    , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
@@ -359,16 +363,16 @@ class CINRAD():
         fig = plt.figure(figsize=(10, 4), dpi=200)
         plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
-        plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4]
-                   + '.' + self.timestr[4:6] + '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':'
-                   + self.timestr[10:12] + ' Max: %sdBz' % rmax), fontproperties=font2)
+        plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {}.{}.{} {}:{} Max: {}dbz'.format(
+                  self.name, azimuth, self.timestr[:4], self.timestr[4:6], self.timestr[6:8], self.timestr[8:10]
+                  , self.timestr[10:12], rmax), fontproperties=font2)
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
-        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + 'RHI_'
-                     + str(self.drange) + '_' + str(azimuth) +'.png'), bbox_inches='tight')
+        plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
+                    , bbox_inches='tight')
 
-    def draw_vel(self, level, drange, draw_author=False, dpi=350):
+    def draw_vel(self, level, drange, draw_author=True, dpi=350):
         r'''Plot velocity PPI scan with the default plot settings.'''
         v, rf = self.velocity(level, drange)
         fig = plt.figure(figsize=(10,10), dpi=dpi)
@@ -388,17 +392,17 @@ class CINRAD():
         cbar.set_ticks(np.linspace(0, 1, 16))
         cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
         ax2.text(0, 1.84, 'Base Velocity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: ' + str(self.drange) + ' km', fontproperties=font2)
-        ax2.text(0, 1.76, 'Resolution: 0.25 km', fontproperties=font2)
-        ax2.text(0, 1.72, 'Date: ' + self.timestr[:4] + '.' + self.timestr[4:6] + '.'+self.timestr[6:8], fontproperties=font2)
-        ax2.text(0, 1.68, 'Time: ' + self.timestr[8:10] + ':' + self.timestr[10:12], fontproperties=font2)
+        ax2.text(0, 1.80, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
+        ax2.text(0, 1.76, 'Resolution: {:.2f}km'.format(self.Vreso) , fontproperties=font2)
+        ax2.text(0, 1.72, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
+        ax2.text(0, 1.68, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
         ax2.text(0, 1.64, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.60, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.56, 'Elev: ' + str(np.round_(self.elev, 2)) + 'deg', fontproperties=font2)
+        ax2.text(0, 1.56, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        plt.savefig((folderpath + self.code + '_' + self.timestr + '_' + str(np.round_(self.elev, 1)) 
-                        + '_' + str(self.drange) + '_V.png'), bbox_inches='tight', pad_inches = 0)
+        plt.savefig('{}{}_{}_{:.1f}_{}_V.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange)
+                    , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
