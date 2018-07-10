@@ -53,7 +53,7 @@ class CINRAD():
             self.timestr = spart[0] + spart[1][:-1] + '00'
             radartype ='SA'
         else:
-            raise RadarError('Unrecognized file name')
+            warnings.warn('Unrecognized filename, please update radar station info manually')
         f = open(filepath, 'rb')
         g = open(filepath, 'rb')
         azimuthx = list()
@@ -100,7 +100,7 @@ class CINRAD():
                 self.boundary.append(count)
             elif datacon[0] == 4:
                 self.boundary.append(num - 1)
-            count = count+1
+            count = count + 1
 
         self.rraw = np.array(rraw)
         self.z = np.array(eleang) * con
@@ -139,8 +139,10 @@ class CINRAD():
         self.code = code
 
     def _get_radarinfo(self):
+        r'''Get radar station info from the station database according to the station code.'''
         if self.code is None:
-            raise RadarError('Radar code undefined')
+            warnings.warn('Radar code undefined')
+            return None
         pos = np.where(radarinfo[0] == self.code)[0]
         name = radarinfo[1][pos][0]
         lon = radarinfo[2][pos][0]
@@ -149,9 +151,14 @@ class CINRAD():
         return name, lon, lat, radartype
 
     def _update_radarinfo(self):
+        r'''Update radar station info automatically.'''
         info = self._get_radarinfo()
-        self.set_stationposition(info[1], info[2])
-        self.set_stationname(info[0])
+        if info is None:
+            warnings.warn('Auto fill radar station info failed, '+
+                          'use set_stationposition and set_stationname manually instead.')
+        else:
+            self.set_stationposition(info[1], info[2])
+            self.set_stationname(info[0])
 
     def _azimuthposition(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -309,7 +316,7 @@ class CINRAD():
         plt.cla()
         del fig
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=5, height=15, interpolation=False):
+    def rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
@@ -352,8 +359,9 @@ class CINRAD():
         fig = plt.figure(figsize=(10, 4), dpi=200)
         plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
-        plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4] + '.' + self.timestr[4:6] + 
-                   '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':' + self.timestr[10:12] + ' Max: %sdBz' % rmax), fontproperties=font2)
+        plt.title(('RHI scan\nStation: ' + self.name +' Azimuth: %s°' % azimuth + ' Time: ' + self.timestr[:4]
+                   + '.' + self.timestr[4:6] + '.'+self.timestr[6:8] + ' ' + self.timestr[8:10] + ':'
+                   + self.timestr[10:12] + ' Max: %sdBz' % rmax), fontproperties=font2)
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
