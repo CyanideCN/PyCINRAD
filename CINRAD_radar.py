@@ -63,12 +63,8 @@ class CINRAD():
         count = 0
         if radartype == 'SA' or 'SB':
             blocklength = 2432
-            self.Rreso = 1
-            self.Vreso = 0.25
         elif radartype == 'CB':
             blocklength = 4132
-            self.Rreso = 0.5
-            self.Vreso = 0.125
         copy = g.read()
         deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
         deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
@@ -77,6 +73,8 @@ class CINRAD():
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
         scantime = start + deltday + deltsec
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
+        self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
         datalength = len(copy)
         num = int(datalength / blocklength)
         while count < num:
@@ -198,7 +196,7 @@ class CINRAD():
         r1[r1 < 0] = 0
         if drange > blur:
             rm = r1[:int(blur / self.Rreso)]
-            nanmatrix = np.ones((int((drange - blur) / self.Rreso), r1.shape[1])) * np.nan
+            nanmatrix = np.zeros((int((drange - blur) / self.Rreso), r1.shape[1]))# * np.nan
             r1 = np.concatenate((rm, nanmatrix))
         return r1.transpose()
 
@@ -222,7 +220,7 @@ class CINRAD():
         v1[v1 == -64.5] = np.nan
         if drange > blur:
             vm = v1[:int(blur / self.Vreso)]
-            nanmatrix = np.ones((int((drange - blur) / self.Vreso), v1.shape[1])) * np.nan
+            nanmatrix = np.zeros((int((drange - blur) / self.Vreso), v1.shape[1]))# * np.nan
             v1 = np.concatenate((vm, nanmatrix))
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
@@ -315,7 +313,7 @@ class CINRAD():
         ax2.text(0, 1.48, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
-        plt.savefig('{}{}_{}_{:.1f}_{}_R.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange)
+        plt.savefig('{}{}_{}_{:.1f}_{}_R{}.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange, suffix)
                     , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
@@ -406,13 +404,15 @@ class CINRAD():
         plt.cla()
         del fig
 
-    def get_all_info(self):
+    def _grid(self, resolution=(200, 200, 10)):
+        r'''Convert radar data to grid (test)'''
+        from scipy.interpolate import griddata
         datalength = self.boundary[1] - self.boundary[0]
         ref = list()
         lon = list()
         lat = list()
         height = list()
-        for i in self.anglelist:
+        for i in self.anglelist_r:
             r = self.reflectivity(i, 230)
             x, y, h = self.projection()
             ref.append(r)
@@ -422,7 +422,12 @@ class CINRAD():
         r = np.concatenate(ref)#.reshape(len(self.anglelist), datalength, 230)
         x = np.concatenate(lon)
         y = np.concatenate(lat)
-        h = np.concatenate(height)
+        z = np.concatenate(height)
+        x_res, y_res, z_res = resolution
+        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
+                                          , np.min(z):np.max(z):z_res * 1j]
+        grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z), method = 'nearest')
+        return grid_r
 
     def quickplot(self, radius=230):
         for i in self.anglelist_r:
