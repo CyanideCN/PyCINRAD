@@ -46,8 +46,7 @@ class CINRAD():
             spart = filename.split('_')
             self.code = spart[3]
             radartype = spart[7]
-        elif filename.endswith('A'):
-            spart = filename.split('.')
+        elif filetype.endswith('A'):
             self.code = None
             radartype ='SA'
         else:
@@ -225,19 +224,6 @@ class CINRAD():
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
 
-    def getrange(self, stationlon, stationlat):
-        r'''Calculate the range of coordinates of the basemap projection.'''
-        if self.drange is None:
-            raise RadarError('The range of data should be assigned first')
-        self.stationlon = stationlon
-        self.stationlat = stationlat
-        km2lat = 1 / 111
-        uplat = stationlat + self.drange * km2lat
-        lowlat = stationlat - self.drange * km2lat
-        leftlon = stationlon + self.drange / (111 * np.cos(np.deg2rad(stationlat)))
-        rightlon = stationlon - self.drange / (111 * np.cos(np.deg2rad(stationlat)))
-        return leftlon, rightlon, uplat, lowlat
-
     def _getcoordinate(self, drange, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
         if self.drange is None:
@@ -248,7 +234,7 @@ class CINRAD():
         deltah = np.sin(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
-        deltalon = deltah / (111 * np.cos(np.deg2rad(actuallat)))
+        deltalon = deltah / 111#(111 * np.cos(np.deg2rad(actuallat)))
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
@@ -286,8 +272,8 @@ class CINRAD():
         r = self.reflectivity(level, drange)
         r1 = r[np.logical_not(np.isnan(r))]
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection()
+        lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         if smooth:
@@ -299,20 +285,20 @@ class CINRAD():
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
-        ax2 = fig.add_axes([0.92, 0.17, 0.04, 0.35])
+        ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=nmcradar, norm=norm1, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
-        ax2.text(0, 1.84, 'Base Reflectivity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
-        ax2.text(0, 1.76, 'Resolution: {:.2f}km'.format(self.Rreso) , fontproperties=font2)
-        ax2.text(0, 1.72, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
-        ax2.text(0, 1.68, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
-        ax2.text(0, 1.64, 'RDA: ' + self.name, fontproperties=font2)
-        ax2.text(0, 1.60, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.56, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
-        ax2.text(0, 1.48, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
+        ax2.text(0, 2.13, 'Base Reflectivity', fontproperties=font2)
+        ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
+        ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.Rreso) , fontproperties=font2)
+        ax2.text(0, 2.01, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
+        ax2.text(0, 1.97, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
+        ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
+        ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
+        ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
+        ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
-            ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
+            ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_R{}.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange, suffix)
                     , bbox_inches='tight', pad_inches = 0)
         plt.cla()
@@ -374,8 +360,8 @@ class CINRAD():
         r'''Plot velocity PPI scan with the default plot settings.'''
         v, rf = self.velocity(level, drange)
         fig = plt.figure(figsize=(10,10), dpi=dpi)
-        lonm, loni, latm, lati = self.getrange(self.stationlon, self.stationlat)
         lons, lats, hgh = self.projection(datatype='v')
+        lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
@@ -384,27 +370,27 @@ class CINRAD():
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
-        ax2 = fig.add_axes([0.92, 0.17, 0.04, 0.35])
+        ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=velcbar, norm=cmx.Normalize(0, 1), orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
         cbar.set_ticks(np.linspace(0, 1, 16))
         cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
-        ax2.text(0, 1.84, 'Base Velocity', fontproperties=font2)
-        ax2.text(0, 1.80, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
-        ax2.text(0, 1.76, 'Resolution: {:.2f}km'.format(self.Vreso) , fontproperties=font2)
-        ax2.text(0, 1.72, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
-        ax2.text(0, 1.68, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
-        ax2.text(0, 1.64, 'RDA: ' + self.name, fontproperties=font2)
-        ax2.text(0, 1.60, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.56, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
+        ax2.text(0, 2.13, 'Base Velocity', fontproperties=font2)
+        ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
+        ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.Vreso) , fontproperties=font2)
+        ax2.text(0, 2.01, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
+        ax2.text(0, 1.97, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
+        ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
+        ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
+        ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
         if draw_author:
-            ax2.text(0, 1.44, 'Made by HCl', fontproperties=font2)
+            ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_V.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange)
                     , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
-    def _grid(self, resolution=(200, 200, 10)):
+    def _grid(self, resolution=(200, 200, 10), debug=True):
         r'''Convert radar data to grid (test)'''
         from scipy.interpolate import griddata
         datalength = self.boundary[1] - self.boundary[0]
@@ -413,7 +399,7 @@ class CINRAD():
         lat = list()
         height = list()
         for i in self.anglelist_r:
-            r = self.reflectivity(i, 230)
+            r = self.reflectivity(i, 250)
             x, y, h = self.projection()
             ref.append(r)
             lon.append(x)
@@ -423,11 +409,15 @@ class CINRAD():
         x = np.concatenate(lon)
         y = np.concatenate(lat)
         z = np.concatenate(height)
-        x_res, y_res, z_res = resolution
-        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
-                                          , np.min(z):np.max(z):z_res * 1j]
-        grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z), method = 'nearest')
-        return grid_r
+        if debug:
+            return x, y, z, r
+        else:
+            x_res, y_res, z_res = resolution
+            grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
+                                              , np.min(z):np.max(z):z_res * 1j]
+            grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
+                              , method = 'nearest')
+            return grid_r
 
     def quickplot(self, radius=230):
         for i in self.anglelist_r:
