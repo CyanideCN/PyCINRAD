@@ -15,8 +15,8 @@ mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
-IR = 1.21
-RE = 6371
+Rm = 6371
+Rm1 = 8500
 folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
 
 nmcradar = form_colormap('colormap\\radarnmc.txt', sep=True)
@@ -35,7 +35,7 @@ class RadarError(Exception):
         return repr(self.dsc)
 
 class CINRAD():
-    def __init__(self, filepath):
+    def __init__(self, filepath, radartype=None):
         filename, filetype = os.path.splitext(filepath)
         filename = filename.split('/')[-1]
         if filename.startswith('RADA'):
@@ -48,7 +48,7 @@ class CINRAD():
             radartype = spart[7]
         elif filetype.endswith('A'):
             self.code = None
-            radartype ='SA'
+            radartype = 'SA'
         else:
             warnings.warn('Unrecognized filename, please update radar station info manually')
         f = open(filepath, 'rb')
@@ -118,6 +118,7 @@ class CINRAD():
         self.level = None
         self.stationlon = None
         self.stationlat = None
+        self.radarheight = None
         self.elev = None
         self.name = None
         anglelist = np.arange(0, anglenum[0], 1)
@@ -139,6 +140,9 @@ class CINRAD():
     def set_code(self, code):
         self.code = code
 
+    def set_radarheight(self, height):
+        self.radarheight = height
+
     def _get_radarinfo(self):
         r'''Get radar station info from the station database according to the station code.'''
         if self.code is None:
@@ -149,7 +153,8 @@ class CINRAD():
         lon = radarinfo[2][pos][0]
         lat = radarinfo[3][pos][0]
         radartype = radarinfo[4][pos][0]
-        return name, lon, lat, radartype
+        radarheight = radarinfo[5][pos][0]
+        return name, lon, lat, radartype, radarheight
 
     def _update_radarinfo(self):
         r'''Update radar station info automatically.'''
@@ -160,6 +165,7 @@ class CINRAD():
         else:
             self.set_stationposition(info[1], info[2])
             self.set_stationname(info[0])
+            self.set_radarheight(info[4])
 
     def _azimuthposition(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -245,6 +251,7 @@ class CINRAD():
         lonx = list()
         height = list()
         count = 0
+        hght = self.radarheight
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
@@ -256,14 +263,14 @@ class CINRAD():
             for i in r:
                 t = theta[count]
                 lons, lats = self._getcoordinate(i, t)
-                h = i * np.sin(np.deg2rad(self.elev)) + (i * i) / (2 * IR * RE)
+                h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
                 latx.append(lats)
                 lonx.append(lons)
                 height.append(h)
             count = count + 1
         lons = np.array(lonx).reshape(xshape, yshape)
         lats = np.array(latx).reshape(xshape, yshape)
-        hgh = np.array(height).reshape(xshape, yshape)
+        hgh = np.array(height).reshape(xshape, yshape) + self.radarheight
         return lons, lats, hgh
 
     def draw_ref(self, level, drange, draw_author=True, smooth=False, dpi=350):
