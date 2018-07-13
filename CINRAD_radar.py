@@ -115,7 +115,6 @@ class CINRAD():
         self.radartype = radartype
         self.level = None
         self.drange = None
-        self.level = None
         self.stationlon = None
         self.stationlat = None
         self.radarheight = None
@@ -126,6 +125,7 @@ class CINRAD():
         self.anglelist_v = np.delete(anglelist, [0, 2])
         self.elevanglelist = self.z[self.boundary]
         self._update_radarinfo()
+        self.allinfo = None
     
     def set_stationposition(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -270,7 +270,7 @@ class CINRAD():
             count = count + 1
         lons = np.array(lonx).reshape(xshape, yshape)
         lats = np.array(latx).reshape(xshape, yshape)
-        hgh = np.array(height).reshape(xshape, yshape) + self.radarheight
+        hgh = np.array(height).reshape(xshape, yshape) + self.radarheight / 1000
         return lons, lats, hgh
 
     def draw_ref(self, level, drange, draw_author=True, smooth=False, dpi=350):
@@ -327,7 +327,7 @@ class CINRAD():
                 rhi.append(cac[pos])
             theta = np.deg2rad(self.elev)
             xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append((dist * np.sin(theta) + (dist * dist) / (2 * IR * RE)).tolist())
+            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
         rhi = np.array(rhi)
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
@@ -397,18 +397,20 @@ class CINRAD():
         plt.cla()
         del fig
 
-    def _grid(self, resolution=(200, 200, 10), debug=True):
-        r'''Convert radar data to grid (test)'''
-        from scipy.interpolate import griddata
+    def _get_allinfo(self, levelnum=8):
         datalength = self.boundary[1] - self.boundary[0]
         ref = list()
         lon = list()
         lat = list()
         height = list()
-        for i in self.anglelist_r:
-            r = self.reflectivity(i, 250)
+        delta = 30
+        for i in self.anglelist_r[:levelnum]:
+            r = self.reflectivity(i, 230)
+            self.set_drange(230 + delta)
             x, y, h = self.projection()
-            ref.append(r)
+            rt = r.transpose()
+            zeros = np.zeros((delta, rt.shape[1]))
+            ref.append(np.concatenate((rt, zeros)).transpose())
             lon.append(x)
             lat.append(y)
             height.append(h.tolist())
@@ -416,15 +418,18 @@ class CINRAD():
         x = np.concatenate(lon)
         y = np.concatenate(lat)
         z = np.concatenate(height)
-        if debug:
-            return x, y, z, r
-        else:
-            x_res, y_res, z_res = resolution
-            grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
-                                              , np.min(z):np.max(z):z_res * 1j]
-            grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
-                              , method = 'nearest')
-            return grid_r
+        self.allinfo = (x, y, z, r)
+
+    def _grid(self, resolution=(230, 230, 20)):
+        r'''Convert radar data to grid (test)'''
+        from scipy.interpolate import griddata
+        x, y, z, r = self.allinfo
+        x_res, y_res, z_res = resolution
+        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
+                                            , 0:20:z_res * 1j]
+        grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
+                            , method = 'nearest')
+        return grid_r
 
     def quickplot(self, radius=230):
         for i in self.anglelist_r:
