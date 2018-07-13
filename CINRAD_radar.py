@@ -60,14 +60,14 @@ class CINRAD():
         blur = list()
         self.boundary = list()
         count = 0
-        if radartype == 'SA' or 'SB':
+        if radartype == ('SA' or 'SB'):
             blocklength = 2432
         elif radartype == 'CB':
             blocklength = 4132
         copy = g.read()
         deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
         deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
-        start = datetime.datetime(1970, 1, 1)
+        start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
         scantime = start + deltday + deltsec
@@ -85,7 +85,7 @@ class CINRAD():
             anglenum = np.fromstring(a[44:46], dtype='u2')
             refdist = np.fromstring(a[46:48], dtype='u2')
             veloreso = np.fromstring(a[70:72], dtype='u2')
-            if radartype == 'SA' or 'SB':
+            if radartype == ('SA' or 'SB'):
                 R = np.fromstring(a[128:588], dtype='u1')
                 V = np.fromstring(a[128:1508], dtype='u1')
             elif radartype == 'CB':
