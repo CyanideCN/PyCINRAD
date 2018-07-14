@@ -15,7 +15,6 @@ mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
-Rm = 6371
 Rm1 = 8500
 folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
 
@@ -160,8 +159,8 @@ class CINRAD():
         r'''Update radar station info automatically.'''
         info = self._get_radarinfo()
         if info is None:
-            warnings.warn('Auto fill radar station info failed, '+
-                          'use set_stationposition and set_stationname manually instead.')
+            warnings.warn('Auto fill radar station info failed, \
+                          use set_stationposition and set_stationname manually instead.')
         else:
             self.set_stationposition(info[1], info[2])
             self.set_stationname(info[0])
@@ -199,10 +198,12 @@ class CINRAD():
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
         r1 = r.transpose()[:int(drange / self.Rreso)]
         r1[r1 < 0] = 0
+        '''
         if drange > blur:
             rm = r1[:int(blur / self.Rreso)]
             nanmatrix = np.zeros((int((drange - blur) / self.Rreso), r1.shape[1]))# * np.nan
             r1 = np.concatenate((rm, nanmatrix))
+        '''
         return r1.transpose()
 
     def velocity(self, level, drange):
@@ -223,10 +224,12 @@ class CINRAD():
         v = v[self.boundary[level]:self.boundary[level + 1]]
         v1 = v.transpose()[:int(drange / self.Vreso)]
         v1[v1 == -64.5] = np.nan
+        '''
         if drange > blur:
             vm = v1[:int(blur / self.Vreso)]
-            nanmatrix = np.zeros((int((drange - blur) / self.Vreso), v1.shape[1]))# * np.nan
+            nanmatrix = np.zeros((int((drange - blur) / self.Vreso), v1.shape[1])) * np.nan
             v1 = np.concatenate((vm, nanmatrix))
+        '''
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
 
@@ -273,41 +276,61 @@ class CINRAD():
         hgh = np.array(height).reshape(xshape, yshape) + self.radarheight / 1000
         return lons, lats, hgh
 
-    def draw_ref(self, level, drange, draw_author=True, smooth=False, dpi=350):
+    def draw_ppi(self, level, drange, datatype='r', draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
-        r = self.reflectivity(level, drange)
-        r1 = r[np.logical_not(np.isnan(r))]
+        if datatype == 'r':
+            data = self.reflectivity(level, drange)
+        elif datatype == 'v':
+            data, rf = self.velocity(level, drange)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        lons, lats, hgh = self.projection()
+        lons, lats, hgh = self.projection(datatype=datatype)
         lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
-        if smooth:
-            m.contourf(lons.flatten(), lats.flatten(), r.flatten(), 128, cmap=nmcradarc1, norm=norm1, tri=True)
-            suffix = '_smooth'
-        else:
-            r[r <= 2] = None
-            m.pcolormesh(lons, lats, r, norm=norm1, cmap=nmcradar)
+        if datatype == 'r':
+            typestring = 'Base Reflectivity'
+            cmaps = nmcradar
+            norms = norm1
+            reso = self.Rreso
+            r1 = data[np.logical_not(np.isnan(data))]
+            if smooth:
+                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 128, cmap=nmcradarc1, norm=norms, tri=True)
+                suffix = '_smooth'
+            else:
+                data[data <= 2] = None
+                m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
+        elif datatype == 'v':
+            typestring = 'Base Velocity'
+            cmaps = velcbar
+            norms = cmx.Normalize(0, 1)
+            reso = self.Vreso
+            m.pcolormesh(lons, lats, data, cmap=nmcradar2, norm=norm2)
+            rfmap = cmx.ListedColormap('#660066', '#FFFFFF')
+            m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
-        cbar = mpl.colorbar.ColorbarBase(ax2, cmap=nmcradar, norm=norm1, orientation='vertical', drawedges=False)
+        cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cmaps, norm=norms, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
-        ax2.text(0, 2.13, 'Base Reflectivity', fontproperties=font2)
+        if datatype == 'v':
+            cbar.set_ticks(np.linspace(0, 1, 16))
+            cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
+        ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
-        ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.Rreso) , fontproperties=font2)
+        ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
         ax2.text(0, 2.01, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
         ax2.text(0, 1.97, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
         ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
         ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
-        ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
+        if datatype == 'r':
+            ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
-        plt.savefig('{}{}_{}_{:.1f}_{}_R{}.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange, suffix)
-                    , bbox_inches='tight', pad_inches = 0)
+        plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
+            folderpath, self.code, self.timestr, self.elev, self.drange, datatype.upper(), suffix), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
 
@@ -362,40 +385,6 @@ class CINRAD():
         #plt.colorbar(cmap=nmcradarc, norm=norm1)
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
-
-    def draw_vel(self, level, drange, draw_author=True, dpi=350):
-        r'''Plot velocity PPI scan with the default plot settings.'''
-        v, rf = self.velocity(level, drange)
-        fig = plt.figure(figsize=(10,10), dpi=dpi)
-        lons, lats, hgh = self.projection(datatype='v')
-        lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
-        plt.style.use('dark_background')
-        m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
-        m.pcolormesh(lons, lats, v, cmap=nmcradar2, norm=norm2)
-        rfmap = cmx.ListedColormap('#660066', '#FFFFFF')
-        m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
-        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
-        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
-        plt.axis('off')
-        ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
-        cbar = mpl.colorbar.ColorbarBase(ax2, cmap=velcbar, norm=cmx.Normalize(0, 1), orientation='vertical', drawedges=False)
-        cbar.ax.tick_params(labelsize=8)
-        cbar.set_ticks(np.linspace(0, 1, 16))
-        cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
-        ax2.text(0, 2.13, 'Base Velocity', fontproperties=font2)
-        ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
-        ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.Vreso) , fontproperties=font2)
-        ax2.text(0, 2.01, 'Date: {}.{}.{}'.format(self.timestr[:4], self.timestr[4:6], self.timestr[6:8]), fontproperties=font2)
-        ax2.text(0, 1.97, 'Time: {}:{}'.format(self.timestr[8:10], self.timestr[10:12]), fontproperties=font2)
-        ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
-        ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
-        ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
-        if draw_author:
-            ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
-        plt.savefig('{}{}_{}_{:.1f}_{}_V.png'.format(folderpath, self.code, self.timestr, self.elev, self.drange)
-                    , bbox_inches='tight', pad_inches = 0)
-        plt.cla()
-        del fig
 
     def _get_allinfo(self, levelnum=8):
         datalength = self.boundary[1] - self.boundary[0]
