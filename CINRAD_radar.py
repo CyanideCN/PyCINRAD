@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
+from scipy.interpolate import griddata
 import os
 import warnings
 import datetime
@@ -82,7 +83,6 @@ class CINRAD():
             datacon = np.fromstring(a[40:42], dtype='u2')
             elevangle = np.fromstring(a[42:44], dtype='u2')
             anglenum = np.fromstring(a[44:46], dtype='u2')
-            refdist = np.fromstring(a[46:48], dtype='u2')
             veloreso = np.fromstring(a[70:72], dtype='u2')
             if radartype == ('SA' or 'SB'):
                 R = np.fromstring(a[128:588], dtype='u1')
@@ -122,7 +122,7 @@ class CINRAD():
         anglelist = np.arange(0, anglenum[0], 1)
         self.anglelist_r = np.delete(anglelist, [1, 3])
         self.anglelist_v = np.delete(anglelist, [0, 2])
-        self.elevanglelist = self.z[self.boundary]
+        self.elevanglelist = self.z[self.boundary][:-1]
         self._update_radarinfo()
         self.allinfo = None
     
@@ -159,12 +159,15 @@ class CINRAD():
         r'''Update radar station info automatically.'''
         info = self._get_radarinfo()
         if info is None:
-            warnings.warn('Auto fill radar station info failed, \
-                          use set_stationposition and set_stationname manually instead.')
+            warnings.warn('Auto fill radar station info failed, '+
+                          'use set_code and then _update_radarinfo manually instead.')
         else:
             self.set_stationposition(info[1], info[2])
             self.set_stationname(info[0])
             self.set_radarheight(info[4])
+
+    def _height(self, distance, elevation):
+        return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
     def _azimuthposition(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -198,12 +201,18 @@ class CINRAD():
         r = dbz[self.boundary[level]:self.boundary[level + 1]]
         r1 = r.transpose()[:int(drange / self.Rreso)]
         r1[r1 < 0] = 0
-        '''
-        if drange > blur:
-            rm = r1[:int(blur / self.Rreso)]
-            nanmatrix = np.zeros((int((drange - blur) / self.Rreso), r1.shape[1]))# * np.nan
-            r1 = np.concatenate((rm, nanmatrix))
-        '''
+        radialavr = list()
+        for i in r1:
+            radialavr.append(np.average(i))
+        num = 0
+        while num < len(radialavr) - 1:
+            delta = radialavr[num + 1] - radialavr[num]
+            if delta > 20:
+                break
+            num += 1
+        rm = r1[:num]
+        nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
+        r1 = np.concatenate((rm, nanmatrix))
         return r1.transpose()
 
     def velocity(self, level, drange):
@@ -254,14 +263,18 @@ class CINRAD():
         lonx = list()
         height = list()
         count = 0
-        hght = self.radarheight
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
+            theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
         elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
-        theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+            theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+        elif datatype == 'derived':
+            r = np.arange(1, 231, 1)
+            xshape, yshape = (360, 230)
+            theta = np.arange(0, 360, 1)
         while count < len(theta):
             for i in r:
                 t = theta[count]
@@ -411,7 +424,6 @@ class CINRAD():
 
     def _grid(self, resolution=(230, 230, 20)):
         r'''Convert radar data to grid (test)'''
-        from scipy.interpolate import griddata
         x, y, z, r = self.allinfo
         x_res, y_res, z_res = resolution
         grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
@@ -422,6 +434,61 @@ class CINRAD():
 
     def quickplot(self, radius=230):
         for i in self.anglelist_r:
-            self.draw_ref(i, radius, dpi=150, draw_author=True)
+            self.draw_ppi(i, radius, dpi=150, draw_author=True, datatype='r')
         for j in self.anglelist_v:
-            self.draw_vel(j, radius, dpi=150, draw_author=True)
+            self.draw_ppi(j, radius, dpi=150, draw_author=True, datatype='v')
+
+    def _r_resample(self):
+        Rrange = np.arange(1, 231, 1)
+        Trange = np.arange(0, 360, 1)
+        dist, theta = np.meshgrid(Rrange, Trange)
+        r_resampled = list()
+        for i in self.anglelist_r:
+            r = self.reflectivity(i, 230)
+            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
+            dist_, theta_ = np.meshgrid(Rrange, azimuth)
+            r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
+            r_resampled.append(r_)
+        r_res = np.concatenate(r_resampled)
+        return r_res.reshape(r_res.shape[0] // 360, 360, 230)
+
+    def echo_top(self):
+        tz = 18
+        r = self._r_resample()
+        elev = np.deg2rad(np.delete(self.elevanglelist, [1, 3])).tolist()
+        elev.reverse()#从高仰角排列
+        et = list()
+        for i in range(0, 360):
+            for j in range(0, 230):
+                vertical = list()
+                for k in range(0, 9):
+                    pt = r[-1 * k][i][j]#从高仰角开始索引
+                    vertical.append(pt)#获取到单个方位-斜距库上从高仰角开始排列的反射率数据
+                vertical = np.array(vertical)
+                position = np.where(vertical > 18)[0]
+                try:
+                    pos = position[0]
+                except IndexError:#空array
+                    et.append(0)
+                    continue
+                if pos == 0:#第一个反射率大于18的仰角是最高的仰角
+                    height = self._height(j, elev[0])
+                    et.append(height)
+                else:
+                    e1 = elev[pos]
+                    try:
+                        e2 = elev[pos + 1]
+                    except IndexError:
+                        et.append(0)
+                        continue
+                    z1 = vertical[pos]
+                    z2 = vertical[pos + 1]
+                    h1 = self._height(j, e1)
+                    h2 = self._height(j, e2)
+                    w1 = (z1 - tz) / (z1 - z2)
+                    w2 = 1 - w1
+                    et.append(w1 * h2 + w2 * h1)#线性内插
+        return np.array(et).reshape(360, 230)
+
+    def vert_integrated_liquid(self):
+        pass
