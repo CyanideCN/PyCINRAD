@@ -450,29 +450,38 @@ class CINRAD():
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
         r_res = np.concatenate(r_resampled)
-        return r_res.reshape(r_res.shape[0] // 360, 360, 230)
+        return r_res.reshape(r_res.shape[0] // 360, 360, 230), dist, theta
 
     def echo_top(self):
         tz = 18
-        r = self._r_resample()
+        data = self._r_resample()
+        r = np.ma.array(data[0], mask=(data[0] > 18))
         elev = np.deg2rad(np.delete(self.elevanglelist, [1, 3])).tolist()
-        elev.reverse()#从高仰角排列
+        h_ = list()
+        for i in elev:
+            h = radar._height(data[1], i)
+            h_.append(h)
+        hght = np.concatenate(h_).reshape(r.shape)
+        h_mask = hght * r.mask
         et = list()
         for i in range(0, 360):
             for j in range(0, 230):
-                vertical = list()
+                vert_h = list()
+                vert_r = list()
                 for k in range(0, 9):
-                    pt = r[-1 * k][i][j]#从高仰角开始索引
-                    vertical.append(pt)#获取到单个方位-斜距库上从高仰角开始排列的反射率数据
-                vertical = np.array(vertical)
-                position = np.where(vertical > 18)[0]
+                    h_pt = h_mask[-1 * k][i][j]#从高仰角开始索引
+                    r_pt = data[0][-1 * k][i][j]
+                    vert_h.append(h_pt)
+                    vert_r.append(r_pt)
+                vertical = np.array(vert_h)
+                position = np.where(vertical > 0)[0]
                 try:
                     pos = position[0]
                 except IndexError:#空array
                     et.append(0)
                     continue
                 if pos == 0:#第一个反射率大于18的仰角是最高的仰角
-                    height = self._height(j, elev[0])
+                    height = vertical[pos]
                     et.append(height)
                 else:
                     e1 = elev[pos]
@@ -481,10 +490,10 @@ class CINRAD():
                     except IndexError:
                         et.append(0)
                         continue
-                    z1 = vertical[pos]
-                    z2 = vertical[pos + 1]
-                    h1 = self._height(j, e1)
-                    h2 = self._height(j, e2)
+                    z1 = vert_r[pos]
+                    z2 = vert_h[pos]
+                    h1 = vertical[pos]
+                    h2 = vertical[pos + 1]
                     w1 = (z1 - tz) / (z1 - z2)
                     w2 = 1 - w1
                     et.append(w1 * h2 + w2 * h1)#线性内插
