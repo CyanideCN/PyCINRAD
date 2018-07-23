@@ -4,3 +4,4 @@
 
 /interactive.py
 *.pyc
+/.vs/*

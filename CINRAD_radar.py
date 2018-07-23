@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from form_colormap import form_colormap
 import numpy as np
 import matplotlib as mpl
 #mpl.use('Agg')
@@ -11,19 +10,23 @@ from scipy.interpolate import griddata
 import os
 import warnings
 import datetime
+import sys
+from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
 Rm1 = 8500
-folderpath = 'D:\\Meteorology\\Matplotlib\\Basemap\\'
+folderpath = 'D:\\'
 
-nmcradar = form_colormap('colormap\\radarnmc.txt', sep=True)
-nmcradar2 = form_colormap('colormap\\radarnmc2.txt', sep=False)
-velcbar = form_colormap('colormap\\radarnmc2a.txt', sep=True)
-nmcradarc = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v')
-nmcradarc1 = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
+r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
+v_cmap = form_colormap('colormap\\radarnmc2.txt', sep=False)
+vel_cbar = form_colormap('colormap\\radarnmc2a.txt', sep=True)
+rhi_cmap_smooth = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v')
+r_cmap_smooth = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
+et_cmap = form_colormap('colormap\\et.txt', sep=False)
+et_cbar = form_colormap('colormap\\etbar.txt', sep=True)
 radarinfo = np.load('RadarStation.npy')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
@@ -271,10 +274,10 @@ class CINRAD():
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
             theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
-        elif datatype == 'derived':
+        elif datatype == 'et':
             r = np.arange(1, 231, 1)
-            xshape, yshape = (360, 230)
-            theta = np.arange(0, 360, 1)
+            xshape, yshape = (361, 230)
+            theta = np.deg2rad(np.arange(0, 361, 1))
         while count < len(theta):
             for i in r:
                 t = theta[count]
@@ -296,6 +299,8 @@ class CINRAD():
             data = self.reflectivity(level, drange)
         elif datatype == 'v':
             data, rf = self.velocity(level, drange)
+        elif datatype == 'et':
+            data = self.echo_top()
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lons, lats, hgh = self.projection(datatype=datatype)
         lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
@@ -303,24 +308,30 @@ class CINRAD():
         m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
         if datatype == 'r':
             typestring = 'Base Reflectivity'
-            cmaps = nmcradar
+            cmaps = r_cmap
             norms = norm1
             reso = self.Rreso
             r1 = data[np.logical_not(np.isnan(data))]
             if smooth:
-                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 128, cmap=nmcradarc1, norm=norms, tri=True)
+                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 128, cmap=r_cmap_smooth, norm=norms, tri=True)
                 suffix = '_smooth'
             else:
                 data[data <= 2] = None
                 m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
         elif datatype == 'v':
             typestring = 'Base Velocity'
-            cmaps = velcbar
+            cmaps = vel_cbar
             norms = cmx.Normalize(0, 1)
             reso = self.Vreso
-            m.pcolormesh(lons, lats, data, cmap=nmcradar2, norm=norm2)
+            m.pcolormesh(lons, lats, data, cmap=v_cmap, norm=norm2)
             rfmap = cmx.ListedColormap('#660066', '#FFFFFF')
             m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
+        elif datatype == 'et':
+            typestring = 'Echo Tops'
+            cmaps = et_cbar
+            norms = cmx.Normalize(0, 1)
+            reso = self.Rreso
+            m.pcolormesh(lons, lats, data, cmap=et_cmap, norm=cmx.Normalize(0, 21))
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
@@ -330,6 +341,9 @@ class CINRAD():
         if datatype == 'v':
             cbar.set_ticks(np.linspace(0, 1, 16))
             cbar.set_ticklabels(['RF', '', '27', '20', '15', '10', '5', '1', '0', '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
+        elif datatype == 'et':
+            cbar.set_ticks(np.linspace(0, 1, 16))
+            cbar.set_ticklabels(['', '21', '20', '18', '17', '15', '14', '12', '11', '9', '8', '6', '5', '3', '2', '0'])
         ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
         ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
@@ -340,6 +354,8 @@ class CINRAD():
         ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
         if datatype == 'r':
             ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
+        elif datatype == 'et':
+            ax2.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(data)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
@@ -388,14 +404,14 @@ class CINRAD():
         rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
         plt.style.use('dark_background')
         fig = plt.figure(figsize=(10, 4), dpi=200)
-        plt.contourf(xc, yc, rhi, 128, cmap=nmcradarc, norm=norm1, corner_mask=False)
+        plt.contourf(xc, yc, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
         plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {}.{}.{} {}:{} Max: {}dbz'.format(
                   self.name, azimuth, self.timestr[:4], self.timestr[4:6], self.timestr[6:8], self.timestr[8:10]
                   , self.timestr[10:12], rmax), fontproperties=font2)
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
-        #plt.colorbar(cmap=nmcradarc, norm=norm1)
+        #plt.colorbar(cmap=rhi_cmap_smooth, norm=norm1)
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
 
@@ -440,7 +456,7 @@ class CINRAD():
 
     def _r_resample(self):
         Rrange = np.arange(1, 231, 1)
-        Trange = np.arange(0, 360, 1)
+        Trange = np.arange(0, 361, 1)
         dist, theta = np.meshgrid(Rrange, Trange)
         r_resampled = list()
         for i in self.anglelist_r:
@@ -450,25 +466,25 @@ class CINRAD():
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
         r_res = np.concatenate(r_resampled)
-        return r_res.reshape(r_res.shape[0] // 360, 360, 230), dist, theta
+        return r_res.reshape(r_res.shape[0] // 361, 361, 230), dist, theta
 
-    def echo_top(self):
-        tz = 18
+    def echo_top(self, threshold=18):
+        '''Calculate max height of echo data'''
         data = self._r_resample()
-        r = np.ma.array(data[0], mask=(data[0] > 18))
+        r = np.ma.array(data[0], mask=(data[0] > threshold))
         elev = np.deg2rad(np.delete(self.elevanglelist, [1, 3])).tolist()
         h_ = list()
         for i in elev:
-            h = radar._height(data[1], i)
+            h = self._height(data[1], i)
             h_.append(h)
         hght = np.concatenate(h_).reshape(r.shape)
         h_mask = hght * r.mask
         et = list()
-        for i in range(0, 360):
+        for i in range(0, 361):
             for j in range(0, 230):
                 vert_h = list()
                 vert_r = list()
-                for k in range(0, 9):
+                for k in range(1, 10):
                     h_pt = h_mask[-1 * k][i][j]#从高仰角开始索引
                     r_pt = data[0][-1 * k][i][j]
                     vert_h.append(h_pt)
@@ -488,16 +504,16 @@ class CINRAD():
                     try:
                         e2 = elev[pos + 1]
                     except IndexError:
-                        et.append(0)
+                        et.append(vertical[pos])
                         continue
                     z1 = vert_r[pos]
                     z2 = vert_h[pos]
                     h1 = vertical[pos]
                     h2 = vertical[pos + 1]
-                    w1 = (z1 - tz) / (z1 - z2)
+                    w1 = (z1 - threshold) / (z1 - z2)
                     w2 = 1 - w1
                     et.append(w1 * h2 + w2 * h1)#线性内插
-        return np.array(et).reshape(360, 230)
+        return np.array(et).reshape(361, 230)
 
     def vert_integrated_liquid(self):
         pass
