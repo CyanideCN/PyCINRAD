@@ -10,7 +10,6 @@ from scipy.interpolate import griddata
 import os
 import warnings
 import datetime
-import sys
 from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
@@ -126,14 +125,14 @@ class CINRAD():
         self.anglelist_r = np.delete(anglelist, [1, 3])
         self.anglelist_v = np.delete(anglelist, [0, 2])
         self.elevanglelist = self.z[self.boundary][:-1]
-        self._update_radarinfo()
-        self.allinfo = None
+        self._update_radar_info()
+        self.all_info = None
     
-    def set_stationposition(self, stationlon, stationlat):
+    def set_station_position(self, stationlon, stationlat):
         self.stationlon = stationlon
         self.stationlat = stationlat
 
-    def set_stationname(self, name):
+    def set_station_name(self, name):
         self.name = name
 
     def set_drange(self, drange):
@@ -142,10 +141,10 @@ class CINRAD():
     def set_code(self, code):
         self.code = code
 
-    def set_radarheight(self, height):
+    def set_radar_height(self, height):
         self.radarheight = height
 
-    def _get_radarinfo(self):
+    def _get_radar_info(self):
         r'''Get radar station info from the station database according to the station code.'''
         if self.code is None:
             warnings.warn('Radar code undefined')
@@ -158,21 +157,21 @@ class CINRAD():
         radarheight = radarinfo[5][pos][0]
         return name, lon, lat, radartype, radarheight
 
-    def _update_radarinfo(self):
+    def _update_radar_info(self):
         r'''Update radar station info automatically.'''
-        info = self._get_radarinfo()
+        info = self._get_radar_info()
         if info is None:
             warnings.warn('Auto fill radar station info failed, '+
                           'use set_code and then _update_radarinfo manually instead.')
         else:
-            self.set_stationposition(info[1], info[2])
-            self.set_stationname(info[0])
-            self.set_radarheight(info[4])
+            self.set_station_position(info[1], info[2])
+            self.set_station_name(info[0])
+            self.set_radar_height(info[4])
 
     def _height(self, distance, elevation):
         return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
-    def _azimuthposition(self, azimuth):
+    def _azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
         azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
@@ -189,14 +188,14 @@ class CINRAD():
                     print(azim[len(azim) - count - 1])
                     return len(azim) - count - 1
 
-    def reflectivity(self, level, drange, maskdelta=0):
+    def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
         print(self.z[self.boundary[level]])
         self.elev = self.z[self.boundary[level]]
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
-        blur = self.blurdist[self.boundary[level]] - maskdelta
+        blur = self.blurdist[self.boundary[level]]
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.rraw.shape[1] * self.Rreso)
@@ -210,7 +209,7 @@ class CINRAD():
         num = 0
         while num < len(radialavr) - 1:
             delta = radialavr[num + 1] - radialavr[num]
-            if delta > 20:
+            if delta > 20 and num> 50:
                 break
             num += 1
         rm = r1[:num]
@@ -236,23 +235,18 @@ class CINRAD():
         v = v[self.boundary[level]:self.boundary[level + 1]]
         v1 = v.transpose()[:int(drange / self.Vreso)]
         v1[v1 == -64.5] = np.nan
-        '''
-        if drange > blur:
-            vm = v1[:int(blur / self.Vreso)]
-            nanmatrix = np.zeros((int((drange - blur) / self.Vreso), v1.shape[1])) * np.nan
-            v1 = np.concatenate((vm, nanmatrix))
-        '''
         rf = np.ma.array(v1, mask=(v1 != -64))
         return v1.transpose(), rf.transpose()
 
-    def _getcoordinate(self, drange, angle):
+    def _get_coordinate(self, distance, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
-        if self.drange is None:
-            raise RadarError('The range of data should be assigned first')
         if self.stationlat is None or self.stationlon is None:
             raise RadarError('The position of radar should be assigned before projection')
-        deltav = np.cos(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
-        deltah = np.sin(angle) * drange * np.cos(np.deg2rad(self.eleang[self.boundary[self.level]] * con))
+        if self.elev is None:
+            raise RadarError('The elevation angle is not defined')
+        elev = self.elev
+        deltav = np.cos(angle) * distance * np.cos(np.deg2rad(elev))
+        deltah = np.sin(angle) * distance * np.cos(np.deg2rad(elev))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
         deltalon = deltah / 111#(111 * np.cos(np.deg2rad(actuallat)))
@@ -281,7 +275,7 @@ class CINRAD():
         while count < len(theta):
             for i in r:
                 t = theta[count]
-                lons, lats = self._getcoordinate(i, t)
+                lons, lats = self._get_coordinate(i, t)
                 h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
                 latx.append(lats)
                 lonx.append(lons)
@@ -303,9 +297,15 @@ class CINRAD():
             data = self.echo_top()
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lons, lats, hgh = self.projection(datatype=datatype)
-        lonm, loni, latm, lati = np.max(lons), np.min(lons), np.max(lats), np.min(lats)
+        lonm, latm = np.max(lons), np.max(lats)
+        x_delta = lonm - self.stationlon
+        y_delta = latm - self.stationlat
+        angle_offset = np.cos(np.deg2rad(self.elev))
+        x_offset = x_delta / angle_offset
+        y_offset = y_delta / angle_offset
         plt.style.use('dark_background')
-        m = Basemap(llcrnrlon=loni, urcrnrlon=lonm, llcrnrlat=lati, urcrnrlat=latm, resolution="l")
+        m = Basemap(llcrnrlon=self.stationlon - x_offset, urcrnrlon=self.stationlon + x_offset
+                    , llcrnrlat=self.stationlat - y_offset, urcrnrlat=self.stationlat + y_offset, resolution="l")
         if datatype == 'r':
             typestring = 'Base Reflectivity'
             cmaps = r_cmap
@@ -331,6 +331,7 @@ class CINRAD():
             cmaps = et_cbar
             norms = cmx.Normalize(0, 1)
             reso = self.Rreso
+            data[data > 25] = 0
             m.pcolormesh(lons, lats, data, cmap=et_cmap, norm=cmx.Normalize(0, 21))
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
@@ -363,7 +364,7 @@ class CINRAD():
         plt.cla()
         del fig
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
+    def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15, interpolation=False):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
@@ -371,7 +372,7 @@ class CINRAD():
         dist = np.arange(1, drange + 1, 1)
         for i in self.anglelist_r[startangle:stopangle]:
             cac = self.reflectivity(i, drange)
-            pos = self._azimuthposition(azimuth)
+            pos = self._azimuth_position(azimuth)
             if pos is None:
                 nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
@@ -386,7 +387,6 @@ class CINRAD():
         yc = np.array(ycoor)
         if interpolation:
             from metpy import gridding
-            warnings.warn('Interpolation takes long time, keep patient')
             xi = np.arange(0, drange + 1, 1)
             yi = np.arange(0, height + 0.5, 0.5)
             x, y = np.meshgrid(xi, yi)
@@ -411,11 +411,10 @@ class CINRAD():
                   , self.timestr[10:12], rmax), fontproperties=font2)
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
-        #plt.colorbar(cmap=rhi_cmap_smooth, norm=norm1)
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
 
-    def _get_allinfo(self, levelnum=8):
+    def _get_all_info(self, levelnum=8):
         datalength = self.boundary[1] - self.boundary[0]
         ref = list()
         lon = list()
@@ -448,12 +447,6 @@ class CINRAD():
                             , method = 'nearest')
         return grid_r
 
-    def quickplot(self, radius=230):
-        for i in self.anglelist_r:
-            self.draw_ppi(i, radius, dpi=150, draw_author=True, datatype='r')
-        for j in self.anglelist_v:
-            self.draw_ppi(j, radius, dpi=150, draw_author=True, datatype='v')
-
     def _r_resample(self):
         Rrange = np.arange(1, 231, 1)
         Trange = np.arange(0, 361, 1)
@@ -484,11 +477,14 @@ class CINRAD():
             for j in range(0, 230):
                 vert_h = list()
                 vert_r = list()
+                vert_h_ = list()
                 for k in range(1, 10):
                     h_pt = h_mask[-1 * k][i][j]#从高仰角开始索引
                     r_pt = data[0][-1 * k][i][j]
+                    h_pt_ = hght[-1 * k][i][j]
                     vert_h.append(h_pt)
                     vert_r.append(r_pt)
+                    vert_h_.append(h_pt_)
                 vertical = np.array(vert_h)
                 position = np.where(vertical > 0)[0]
                 try:
@@ -502,14 +498,14 @@ class CINRAD():
                 else:
                     e1 = elev[pos]
                     try:
-                        e2 = elev[pos + 1]
+                        e2 = elev[pos - 1]
                     except IndexError:
                         et.append(vertical[pos])
                         continue
                     z1 = vert_r[pos]
-                    z2 = vert_h[pos]
+                    z2 = vert_r[pos - 1]
                     h1 = vertical[pos]
-                    h2 = vertical[pos + 1]
+                    h2 = vert_h_[pos - 1]
                     w1 = (z1 - threshold) / (z1 - z2)
                     w2 = 1 - w1
                     et.append(w1 * h2 + w2 * h1)#线性内插
