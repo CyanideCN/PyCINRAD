@@ -38,6 +38,15 @@ class RadarError(Exception):
 
 class CINRAD():
     def __init__(self, filepath, radartype=None):
+        self.level = None
+        self.drange = None
+        self.stationlon = None
+        self.stationlat = None
+        self.radarheight = None
+        self.elev = None
+        self.name = None
+        self.all_info = None
+        self.code = None
         filename, filetype = os.path.splitext(filepath)
         filename = filename.split('/')[-1]
         if filename.startswith('RADA'):
@@ -51,82 +60,93 @@ class CINRAD():
         elif filetype.endswith('A'):
             self.code = None
             radartype = 'SA'
-        else:
-            warnings.warn('Unrecognized filename, please update radar station info manually')
-        f = open(filepath, 'rb')
-        g = open(filepath, 'rb')
-        azimuthx = list()
-        eleang = list()
-        vraw = list()
-        rraw = list()
-        blur = list()
-        self.boundary = list()
-        count = 0
+        self.radartype = radartype
         if radartype == ('SA' or 'SB'):
             blocklength = 2432
         elif radartype == 'CB':
             blocklength = 4132
-        copy = g.read()
-        deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
-        deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
-        start = datetime.datetime(1969, 12, 31)
-        deltday = datetime.timedelta(days=int(deltdays))
-        deltsec = datetime.timedelta(milliseconds=int(deltsecs))
-        scantime = start + deltday + deltsec
-        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
-        self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
-        self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
-        datalength = len(copy)
+        elif radartype == 'CC':
+            blocklength = 3000
+        f = open(filepath, 'rb')
+        vraw = list()
+        rraw = list()
+        copy = f.read(blocklength)
+        f.seek(0)
+        datalength = len(f.read())
         num = int(datalength / blocklength)
-        while count < num:
-            a = f.read(blocklength)
-            blurdist = np.fromstring(a[34:36], dtype='u2')
-            azimuth = np.fromstring(a[36:38], dtype='u2')
-            datacon = np.fromstring(a[40:42], dtype='u2')
-            elevangle = np.fromstring(a[42:44], dtype='u2')
-            anglenum = np.fromstring(a[44:46], dtype='u2')
-            veloreso = np.fromstring(a[70:72], dtype='u2')
-            if radartype == ('SA' or 'SB'):
-                R = np.fromstring(a[128:588], dtype='u1')
-                V = np.fromstring(a[128:1508], dtype='u1')
-            elif radartype == 'CB':
-                R = np.fromstring(a[128:928], dtype='u1')
-                V = np.fromstring(a[128:2528], dtype='u1')
-            azimuthx.append(azimuth[0])
-            eleang.append(elevangle[0])
-            vraw.append(V.tolist())
-            rraw.append(R.tolist())
-            blur.append(blurdist[0] / 10)
-            if datacon[0] == 3:
-                self.boundary.append(0)
-            elif datacon[0] == 0:
-                self.boundary.append(count)
-            elif datacon[0] == 4:
-                self.boundary.append(num - 1)
-            count = count + 1
+        if radartype == ('SA' or 'SB' or 'CB'):
+            azimuthx = list()
+            eleang = list()
+            self.boundary = list()
+            count = 0
+            deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
+            deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
+            start = datetime.datetime(1969, 12, 31)
+            deltday = datetime.timedelta(days=int(deltdays))
+            deltsec = datetime.timedelta(milliseconds=int(deltsecs))
+            scantime = start + deltday + deltsec
+            self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
+            self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
+            f.seek(0)
+            while count < num:
+                a = f.read(blocklength)
+                azimuth = np.fromstring(a[36:38], dtype='u2')
+                datacon = np.fromstring(a[40:42], dtype='u2')
+                elevangle = np.fromstring(a[42:44], dtype='u2')
+                anglenum = np.fromstring(a[44:46], dtype='u2')
+                veloreso = np.fromstring(a[70:72], dtype='u2')
+                if radartype == ('SA' or 'SB'):
+                    R = np.fromstring(a[128:588], dtype='u1')
+                    V = np.fromstring(a[128:1508], dtype='u1')
+                elif radartype == 'CB':
+                    R = np.fromstring(a[128:928], dtype='u1')
+                    V = np.fromstring(a[128:2528], dtype='u1')
+                azimuthx.append(azimuth[0])
+                eleang.append(elevangle[0])
+                vraw.append(V.tolist())
+                rraw.append(R.tolist())
+                if datacon[0] == 3:
+                    self.boundary.append(0)
+                elif datacon[0] == 0:
+                    self.boundary.append(count)
+                elif datacon[0] == 4:
+                    self.boundary.append(num - 1)
+                count = count + 1
 
-        self.rraw = np.array(rraw)
-        self.z = np.array(eleang) * con
-        self.aziangle = np.array(azimuthx) * con
-        self.rad = np.deg2rad(self.aziangle)
-        self.eleang = np.array(eleang)
-        self.vraw = np.array(vraw)
-        self.dv = veloreso[0]
-        self.blurdist = np.array(blur)
-        self.radartype = radartype
-        self.level = None
-        self.drange = None
-        self.stationlon = None
-        self.stationlat = None
-        self.radarheight = None
-        self.elev = None
-        self.name = None
-        anglelist = np.arange(0, anglenum[0], 1)
-        self.anglelist_r = np.delete(anglelist, [1, 3])
-        self.anglelist_v = np.delete(anglelist, [0, 2])
-        self.elevanglelist = self.z[self.boundary][:-1]
+            self.rraw = np.array(rraw)
+            self.z = np.array(eleang) * con
+            self.aziangle = np.array(azimuthx) * con
+            self.rad = np.deg2rad(self.aziangle)
+            self.eleang = np.array(eleang)
+            self.vraw = np.array(vraw)
+            self.dv = veloreso[0]
+            anglelist = np.arange(0, anglenum[0], 1)
+            self.anglelist_r = np.delete(anglelist, [1, 3])
+            self.anglelist_v = np.delete(anglelist, [0, 2])
+            self.elevanglelist = self.z[self.boundary][:-1]
+        elif radartype == 'CC':
+            f.seek(106)
+            self.code = f.read(10).decode().split('\x00')[0]
+            f.seek(184)
+            scantime = datetime.datetime(year=np.fromstring(f.read(1), dtype='u1')[0] * 100 + np.fromstring(f.read(1), dtype='u1')[0],
+                                         month=np.fromstring(f.read(1), dtype='u1')[0], day=np.fromstring(f.read(1), dtype='u1')[0],
+                                         hour=np.fromstring(f.read(1), dtype='u1')[0], minute=np.fromstring(f.read(1), dtype='u1')[0],
+                                         second=np.fromstring(f.read(1), dtype='u1')[0])
+            count = 0
+            f.seek(1024)
+            while count < num:
+                a = f.read(3000)
+                r = np.fromstring(a[:1000], dtype=np.short).astype(float)
+                v = np.fromstring(a[1000:2000], dtype=np.short).astype(float)
+                rraw.append(r)
+                vraw.append(v)
+                count += 1
+            self.rraw = np.array(rraw)
+            self.vraw = np.array(vraw)
+            self.Rreso = 0.3
+            self.Vreso = 0.3
+        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
-        self.all_info = None
     
     def set_station_position(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -143,6 +163,9 @@ class CINRAD():
 
     def set_radar_height(self, height):
         self.radarheight = height
+
+    def set_elevation_angle(self, angle):
+        self.elev = angle
 
     def _get_radar_info(self):
         r'''Get radar station info from the station database according to the station code.'''
@@ -190,18 +213,22 @@ class CINRAD():
 
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
-        print(self.z[self.boundary[level]])
-        self.elev = self.z[self.boundary[level]]
+        if self.radartype == ('SA' or 'SB' or 'CB'):
+            print(self.z[self.boundary[level]])
+            self.elev = self.z[self.boundary[level]]
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
-        blur = self.blurdist[self.boundary[level]]
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.rraw.shape[1] * self.Rreso)
-        dbz = (self.rraw - 2) / 2 - 32
-        r = dbz[self.boundary[level]:self.boundary[level + 1]]
-        r1 = r.transpose()[:int(drange / self.Rreso)]
+        if self.radartype == ('SA' or 'SB' or 'CB'):
+            dbz = (self.rraw - 2) / 2 - 32
+            r = dbz[self.boundary[level]:self.boundary[level + 1]]
+            r1 = r.transpose()[:int(drange / self.Rreso)]
+        elif self.radartype == 'CC':
+            dbz = self.rraw / 10
+            r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].transpose()
         r1[r1 < 0] = 0
         radialavr = list()
         for i in r1:
@@ -213,6 +240,7 @@ class CINRAD():
                 break
             num += 1
         rm = r1[:num]
+        print(num)
         nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
         r1 = np.concatenate((rm, nanmatrix))
         return r1.transpose()
@@ -255,7 +283,10 @@ class CINRAD():
 
     def projection(self, datatype='r'):
         r'''Calculate the geographic coordinates of the requested data range.'''
-        length = self.boundary[self.level + 1] - self.boundary[self.level]
+        if self.radartype == ('SA' or 'SB' or 'CB'):
+            length = self.boundary[self.level + 1] - self.boundary[self.level]
+        elif self.radartype == 'CC':
+            length = 512
         latx = list()
         lonx = list()
         height = list()
@@ -263,11 +294,17 @@ class CINRAD():
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
-            theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+            if self.radartype == ('SA' or 'SB' or 'CB'):
+                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+            elif self.radartype == 'CC':
+                theta = np.deg2rad(np.linspace(0, 360, length))
         elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
-            theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+            if self.radartype == ('SA' or 'SB' or 'CB'):
+                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+            elif self.radartype == 'CC':
+                theta = np.deg2rad(np.linspace(0, 360, length))
         elif datatype == 'et':
             r = np.arange(1, 231, 1)
             xshape, yshape = (361, 230)
@@ -295,6 +332,7 @@ class CINRAD():
             data, rf = self.velocity(level, drange)
         elif datatype == 'et':
             data = self.echo_top()
+            self.set_elevation_angle(0)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lons, lats, hgh = self.projection(datatype=datatype)
         lonm, latm = np.max(lons), np.max(lats)
