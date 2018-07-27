@@ -240,7 +240,6 @@ class CINRAD():
                 break
             num += 1
         rm = r1[:num]
-        print(num)
         nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
         r1 = np.concatenate((rm, nanmatrix))
         return r1.transpose()
@@ -252,7 +251,6 @@ class CINRAD():
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
-        blur = self.blurdist[self.boundary[level]]
         if self.vraw.shape[1] * self.Vreso < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.vraw.shape[1] * self.Vreso)
@@ -281,15 +279,28 @@ class CINRAD():
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
+    def _polar2cart(self, distance, azimuth):
+        latx = list()
+        lonx = list()
+        height = list()
+        count = 0
+        while count < len(azimuth):
+            for i in distance:
+                t = azimuth[count]
+                lons, lats = self._get_coordinate(i, t)
+                h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
+                latx.append(lats)
+                lonx.append(lons)
+                height.append(h)
+            count = count + 1
+        return np.array(latx), np.array(lonx), np.array(height)
+
     def projection(self, datatype='r'):
         r'''Calculate the geographic coordinates of the requested data range.'''
         if self.radartype == ('SA' or 'SB' or 'CB'):
             length = self.boundary[self.level + 1] - self.boundary[self.level]
         elif self.radartype == 'CC':
             length = 512
-        latx = list()
-        lonx = list()
-        height = list()
         count = 0
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
@@ -309,18 +320,10 @@ class CINRAD():
             r = np.arange(1, 231, 1)
             xshape, yshape = (361, 230)
             theta = np.deg2rad(np.arange(0, 361, 1))
-        while count < len(theta):
-            for i in r:
-                t = theta[count]
-                lons, lats = self._get_coordinate(i, t)
-                h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
-                latx.append(lats)
-                lonx.append(lons)
-                height.append(h)
-            count = count + 1
-        lons = np.array(lonx).reshape(xshape, yshape)
-        lats = np.array(latx).reshape(xshape, yshape)
-        hgh = np.array(height).reshape(xshape, yshape) + self.radarheight / 1000
+        x, y, z = self._polar2cart(r, theta)
+        lons = x.reshape(xshape, yshape)
+        lats = y.reshape(xshape, yshape)
+        hgh = z.reshape(xshape, yshape)# + self.radarheight / 1000
         return lons, lats, hgh
 
     def draw_ppi(self, level, drange, datatype='r', draw_author=True, smooth=False, dpi=350):
@@ -351,7 +354,7 @@ class CINRAD():
             reso = self.Rreso
             r1 = data[np.logical_not(np.isnan(data))]
             if smooth:
-                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 128, cmap=r_cmap_smooth, norm=norms, tri=True)
+                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 256, cmap=r_cmap_smooth, norm=norms, tri=True)
                 suffix = '_smooth'
             else:
                 data[data <= 2] = None
@@ -452,39 +455,6 @@ class CINRAD():
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
 
-    def _get_all_info(self, levelnum=8):
-        datalength = self.boundary[1] - self.boundary[0]
-        ref = list()
-        lon = list()
-        lat = list()
-        height = list()
-        delta = 30
-        for i in self.anglelist_r[:levelnum]:
-            r = self.reflectivity(i, 230)
-            self.set_drange(230 + delta)
-            x, y, h = self.projection()
-            rt = r.transpose()
-            zeros = np.zeros((delta, rt.shape[1]))
-            ref.append(np.concatenate((rt, zeros)).transpose())
-            lon.append(x)
-            lat.append(y)
-            height.append(h.tolist())
-        r = np.concatenate(ref)#.reshape(len(self.anglelist), datalength, 230)
-        x = np.concatenate(lon)
-        y = np.concatenate(lat)
-        z = np.concatenate(height)
-        self.allinfo = (x, y, z, r)
-
-    def _grid(self, resolution=(230, 230, 20)):
-        r'''Convert radar data to grid (test)'''
-        x, y, z, r = self.allinfo
-        x_res, y_res, z_res = resolution
-        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
-                                            , 0:20:z_res * 1j]
-        grid_r = griddata((x.flatten(), y.flatten(), z.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
-                            , method = 'nearest')
-        return grid_r
-
     def _r_resample(self):
         Rrange = np.arange(1, 231, 1)
         Trange = np.arange(0, 361, 1)
@@ -548,6 +518,3 @@ class CINRAD():
                     w2 = 1 - w1
                     et.append(w1 * h2 + w2 * h1)#线性内插
         return np.array(et).reshape(361, 230)
-
-    def vert_integrated_liquid(self):
-        pass
