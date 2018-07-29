@@ -10,6 +10,7 @@ from scipy.interpolate import griddata
 import os
 import warnings
 import datetime
+from pathlib import Path
 from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
@@ -47,8 +48,9 @@ class CINRAD():
         self.name = None
         self.all_info = None
         self.code = None
-        filename, filetype = os.path.splitext(filepath)
-        filename = filename.split('/')[-1]
+        path = Path(filepath)
+        filename = path.name
+        filetype = path.suffix
         if filename.startswith('RADA'):
             spart = filename.split('-')
             self.code = spart[1]
@@ -67,6 +69,8 @@ class CINRAD():
             blocklength = 4132
         elif radartype == 'CC':
             blocklength = 3000
+        else:
+            raise RadarError('Radar type should be specified')
         f = open(filepath, 'rb')
         vraw = list()
         rraw = list()
@@ -293,7 +297,7 @@ class CINRAD():
                 lonx.append(lons)
                 height.append(h)
             count = count + 1
-        return np.array(latx), np.array(lonx), np.array(height)
+        return np.array(lonx), np.array(latx), np.array(height)
 
     def projection(self, datatype='r'):
         r'''Calculate the geographic coordinates of the requested data range.'''
