@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
@@ -37,7 +37,7 @@ class RadarError(Exception):
     def __str__(self):
         return repr(self.dsc)
 
-class CINRAD():
+class Radar():
     def __init__(self, filepath, radartype=None):
         self.level = None
         self.drange = None
