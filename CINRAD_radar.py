@@ -46,7 +46,6 @@ class Radar():
         self.radarheight = None
         self.elev = None
         self.name = None
-        self.all_info = None
         self.code = None
         path = Path(filepath)
         filename = path.name
@@ -63,9 +62,9 @@ class Radar():
             self.code = None
             radartype = 'SA'
         self.radartype = radartype
-        if radartype == ('SA' or 'SB'):
+        if radartype in ['SA', 'SB']:
             blocklength = 2432
-        elif radartype == 'CB':
+        elif radartype in ['CA', 'CB']:
             blocklength = 4132
         elif radartype == 'CC':
             blocklength = 3000
@@ -78,7 +77,7 @@ class Radar():
         f.seek(0)
         datalength = len(f.read())
         num = int(datalength / blocklength)
-        if radartype == ('SA' or 'SB' or 'CB'):
+        if radartype in ['SA', 'SB', 'CA', 'CB']:
             azimuthx = list()
             eleang = list()
             self.boundary = list()
@@ -99,10 +98,10 @@ class Radar():
                 elevangle = np.fromstring(a[42:44], dtype='u2')
                 anglenum = np.fromstring(a[44:46], dtype='u2')
                 veloreso = np.fromstring(a[70:72], dtype='u2')
-                if radartype == ('SA' or 'SB'):
+                if radartype in ['SA', 'SB']:
                     R = np.fromstring(a[128:588], dtype='u1')
                     V = np.fromstring(a[128:1508], dtype='u1')
-                elif radartype == 'CB':
+                elif radartype in ['CA', 'CB']:
                     R = np.fromstring(a[128:928], dtype='u1')
                     V = np.fromstring(a[128:2528], dtype='u1')
                 azimuthx.append(azimuth[0])
@@ -217,7 +216,7 @@ class Radar():
 
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
-        if self.radartype == ('SA' or 'SB' or 'CB'):
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             print(self.z[self.boundary[level]])
             self.elev = self.z[self.boundary[level]]
         self.level = level
@@ -226,7 +225,7 @@ class Radar():
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.rraw.shape[1] * self.Rreso)
-        if self.radartype == ('SA' or 'SB' or 'CB'):
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             dbz = (self.rraw - 2) / 2 - 32
             r = dbz[self.boundary[level]:self.boundary[level + 1]]
             r1 = r.transpose()[:int(drange / self.Rreso)]
@@ -301,7 +300,7 @@ class Radar():
 
     def projection(self, datatype='r'):
         r'''Calculate the geographic coordinates of the requested data range.'''
-        if self.radartype == ('SA' or 'SB' or 'CB'):
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             length = self.boundary[self.level + 1] - self.boundary[self.level]
         elif self.radartype == 'CC':
             length = 512
@@ -309,14 +308,14 @@ class Radar():
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
-            if self.radartype == ('SA' or 'SB' or 'CB'):
+            if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
                 theta = np.deg2rad(np.linspace(0, 360, length))
         elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
-            if self.radartype == ('SA' or 'SB' or 'CB'):
+            if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
                 theta = np.deg2rad(np.linspace(0, 360, length))
