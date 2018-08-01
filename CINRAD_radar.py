@@ -217,8 +217,10 @@ class Radar():
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            print(self.z[self.boundary[level]])
             self.elev = self.z[self.boundary[level]]
+            print(self.elev)
+            if level in [1, 3]:
+                warnings.warn('Use this elevation angle may yield unexpected result.')
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
@@ -236,21 +238,23 @@ class Radar():
         radialavr = list()
         for i in r1:
             radialavr.append(np.average(i))
-        num = 0
-        while num < len(radialavr) - 1:
-            delta = radialavr[num + 1] - radialavr[num]
-            if delta > 20 and num> 50:
-                break
-            num += 1
-        rm = r1[:num]
-        nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
-        r1 = np.concatenate((rm, nanmatrix))
+        threshold = 4
+        g = np.gradient(radialavr)
+        try:
+            num = np.where(g[50:] > threshold)[0][0] + 50
+            rm = r1[:num]
+            nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
+            r1 = np.concatenate((rm, nanmatrix))
+        except IndexError:
+            pass
         return r1.transpose()
 
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
-        print(self.z[self.boundary[level]])
+        if level in [0, 2]:
+            warnings.warn('Use this elevation angle may yield unexpected result.')
         self.elev = self.z[self.boundary[level]]
+        print(self.elev)
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
@@ -304,7 +308,6 @@ class Radar():
             length = self.boundary[self.level + 1] - self.boundary[self.level]
         elif self.radartype == 'CC':
             length = 512
-        count = 0
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
             xshape, yshape = (length, int(self.drange / self.Rreso))
