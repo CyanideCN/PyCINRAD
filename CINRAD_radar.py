@@ -7,7 +7,6 @@ import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
 from scipy.interpolate import griddata
-import os
 import warnings
 import datetime
 from pathlib import Path
@@ -150,7 +149,7 @@ class Radar():
             self.Vreso = 0.3
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
-    
+        
     def set_station_position(self, stationlon, stationlat):
         self.stationlon = stationlon
         self.stationlat = stationlat
@@ -187,8 +186,8 @@ class Radar():
         r'''Update radar station info automatically.'''
         info = self._get_radar_info()
         if info is None:
-            warnings.warn('Auto fill radar station info failed, '+
-                          'use set_code and then _update_radarinfo manually instead.')
+            warnings.warn('Auto fill radar station info failed, ' +
+                          'use set_code and then _update_radar_info manually instead.')
         else:
             self.set_station_position(info[1], info[2])
             self.set_station_name(info[0])
@@ -243,7 +242,7 @@ class Radar():
         try:
             num = np.where(g[50:] > threshold)[0][0] + 50
             rm = r1[:num]
-            nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))# * np.nan
+            nanmatrix = np.zeros((int(drange / self.Rreso) - num, r1.shape[1]))
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
@@ -258,7 +257,7 @@ class Radar():
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
-        if self.vraw.shape[1] * self.Vreso < drange:
+        if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.dv == 2:
@@ -282,7 +281,7 @@ class Radar():
         deltah = np.sin(angle) * distance * np.cos(np.deg2rad(elev))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
-        deltalon = deltah / 111#(111 * np.cos(np.deg2rad(actuallat)))
+        deltalon = deltah / 111
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
@@ -510,9 +509,8 @@ class Radar():
                     height = vertical[pos]
                     et.append(height)
                 else:
-                    e1 = elev[pos]
                     try:
-                        e2 = elev[pos - 1]
+                        elev[pos - 1]
                     except IndexError:
                         et.append(vertical[pos])
                         continue
