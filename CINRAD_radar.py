@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
@@ -17,6 +17,7 @@ font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
 Rm1 = 8500
+deg2rad = np.pi / 180
 folderpath = 'D:\\'
 
 r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
@@ -29,6 +30,26 @@ et_cbar = form_colormap('colormap\\etbar.txt', sep=True)
 radarinfo = np.load('RadarStation.npy')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
+
+def check_radartype(accept_list):
+    def check(func):
+        def inner(self, *args, **kwargs):
+            if self.radartype not in accept_list:
+                raise RadarError('{} radar is not supported for this calculation'.format(self.radartype))
+            return func(*args, **kwargs)
+        return inner
+    return check
+
+def find_intersection(line1, line2):
+    k1 = line1[0]
+    b1 = line1[1]
+    k2 = line2[0]
+    b2 = line2[1]
+    if k1 == k2:
+        raise ValueError('No intersection exist')
+    x = (b2 - b1) / (k1 - k2)
+    y = k1 * x + b1
+    return (x, y)
 
 class RadarError(Exception):
     def __init__(self, description):
@@ -46,6 +67,7 @@ class Radar():
         self.elev = None
         self.name = None
         self.code = None
+        self.azim = None
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
@@ -67,9 +89,15 @@ class Radar():
             blocklength = 4132
         elif radartype == 'CC':
             blocklength = 3000
+        elif radartype in ['SC', 'CD']:
+            blocklength = 4000
         else:
             raise RadarError('Radar type should be specified')
-        f = open(filepath, 'rb')
+        if filetype.endswith('bz2'):
+            import bz2
+            f = bz2.open(filepath, 'rb')
+        else:
+            f = open(filepath, 'rb')
         vraw = list()
         rraw = list()
         copy = f.read(blocklength)
@@ -118,7 +146,7 @@ class Radar():
             self.rraw = np.array(rraw)
             self.z = np.array(eleang) * con
             self.aziangle = np.array(azimuthx) * con
-            self.rad = np.deg2rad(self.aziangle)
+            self.rad = self.aziangle * deg2rad
             self.eleang = np.array(eleang)
             self.vraw = np.array(vraw)
             self.dv = veloreso[0]
@@ -137,7 +165,7 @@ class Radar():
             count = 0
             f.seek(1024)
             while count < num:
-                a = f.read(3000)
+                a = f.read(blocklength)
                 r = np.fromstring(a[:1000], dtype=np.short).astype(float)
                 v = np.fromstring(a[1000:2000], dtype=np.short).astype(float)
                 rraw.append(r)
@@ -147,6 +175,17 @@ class Radar():
             self.vraw = np.array(vraw)
             self.Rreso = 0.3
             self.Vreso = 0.3
+        elif radartype in ['SC', 'CD']:
+            utc_offset = datetime.timedelta(hours=8)
+            f.seek(853)
+            scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
+                                         day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
+                                         minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
+            f.seek(1024)
+            count = 0
+            while count < num:
+                a = f.read(blocklength)
+                r = np.fromstring(a[:1000], dtype=np.short).astype(float)
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
@@ -162,6 +201,7 @@ class Radar():
 
     def set_code(self, code):
         self.code = code
+        self._update_radar_info()
 
     def set_radar_height(self, height):
         self.radarheight = height
@@ -169,12 +209,18 @@ class Radar():
     def set_elevation_angle(self, angle):
         self.elev = angle
 
+    def set_level(self, level):
+        self.level = level
+
     def _get_radar_info(self):
         r'''Get radar station info from the station database according to the station code.'''
         if self.code is None:
             warnings.warn('Radar code undefined')
             return None
-        pos = np.where(radarinfo[0] == self.code)[0]
+        try:
+            pos = np.where(radarinfo[0] == self.code)[0][0]
+        except IndexError:
+            raise RadarError('Invalid radar code')
         name = radarinfo[1][pos][0]
         lon = radarinfo[2][pos][0]
         lat = radarinfo[3][pos][0]
@@ -196,22 +242,31 @@ class Radar():
     def _height(self, distance, elevation):
         return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
-    def _azimuth_position(self, azimuth):
+    def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
-        azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
-        azim_r = azim.tolist()
+        self.azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]] * deg2rad
+        azimuth = azimuth * deg2rad
+        azim_r = self.azim.tolist()
         azim_r.reverse()
-        while count < len(azim):
+        while count < len(self.azim):
             count += 1
-            if azimuth > azim[0]:
-                if (azimuth - azim[count]) * (azimuth - azim[count + 1]) < 0:
-                    print(azim[count])
-                    return count
+            if azimuth > self.azim[0]:
+                if (azimuth - self.azim[count]) * (azimuth - self.azim[count + 1]) < 0:
+                    if abs((azimuth - self.azim[count])) >= abs(azimuth - self.azim[count + 1]):
+                        print(self.azim[count + 1] / deg2rad)
+                        return count + 1
+                    else:
+                        print(self.azim[count] / deg2rad)
+                        return count
             else:
                 if (azimuth - azim_r[count]) * (azimuth - azim_r[count + 1]) < 0:
-                    print(azim[len(azim) - count - 1])
-                    return len(azim) - count - 1
+                    if abs(azimuth - azim_r[count + 1]) >= (azimuth - azim_r[count]):
+                        print(azim_r[count] / deg2rad)
+                        return len(self.azim) - count
+                    else:
+                        print(azim_r[count + 1] / deg2rad)
+                        return len(self.azim) - count - 1
 
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
@@ -248,6 +303,7 @@ class Radar():
             pass
         return r1.transpose()
 
+    @check_radartype(['SA', 'SB', 'CB'])
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
         if level in [0, 2]:
@@ -418,7 +474,7 @@ class Radar():
         dist = np.arange(1, drange + 1, 1)
         for i in self.anglelist_r[startangle:stopangle]:
             cac = self.reflectivity(i, drange)
-            pos = self._azimuth_position(azimuth)
+            pos = self._find_azimuth_position(azimuth)
             if pos is None:
                 nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
@@ -441,6 +497,7 @@ class Radar():
         else:
             return xc, yc, rhi
 
+    @check_radartype(['SA', 'SB', 'CB'])
     def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
         r'''Plot reflectivity RHI scan with the default plot settings.'''
         if self.name is None:
@@ -474,6 +531,7 @@ class Radar():
         r_res = np.concatenate(r_resampled)
         return r_res.reshape(r_res.shape[0] // 361, 361, 230), dist, theta
 
+    @check_radartype(['SA', 'SB'])
     def echo_top(self, threshold=18):
         '''Calculate max height of echo data'''
         data = self._r_resample()
@@ -492,7 +550,7 @@ class Radar():
                 vert_r = list()
                 vert_h_ = list()
                 for k in range(1, 10):
-                    h_pt = h_mask[-1 * k][i][j]#从高仰角开始索引
+                    h_pt = h_mask[-1 * k][i][j]#index from highest angle
                     r_pt = data[0][-1 * k][i][j]
                     h_pt_ = hght[-1 * k][i][j]
                     vert_h.append(h_pt)
@@ -502,10 +560,10 @@ class Radar():
                 position = np.where(vertical > 0)[0]
                 try:
                     pos = position[0]
-                except IndexError:#空array
+                except IndexError:#empty array
                     et.append(0)
                     continue
-                if pos == 0:#第一个反射率大于18的仰角是最高的仰角
+                if pos == 0:
                     height = vertical[pos]
                     et.append(height)
                 else:
@@ -520,5 +578,27 @@ class Radar():
                     h2 = vert_h_[pos - 1]
                     w1 = (z1 - threshold) / (z1 - z2)
                     w2 = 1 - w1
-                    et.append(w1 * h2 + w2 * h1)#线性内插
+                    et.append(w1 * h2 + w2 * h1)#linear interpolation
         return np.array(et).reshape(361, 230)
+
+    def cross_section(self, startpos, endpos):
+        s_dis = startpos[0]
+        s_ang = startpos[1]
+        e_dis = endpos[0]
+        e_ang = endpos[1]
+        raw_delta = abs(s_ang - e_ang)
+        if raw_delta > 180:
+            delta_ang = 360 - raw_delta
+        else:
+            delta_ang = raw_delta
+        #resolve polar coordinate into x and y axes
+        s_x = s_dis * np.sin(np.deg2rad(s_ang))
+        s_y = s_dis * np.cos(np.deg2rad(s_ang))
+        e_x = e_dis * np.sin(np.deg2rad(e_ang))
+        e_y = e_dis * np.cos(np.deg2rad(e_ang))
+        #solve the equation for line
+        line_grad = (e_y - s_y) / (e_x - s_x)
+        line_intcpt = e_y - line_grad * e_x
+        #solve the intersection
+        s_ang_pos = self._find_azimuth_position(s_ang)
+        e_ang_pos = self._find_azimuth_position(e_ang)
