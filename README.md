@@ -20,10 +20,9 @@ radar = Radar(file)
 Auto fill radar station info failed, use set_code and then _update_radarinfo manually instead.
 ```
 
-这时候则需要手动设置站号，再更新雷达站的地理信息。
+这时候则需要手动设置站号。
 ```
 radar.set_code('Z9576')
-radar._update_radar_info()
 ```
 
 #### 绘制PPI
