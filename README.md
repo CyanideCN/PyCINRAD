@@ -17,7 +17,7 @@ radar = Radar(file)
 
 如果程序没有读出站号，就会抛出警告:
 ```
-Auto fill radar station info failed, use set_code and then _update_radarinfo manually instead.
+Auto fill radar station info failed, please set code manually
 ```
 
 这时候则需要手动设置站号。
