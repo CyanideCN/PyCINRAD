@@ -232,8 +232,7 @@ class Radar():
         r'''Update radar station info automatically.'''
         info = self._get_radar_info()
         if info is None:
-            warnings.warn('Auto fill radar station info failed, ' +
-                          'use set_code and then _update_radar_info manually instead.')
+            warnings.warn('Auto fill radar station info failed, please set code manually')
         else:
             self.set_station_position(info[1], info[2])
             self.set_station_name(info[0])
@@ -369,18 +368,18 @@ class Radar():
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
-                theta = np.deg2rad(np.linspace(0, 360, length))
+                theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
             xshape, yshape = (length, int(self.drange / self.Vreso))
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
-                theta = np.deg2rad(np.linspace(0, 360, length))
+                theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
             r = np.arange(1, 231, 1)
             xshape, yshape = (361, 230)
-            theta = np.deg2rad(np.arange(0, 361, 1))
+            theta = np.arange(0, 361, 1) * deg2rad
         x, y, z = self._polar2cart(r, theta)
         lons = x.reshape(xshape, yshape)
         lats = y.reshape(xshape, yshape)
@@ -402,7 +401,7 @@ class Radar():
         lonm, latm = np.max(lons), np.max(lats)
         x_delta = lonm - self.stationlon
         y_delta = latm - self.stationlat
-        angle_offset = np.cos(np.deg2rad(self.elev))
+        angle_offset = np.cos(self.elev * deg2rad)
         x_offset = x_delta / angle_offset
         y_offset = y_delta / angle_offset
         plt.style.use('dark_background')
@@ -480,7 +479,7 @@ class Radar():
                 rhi.append(nanarray.tolist())
             else:
                 rhi.append(cac[pos])
-            theta = np.deg2rad(self.elev)
+            theta = self.elev * deg2rad
             xcoor.append((dist * np.cos(theta)).tolist())
             ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
         rhi = np.array(rhi)
@@ -536,7 +535,7 @@ class Radar():
         '''Calculate max height of echo data'''
         data = self._r_resample()
         r = np.ma.array(data[0], mask=(data[0] > threshold))
-        elev = np.deg2rad(np.delete(self.elevanglelist, [1, 3])).tolist()
+        elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
         h_ = list()
         for i in elev:
             h = self._height(data[1], i)
@@ -592,10 +591,10 @@ class Radar():
         else:
             delta_ang = raw_delta
         #resolve polar coordinate into x and y axes
-        s_x = s_dis * np.sin(np.deg2rad(s_ang))
-        s_y = s_dis * np.cos(np.deg2rad(s_ang))
-        e_x = e_dis * np.sin(np.deg2rad(e_ang))
-        e_y = e_dis * np.cos(np.deg2rad(e_ang))
+        s_x = s_dis * np.sin(s_ang * deg2rad)
+        s_y = s_dis * np.cos(s_ang * deg2rad)
+        e_x = e_dis * np.sin(e_ang * deg2rad)
+        e_y = e_dis * np.cos(e_ang * deg2rad)
         #solve the equation for line
         line_grad = (e_y - s_y) / (e_x - s_x)
         line_intcpt = e_y - line_grad * e_x
