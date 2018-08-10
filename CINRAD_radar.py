@@ -36,7 +36,7 @@ def check_radartype(accept_list):
         def inner(self, *args, **kwargs):
             if self.radartype not in accept_list:
                 raise RadarError('{} radar is not supported for fuction {}'.format(self.radartype, func.__name__))
-            return func(*args, **kwargs)
+            return func(self, *args, **kwargs)
         return inner
     return check
 
@@ -245,28 +245,27 @@ class Radar():
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
         self.azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]] * deg2rad
-        azimuth = azimuth * deg2rad
-        azim_r = self.azim.tolist()
-        azim_r.reverse()
+        if azimuth < 0.3:
+            azimuth = 0.5
+        azimuth_ = azimuth * deg2rad
+        a_sorted = np.sort(self.azim)
+        add = False
         while count < len(self.azim):
+            if azimuth_ == a_sorted[count]:
+                break
+            elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
+                if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
+                    add = True
+                    break
+                else:
+                    break
             count += 1
-            if azimuth > self.azim[0]:
-                if (azimuth - self.azim[count]) * (azimuth - self.azim[count + 1]) < 0:
-                    if abs((azimuth - self.azim[count])) >= abs(azimuth - self.azim[count + 1]):
-                        print(self.azim[count + 1] / deg2rad)
-                        return count + 1
-                    else:
-                        print(self.azim[count] / deg2rad)
-                        return count
-            else:
-                if (azimuth - azim_r[count]) * (azimuth - azim_r[count + 1]) < 0:
-                    if abs(azimuth - azim_r[count + 1]) >= (azimuth - azim_r[count]):
-                        print(azim_r[count] / deg2rad)
-                        return len(self.azim) - count
-                    else:
-                        print(azim_r[count + 1] / deg2rad)
-                        return len(self.azim) - count - 1
+        if add:
+            count += 1
+        pos = np.where(self.azim == a_sorted[count])[0][0]
+        return pos
 
+    @check_radartype(['SA', 'SB', 'CB', 'CC'])
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -580,6 +579,7 @@ class Radar():
                     et.append(w1 * h2 + w2 * h1)#linear interpolation
         return np.array(et).reshape(361, 230)
 
+    @check_radartype(['SA'])
     def cross_section(self, startpos, endpos):
         s_dis = startpos[0]
         s_ang = startpos[1]
@@ -598,6 +598,56 @@ class Radar():
         #solve the equation for line
         line_grad = (e_y - s_y) / (e_x - s_x)
         line_intcpt = e_y - line_grad * e_x
-        #solve the intersection
-        s_ang_pos = self._find_azimuth_position(s_ang)
-        e_ang_pos = self._find_azimuth_position(e_ang)
+        ref = list()
+        range_ = list()
+        height = list()
+        for ag in self.anglelist_r:
+            self.set_level(ag)
+            s_ang_pos = self._find_azimuth_position(s_ang)
+            e_ang_pos = self._find_azimuth_position(e_ang)
+            if s_ang < e_ang:
+                if e_ang_pos < s_ang_pos:
+                    dir_array = np.concatenate((self.azim[s_ang_pos:], self.azim[:e_ang_pos]))
+                else:
+                    dir_array = self.azim[s_ang_pos:e_ang_pos]
+            else:
+                if e_ang_pos > s_ang_pos:
+                    dir_array = np.concatenate((self.azim[e_ang_pos:], self.azim[:s_ang_pos]))
+                else:
+                    dir_array = self.azim[s_ang_pos:e_ang_pos]
+            normalize = list()
+            for i in dir_array:
+                if i <= np.pi:
+                    normalize.append(np.pi / 2 - i)
+                elif i > np.pi and i <= np.pi * 1.5:
+                    normalize.append(i - np.pi)
+                else:
+                    normalize.append(2 * np.pi - i)
+            line_grads = np.tan(normalize)
+            point_x = list()
+            point_y = list()
+            for i in line_grads:
+                coor = find_intersection((line_grad, line_intcpt), (i, 0))
+                point_x.append(coor[0])
+                point_y.append(coor[1])
+            x = np.array(point_x)
+            y = np.array(point_y)
+            distance = np.sqrt(x ** 2 + y ** 2)
+            angle = np.arctan(x / y)
+            count = 0
+            r = self.reflectivity(ag, 230)
+            r_ = list()
+            d_ = list()
+            h_ = list()
+            theta = self.elev * deg2rad
+            while count < len(distance):
+                pos1 = int(distance[count] / self.Rreso)
+                pos2 = self._find_azimuth_position(dir_array[count] / deg2rad)
+                r_.append(r[pos2][pos1])
+                d_.append(distance[count] * np.cos(theta))
+                h_.append(distance[count] * np.sin(theta))
+                count += 1
+            ref.append(r_)
+            range_.append(d_)
+            height.append(h_)
+        return np.concatenate(range_), np.concatenate(height), np.concatenate(ref)
