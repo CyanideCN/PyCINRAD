@@ -13,7 +13,7 @@ from CINRAD_radar import *
 file = 'Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin'
 radar = Radar(file)
 ```
-由于SA/SB/CB雷达文件里并未记录站号，程序会尝试从文件名里提取站号然后寻找到对应的地理信息，形如 Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin 和 RADA_CHN_DOR_L2_O-Z9558-SA-CAP-20180725084700.bin 这两种形式的文件都是可以自动识别的。
+由于SA/SB/CB雷达文件里并未记录站号，程序会尝试从文件名里提取站号然后寻找到对应的地理信息，形如 Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin 和 RADA_CHN_DOR_L2_O-Z9558-SA-CAP-20180725084700.bin 这两种形式的文件都是可以自动识别的。注：bz2格式的压缩文件也可直接打开。
 
 如果程序没有读出站号，就会抛出警告:
 ```
