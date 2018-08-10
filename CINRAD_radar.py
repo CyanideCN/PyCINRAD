@@ -35,7 +35,7 @@ def check_radartype(accept_list):
     def check(func):
         def inner(self, *args, **kwargs):
             if self.radartype not in accept_list:
-                raise RadarError('{} radar is not supported for this calculation'.format(self.radartype))
+                raise RadarError('{} radar is not supported for fuction {}'.format(self.radartype, func.__name__))
             return func(*args, **kwargs)
         return inner
     return check
@@ -221,11 +221,11 @@ class Radar():
             pos = np.where(radarinfo[0] == self.code)[0][0]
         except IndexError:
             raise RadarError('Invalid radar code')
-        name = radarinfo[1][pos][0]
-        lon = radarinfo[2][pos][0]
-        lat = radarinfo[3][pos][0]
-        radartype = radarinfo[4][pos][0]
-        radarheight = radarinfo[5][pos][0]
+        name = radarinfo[1][pos]
+        lon = radarinfo[2][pos]
+        lat = radarinfo[3][pos]
+        radartype = radarinfo[4][pos]
+        radarheight = radarinfo[5][pos]
         return name, lon, lat, radartype, radarheight
 
     def _update_radar_info(self):
