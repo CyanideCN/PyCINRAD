@@ -382,7 +382,7 @@ class Radar():
         x, y, z = self._polar2cart(r, theta)
         lons = x.reshape(xshape, yshape)
         lats = y.reshape(xshape, yshape)
-        hgh = z.reshape(xshape, yshape)# + self.radarheight / 1000
+        hgh = z.reshape(xshape, yshape) + self.radarheight / 1000
         return lons, lats, hgh
 
     def draw_ppi(self, level, drange, datatype='r', draw_author=True, smooth=False, dpi=350):
@@ -548,7 +548,8 @@ class Radar():
                 vert_r = list()
                 vert_h_ = list()
                 for k in range(1, 10):
-                    h_pt = h_mask[-1 * k][i][j]#index from highest angle
+                    #index from highest angle
+                    h_pt = h_mask[-1 * k][i][j]
                     r_pt = data[0][-1 * k][i][j]
                     h_pt_ = hght[-1 * k][i][j]
                     vert_h.append(h_pt)
@@ -576,7 +577,8 @@ class Radar():
                     h2 = vert_h_[pos - 1]
                     w1 = (z1 - threshold) / (z1 - z2)
                     w2 = 1 - w1
-                    et.append(w1 * h2 + w2 * h1)#linear interpolation
+                    #linear interpolation
+                    et.append(w1 * h2 + w2 * h1)
         return np.array(et).reshape(361, 230)
 
     @check_radartype(['SA'])
@@ -601,6 +603,7 @@ class Radar():
         ref = list()
         range_ = list()
         height = list()
+        #iterate for all elevation angles
         for ag in self.anglelist_r:
             self.set_level(ag)
             s_ang_pos = self._find_azimuth_position(s_ang)
@@ -616,6 +619,7 @@ class Radar():
                 else:
                     dir_array = self.azim[s_ang_pos:e_ang_pos]
             normalize = list()
+            #calculate the angle the line makes with x-axis
             for i in dir_array:
                 if i <= np.pi:
                     normalize.append(np.pi / 2 - i)
@@ -623,7 +627,9 @@ class Radar():
                     normalize.append(i - np.pi)
                 else:
                     normalize.append(2 * np.pi - i)
+            #convert angle to the gradient of line
             line_grads = np.tan(normalize)
+            #find intersections of the line of cross-section and radar beam
             point_x = list()
             point_y = list()
             for i in line_grads:
@@ -632,6 +638,7 @@ class Radar():
                 point_y.append(coor[1])
             x = np.array(point_x)
             y = np.array(point_y)
+            #convert cartesian coordinates to polar coordinates
             distance = np.sqrt(x ** 2 + y ** 2)
             angle = np.arctan(x / y)
             count = 0
@@ -640,6 +647,8 @@ class Radar():
             d_ = list()
             h_ = list()
             theta = self.elev * deg2rad
+            #find data points according to calculated polar coordinates, then calculate horizontal
+            #distance and height
             while count < len(distance):
                 pos1 = int(distance[count] / self.Rreso)
                 pos2 = self._find_azimuth_position(dir_array[count] / deg2rad)
