@@ -355,7 +355,7 @@ class Radar():
             count = count + 1
         return np.array(lonx), np.array(latx), np.array(height)
 
-    def projection(self, datatype='r'):
+    def projection(self, datatype):
         r'''Calculate the geographic coordinates of the requested data range.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             length = self.boundary[self.level + 1] - self.boundary[self.level]
@@ -385,7 +385,7 @@ class Radar():
         hgh = z.reshape(xshape, yshape) + self.radarheight / 1000
         return lons, lats, hgh
 
-    def draw_ppi(self, level, drange, datatype='r', draw_author=True, smooth=False, dpi=350):
+    def draw_ppi(self, level, drange, datatype, draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
         if datatype == 'r':
@@ -396,7 +396,7 @@ class Radar():
             data = self.echo_top()
             self.set_elevation_angle(0)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        lons, lats, hgh = self.projection(datatype=datatype)
+        lons, lats, hgh = self.projection(datatype)
         lonm, latm = np.max(lons), np.max(lats)
         x_delta = lonm - self.stationlon
         y_delta = latm - self.stationlat

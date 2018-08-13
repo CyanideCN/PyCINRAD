@@ -27,11 +27,11 @@ radar.set_code('Z9576')
 
 #### 绘制PPI
 ```
-radar.draw_ppi(level, drange, datatype='r', smooth=True)
+radar.draw_ppi(level, drange, 'r', smooth=True)
 ```
-datatype目前支持 'r','v'和'et' 三种，对应反射率，速度和回波顶高。
+datatype参数目前支持 'r','v'和'et' 三种，对应反射率，速度和回波顶高。
 
-当datatype='r'时，smooth参数可以对反射率进行平滑处理。
+当datatype为'r'时，smooth参数可以对反射率进行平滑处理。
 
 
 #### 绘制RHI
