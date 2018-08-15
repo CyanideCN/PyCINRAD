@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
@@ -182,10 +182,6 @@ class Radar():
                                          day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
                                          minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
             f.seek(1024)
-            count = 0
-            while count < num:
-                a = f.read(blocklength)
-                r = np.fromstring(a[:1000], dtype=np.short).astype(float)
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
@@ -285,7 +281,7 @@ class Radar():
             r1 = r.transpose()[:int(drange / self.Rreso)]
         elif self.radartype == 'CC':
             dbz = self.rraw / 10
-            r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].transpose()
+            r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T
         r1[r1 < 0] = 0
         radialavr = list()
         for i in r1:
@@ -299,7 +295,7 @@ class Radar():
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
-        return r1.transpose()
+        return r1.T
 
     @check_radartype(['SA', 'SB', 'CB'])
     def velocity(self, level, drange):
@@ -498,8 +494,6 @@ class Radar():
     @check_radartype(['SA', 'SB', 'CB'])
     def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
         r'''Plot reflectivity RHI scan with the default plot settings.'''
-        if self.name is None:
-            raise RadarError('Name of radar is not defined')
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
         rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)

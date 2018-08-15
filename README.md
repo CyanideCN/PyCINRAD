@@ -3,7 +3,7 @@ CINRAD data reader.
 
 A python class which can be used to read CINRAD SA/SB/CB files and plot graphs including PPI and RHI.
 
-读取CINRAD雷达基数据的Python脚本，目前支持SA/SB/CB三种雷达数据格式（部分支持CC雷达），具体函数用法请看脚本注释。
+读取CINRAD雷达基数据的Python脚本，目前支持SA/SB/CB三种雷达数据格式（部分支持CC雷达和双偏振雷达），具体函数用法请看脚本注释。
 该脚本目前还在继续开发中，欢迎提Issue/发PR^_^
 
 
@@ -40,7 +40,7 @@ radar.draw_rhi(azimuth, drange)
 ```
 传入方位角和距离即可绘制。
 
-#### 绘制CINRAD/CC雷达反射率数据
+#### 绘制CINRAD CC雷达反射率数据
 
 由于本程序没有完全支持CC雷达，绘制CC雷达反射率的PPI的步骤稍有不同，需要先手动设置该仰角的度数再绘制。
 
@@ -48,6 +48,16 @@ radar.draw_rhi(azimuth, drange)
 radar = Radar('2018072615.12V', radartype='CC')
 radar.set_elevation_angle(0.5)
 radar.draw_ppi(0, 230, datatype='r')
+```
+
+#### 绘制CINRAD SD(S波段双偏振)雷达数据
+
+目前本程序支持绘制基本反射率，后续产品还在开发中。
+
+```
+from DP import DPRadar
+radar = DPRadar('Z_RADR_I_Z9210_20180401000152_O_DOR_SA_CAP.bin')
+radar.draw_ref(0, 100)
 ```
 
 PS:如在使用该脚本中有任何问题和建议，可以发邮件给我 274555447@qq.com
