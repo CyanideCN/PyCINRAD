@@ -16,7 +16,8 @@ font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 folderpath = 'D:\\'
 r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
 r_cmap_smooth = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
-norm1 = cmx.Normalize(0, 75)
+zdr_cmap = form_colormap('colormap\\zdr_main.txt', sep=False)
+zdr_cbar = form_colormap('colormap\\zdr_cbar.txt', sep=True)
 
 class DPRadar:
     def __init__(self, filepath):
@@ -32,15 +33,18 @@ class DPRadar:
         self.dtype = None
         self.reso = None
 
-    def get_ref(self, level, drange):
+    def get_data(self, level, drange, dtype):
         self.level = level
         self.drange = drange
-        self.dtype = b'REF'
+        if dtype.__class__ is str:
+            self.dtype = dtype.encode()
+        elif dtype.__class__ is bytes:
+            self.dtype = dtype
         self.elev = self.el[level]
-        ref_hdr = self.f.sweeps[level][0][4][b'REF'][0]
-        raw_ref = np.array([ray[4][b'REF'][1] for ray in self.f.sweeps[level]])
-        ref_cut = raw_ref.T[:int(drange / ref_hdr.gate_width)]
-        return ref_cut.T
+        hdr = self.f.sweeps[level][0][4][self.dtype][0]
+        raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[level]])
+        cut = raw.T[:int(drange / hdr.gate_width)]
+        return cut.T
 
     def _get_coordinate(self, distance, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
@@ -82,9 +86,9 @@ class DPRadar:
         x, y, z = np.array(lonx), np.array(latx), np.array(height)
         return x.reshape(xshape, yshape), y.reshape(xshape, yshape), z.reshape(xshape, yshape)
 
-    def draw_ref(self, level, drange, draw_author=True, smooth=False, dpi=350):
+    def draw_ppi(self, level, drange, dtype, draw_author=True, smooth=False, dpi=350):
         suffix = ''
-        data = self.get_ref(level, drange)
+        data = self.get_data(level, drange, dtype)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         lons, lats, hgh = self.projection()
         lonm, latm = np.max(lons), np.max(lats)
@@ -96,22 +100,34 @@ class DPRadar:
         plt.style.use('dark_background')
         m = Basemap(llcrnrlon=self.stationlon - x_offset, urcrnrlon=self.stationlon + x_offset
                 , llcrnrlat=self.stationlat - y_offset, urcrnrlat=self.stationlat + y_offset, resolution="l")
-        typestring = 'Base Reflectivity'
-        cmaps = r_cmap
-        norms = norm1
-        r1 = data[np.logical_not(np.isnan(data))]
-        if smooth:
-            m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 256, cmap=r_cmap_smooth, norm=norms, tri=True)
-            suffix = '_smooth'
-        else:
-            data[data <= 2] = None
+        if self.dtype.decode() == 'REF':
+            typestring = 'Base Reflectivity'
+            cmaps = r_cmap
+            cbar_cmap = r_cmap
+            norms = cmx.Normalize(0, 75)
+            norms_ = norms
+            if smooth:
+                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 256, cmap=r_cmap_smooth, norm=norms, tri=True)
+                suffix = '_smooth'
+            else:
+                data[data <= 2] = None
+        elif self.dtype.decode() == 'ZDR':
+            typestring = 'Differential Ref.'
+            cmaps = zdr_cmap
+            cbar_cmap = zdr_cbar
+            norms = cmx.Normalize(-4, 5)
+            norms_ = cmx.Normalize(0, 1)
             m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
+        r1 = data[np.logical_not(np.isnan(data))]
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
-        cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cmaps, norm=norms, orientation='vertical', drawedges=False)
+        cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cbar_cmap, norm=norms_, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
+        if self.dtype.decode() == 'ZDR':
+            cbar.set_ticks(np.linspace(0, 1, 17))
+            cbar.set_ticklabels(['', '5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0.8', '0.5', '0.2', '0', '-1', '-2', '-3', '-4'])
         ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
         ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.reso) , fontproperties=font2)
@@ -120,7 +136,7 @@ class DPRadar:
         ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
         ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
-        ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
+        ax2.text(0, 1.81, 'Max: {:.1f}'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{:.1f}_{}_{}{}.png'.format(
