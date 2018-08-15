@@ -52,12 +52,14 @@ radar.draw_ppi(0, 230, datatype='r')
 
 #### 绘制CINRAD SD(S波段双偏振)雷达数据
 
-目前本程序支持绘制基本反射率，后续产品还在开发中。
+目前本程序支持绘制基本反射率和差分反射率，后续产品还在开发中。
 
 ```
 from DP import DPRadar
 radar = DPRadar('Z_RADR_I_Z9210_20180401000152_O_DOR_SA_CAP.bin')
-radar.draw_ref(0, 100)
+radar.draw_ppi(0, 100, 'REF')
 ```
+
+REF为基本反射率，ZDR为差分反射率。
 
 PS:如在使用该脚本中有任何问题和建议，可以发邮件给我 274555447@qq.com
