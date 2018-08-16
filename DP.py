@@ -7,13 +7,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
 import matplotlib.colors as cmx
-from CINRAD_radar import RadarError, Rm1, deg2rad
+from CINRAD_radar import RadarError, Rm1, deg2rad, folderpath
 from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
-folderpath = 'D:\\'
 r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
 r_cmap_smooth = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
 zdr_cmap = form_colormap('colormap\\zdr_main.txt', sep=False)
@@ -86,7 +85,7 @@ class DPRadar:
         x, y, z = np.array(lonx), np.array(latx), np.array(height)
         return x.reshape(xshape, yshape), y.reshape(xshape, yshape), z.reshape(xshape, yshape)
 
-    def draw_ppi(self, level, drange, dtype, draw_author=True, smooth=False, dpi=350):
+    def draw_ppi(self, level, drange, dtype, draw_author=True, smooth=False, dpi=350, draw_china=True):
         suffix = ''
         data = self.get_data(level, drange, dtype)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
@@ -111,6 +110,7 @@ class DPRadar:
                 suffix = '_smooth'
             else:
                 data[data <= 2] = None
+                m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
         elif self.dtype.decode() == 'ZDR':
             typestring = 'Differential Ref.'
             cmaps = zdr_cmap
@@ -119,8 +119,11 @@ class DPRadar:
             norms_ = cmx.Normalize(0, 1)
             m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
         r1 = data[np.logical_not(np.isnan(data))]
-        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
-        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
+        if draw_china:
+            m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
+            m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
+        else:
+            m.drawstates(linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cbar_cmap, norm=norms_, orientation='vertical', drawedges=False)
@@ -139,7 +142,7 @@ class DPRadar:
         ax2.text(0, 1.81, 'Max: {:.1f}'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
-        plt.savefig('{}{}_{:.1f}_{}_{}{}.png'.format(
-            folderpath, self.timestr, self.elev, self.drange, self.dtype.decode().upper(), suffix), bbox_inches='tight', pad_inches = 0)
+        plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
+            folderpath, self.name, self.timestr, self.elev, self.drange, self.dtype.decode().upper(), suffix), bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig

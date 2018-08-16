@@ -10,6 +10,7 @@ from scipy.interpolate import griddata
 import warnings
 import datetime
 from pathlib import Path
+import json
 from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
@@ -18,7 +19,8 @@ font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
 Rm1 = 8500
 deg2rad = np.pi / 180
-folderpath = 'D:\\'
+config = open('config.ini').read()
+folderpath = json.loads(config)['filepath']
 
 r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
 v_cmap = form_colormap('colormap\\radarnmc2.txt', sep=False)
@@ -211,7 +213,7 @@ class Radar():
     def _get_radar_info(self):
         r'''Get radar station info from the station database according to the station code.'''
         if self.code is None:
-            warnings.warn('Radar code undefined')
+            warnings.warn('Radar code undefined', UserWarning)
             return None
         try:
             pos = np.where(radarinfo[0] == self.code)[0][0]
@@ -228,7 +230,7 @@ class Radar():
         r'''Update radar station info automatically.'''
         info = self._get_radar_info()
         if info is None:
-            warnings.warn('Auto fill radar station info failed, please set code manually')
+            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
         else:
             self.set_station_position(info[1], info[2])
             self.set_station_name(info[0])
@@ -268,12 +270,12 @@ class Radar():
             self.elev = self.z[self.boundary[level]]
             print(self.elev)
             if level in [1, 3]:
-                warnings.warn('Use this elevation angle may yield unexpected result.')
+                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
         if length < drange:
-            warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.rraw.shape[1] * self.Rreso)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             dbz = (self.rraw - 2) / 2 - 32
@@ -301,14 +303,14 @@ class Radar():
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
         if level in [0, 2]:
-            warnings.warn('Use this elevation angle may yield unexpected result.')
+            warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
         self.elev = self.z[self.boundary[level]]
         print(self.elev)
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
         if length < drange:
-            warnings.warn('The input range exceeds maximum range, reset to the maximum range.')
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.dv == 2:
             v = (self.vraw - 2) / 2 - 63.5
