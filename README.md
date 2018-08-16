@@ -8,6 +8,8 @@ A python class which can be used to read CINRAD SA/SB/CB files and plot graphs i
 
 
 ### 用法
+如要自定义文件保存路径，打开config.ini，编辑键"filepath"对应的值即可
+
 ```
 from CINRAD_radar import *
 file = 'Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin'
