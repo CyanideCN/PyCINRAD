@@ -46,19 +46,21 @@ class DPRadar:
         return cut.T
 
     def _get_coordinate(self, distance, angle):
-        r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
         if self.stationlat is None or self.stationlon is None:
             raise RadarError('The position of radar should be assigned before projection')
         if self.elev is None:
             raise RadarError('The elevation angle is not defined')
         elev = self.elev
-        deltav = np.cos(angle) * distance * np.cos(np.deg2rad(elev))
-        deltah = np.sin(angle) * distance * np.cos(np.deg2rad(elev))
+        deltav = np.cos(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
+        deltah = np.sin(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
         deltalon = deltah / 111
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
+
+    def _height(self, distance, elevation):
+        return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1)
 
     def projection(self):
         header = self.f.sweeps[self.level][0][4][self.dtype][0]
@@ -68,22 +70,9 @@ class DPRadar:
         data_range = np.arange(gatenum) * self.reso + firstgate
         azi = np.array([ray[self.level].az_angle for ray in self.f.sweeps[self.level]]) * deg2rad
         datalength = int(self.drange / self.reso)
-        latx = list()
-        lonx = list()
-        height = list()
-        count = 0
-        while count < len(azi):
-            for i in data_range[:datalength]:
-                t = azi[count]
-                lons, lats = self._get_coordinate(i, t)
-                h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
-                latx.append(lats)
-                lonx.append(lons)
-                height.append(h)
-            count = count + 1
-        xshape, yshape = (720, len(latx) // 720)
-        x, y, z = np.array(lonx), np.array(latx), np.array(height)
-        return x.reshape(xshape, yshape), y.reshape(xshape, yshape), z.reshape(xshape, yshape)
+        lonx, latx = self._get_coordinate(data_range[:datalength], azi)
+        height = self._height(data_range[:datalength], self.elev) * np.ones(azi.shape[0])[:, np.newaxis]
+        return lonx, latx, height
 
     def draw_ppi(self, level, drange, dtype, draw_author=True, smooth=False, dpi=350, draw_china=True):
         suffix = ''
@@ -123,7 +112,9 @@ class DPRadar:
             m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
             m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         else:
+            m.resolution = 'f'
             m.drawstates(linewidth=0.8, color='white')
+            m.drawcoastlines(linewidth=0.8, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cbar_cmap, norm=norms_, orientation='vertical', drawedges=False)
