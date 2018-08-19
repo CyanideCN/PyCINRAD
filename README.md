@@ -11,7 +11,7 @@ A python class which can be used to read CINRAD SA/SB/CB files and plot graphs i
 如要自定义文件保存路径，打开config.ini，编辑键"filepath"对应的值即可
 
 ```
-from CINRAD_radar import *
+from CINRAD_radar import Radar
 file = 'Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin'
 radar = Radar(file)
 ```
@@ -57,7 +57,7 @@ radar.draw_ppi(0, 230, datatype='r')
 目前本程序支持绘制基本反射率和差分反射率，后续产品还在开发中。
 
 ```
-from DP import DPRadar
+from CINRAD_radar import DPRadar
 radar = DPRadar('Z_RADR_I_Z9210_20180401000152_O_DOR_SA_CAP.bin')
 radar.draw_ppi(0, 100, 'REF')
 ```
