@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
@@ -329,29 +329,13 @@ class Radar():
         if self.elev is None:
             raise RadarError('The elevation angle is not defined')
         elev = self.elev
-        deltav = np.cos(angle) * distance * np.cos(np.deg2rad(elev))
-        deltah = np.sin(angle) * distance * np.cos(np.deg2rad(elev))
+        deltav = np.cos(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
+        deltah = np.sin(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
         deltalat = deltav / 111
         actuallat = deltalat + self.stationlat
         deltalon = deltah / 111
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
-
-    def _polar2cart(self, distance, azimuth):
-        latx = list()
-        lonx = list()
-        height = list()
-        count = 0
-        while count < len(azimuth):
-            for i in distance:
-                t = azimuth[count]
-                lons, lats = self._get_coordinate(i, t)
-                h = i * np.sin(np.deg2rad(self.elev)) + i ** 2 / (2 * Rm1 ** 2)
-                latx.append(lats)
-                lonx.append(lons)
-                height.append(h)
-            count = count + 1
-        return np.array(lonx), np.array(latx), np.array(height)
 
     def projection(self, datatype):
         r'''Calculate the geographic coordinates of the requested data range.'''
@@ -377,11 +361,9 @@ class Radar():
             r = np.arange(1, 231, 1)
             xshape, yshape = (361, 230)
             theta = np.arange(0, 361, 1) * deg2rad
-        x, y, z = self._polar2cart(r, theta)
-        lons = x.reshape(xshape, yshape)
-        lats = y.reshape(xshape, yshape)
-        hgh = z.reshape(xshape, yshape) + self.radarheight / 1000
-        return lons, lats, hgh
+        lonx, latx = self._get_coordinate(r, theta)
+        height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
+        return lonx, latx, height
 
     def draw_ppi(self, level, drange, datatype, draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
