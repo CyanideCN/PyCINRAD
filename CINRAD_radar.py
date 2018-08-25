@@ -36,6 +36,7 @@ norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 
 def check_radartype(accept_list):
+    r'''Check if the decorated function is supported for this type of radar.'''
     def check(func):
         def inner(self, *args, **kwargs):
             if self.radartype not in accept_list:
@@ -62,16 +63,8 @@ class RadarError(Exception):
         return repr(self.dsc)
 
 class Radar:
+    r'''Class handling CINRAD radar reading and plotting.'''
     def __init__(self, filepath, radartype=None):
-        self.level = None
-        self.drange = None
-        self.stationlon = None
-        self.stationlat = None
-        self.radarheight = None
-        self.elev = None
-        self.name = None
-        self.code = None
-        self.azim = None
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
@@ -86,6 +79,8 @@ class Radar:
         elif filetype.endswith('A'):
             self.code = None
             radartype = 'SA'
+        else:
+            self.code = None
         self.radartype = radartype
         if radartype in ['SA', 'SB']:
             blocklength = 2432
@@ -643,6 +638,7 @@ class Radar:
 
 
 class DPRadar:
+    r'''Class handling dual-polarized radar reading and plotting.'''
     def __init__(self, filepath):
         from metpy.io.nexrad import Level2File
         self.f = Level2File(filepath)
@@ -652,10 +648,6 @@ class DPRadar:
         self.el = np.array([ray[0][0].el_angle for ray in self.f.sweeps])
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
-        self.level = None
-        self.drange = None
-        self.dtype = None
-        self.reso = None
 
     def get_data(self, level, drange, dtype):
         self.level = level
