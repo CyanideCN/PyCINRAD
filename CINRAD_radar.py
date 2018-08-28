@@ -68,6 +68,18 @@ class Radar:
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
+        if filetype.endswith('bz2'):
+            import bz2
+            f = bz2.open(filepath, 'rb')
+        else:
+            f = open(filepath, 'rb')
+        f.seek(100)
+        typestring = f.read(9)
+        det_sc = typestring == b'CINRAD/SC'
+        det_cd = typestring == b'CINRAD/CD'
+        f.seek(116)
+        det_cc = f.read(9) == b'CINRAD/CC'
+        f.seek(0)
         if filename.startswith('RADA'):
             spart = filename.split('-')
             self.code = spart[1]
@@ -81,6 +93,12 @@ class Radar:
             radartype = 'SA'
         else:
             self.code = None
+        if det_sc:
+            radartype = 'SC'
+        elif det_cd:
+            radartype = 'CD'
+        elif det_cc:
+            radartype = 'CC'
         self.radartype = radartype
         if radartype in ['SA', 'SB']:
             blocklength = 2432
@@ -92,11 +110,6 @@ class Radar:
             blocklength = 4000
         else:
             raise RadarError('Radar type should be specified')
-        if filetype.endswith('bz2'):
-            import bz2
-            f = bz2.open(filepath, 'rb')
-        else:
-            f = open(filepath, 'rb')
         vraw = list()
         rraw = list()
         copy = f.read(blocklength)
@@ -181,6 +194,7 @@ class Radar:
                                          day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
                                          minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
             f.seek(1024)
+            self.Rreso = 0.6
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
