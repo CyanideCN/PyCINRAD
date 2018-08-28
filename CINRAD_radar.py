@@ -234,7 +234,7 @@ class Radar:
             self.set_radar_height(info[4])
 
     def _height(self, distance, elevation):
-        return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
+        return distance * np.sin(np.deg2rad(elevation)) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -635,6 +635,30 @@ class Radar:
             range_.append(d_)
             height.append(h_)
         return np.concatenate(range_), np.concatenate(height), np.concatenate(ref)
+
+    @check_radartype([])
+    def _grid(self, resolution=(230, 230, 10)):
+        r'''Convert radar data to grid (test)'''
+        r, d, t = self._r_resample()
+        phi = self.elevanglelist[self.anglelist_r]
+        x = list()
+        y = list()
+        z = list()
+        for i in phi:
+            self.set_elevation_angle(i)
+            x_, y_, z_ = self.projection(datatype='et')
+            x.append(x_.reshape(361, 230))
+            y.append(y_.reshape(361, 230))
+            z.append(z_.reshape(361, 230))
+        lon = np.array(x)
+        lat = np.array(y)
+        height = np.array(z)
+        x_res, y_res, z_res = resolution
+        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
+                                            , 0:20:z_res * 1j]
+        grid_r = griddata((lon.flatten(), lat.flatten(), height.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
+                            , method = 'nearest')
+        return grid_r
 
 
 class DPRadar:
