@@ -68,6 +68,18 @@ class Radar:
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
+        if filetype.endswith('bz2'):
+            import bz2
+            f = bz2.open(filepath, 'rb')
+        else:
+            f = open(filepath, 'rb')
+        f.seek(100)
+        typestring = f.read(9)
+        det_sc = typestring == b'CINRAD/SC'
+        det_cd = typestring == b'CINRAD/CD'
+        f.seek(116)
+        det_cc = f.read(9) == b'CINRAD/CC'
+        f.seek(0)
         if filename.startswith('RADA'):
             spart = filename.split('-')
             self.code = spart[1]
@@ -81,6 +93,12 @@ class Radar:
             radartype = 'SA'
         else:
             self.code = None
+        if det_sc:
+            radartype = 'SC'
+        elif det_cd:
+            radartype = 'CD'
+        elif det_cc:
+            radartype = 'CC'
         self.radartype = radartype
         if radartype in ['SA', 'SB']:
             blocklength = 2432
@@ -92,11 +110,6 @@ class Radar:
             blocklength = 4000
         else:
             raise RadarError('Radar type should be specified')
-        if filetype.endswith('bz2'):
-            import bz2
-            f = bz2.open(filepath, 'rb')
-        else:
-            f = open(filepath, 'rb')
         vraw = list()
         rraw = list()
         copy = f.read(blocklength)
@@ -181,6 +194,7 @@ class Radar:
                                          day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
                                          minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
             f.seek(1024)
+            self.Rreso = 0.6
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
@@ -635,6 +649,30 @@ class Radar:
             range_.append(d_)
             height.append(h_)
         return np.concatenate(range_), np.concatenate(height), np.concatenate(ref)
+
+    @check_radartype([])
+    def _grid(self, resolution=(230, 230, 10)):
+        r'''Convert radar data to grid (test)'''
+        r, d, t = self._r_resample()
+        phi = self.elevanglelist[self.anglelist_r]
+        x = list()
+        y = list()
+        z = list()
+        for i in phi:
+            self.set_elevation_angle(i)
+            x_, y_, z_ = self.projection(datatype='et')
+            x.append(x_.reshape(361, 230))
+            y.append(y_.reshape(361, 230))
+            z.append(z_.reshape(361, 230))
+        lon = np.array(x)
+        lat = np.array(y)
+        height = np.array(z)
+        x_res, y_res, z_res = resolution
+        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
+                                            , 0:20:z_res * 1j]
+        grid_r = griddata((lon.flatten(), lat.flatten(), height.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
+                            , method = 'nearest')
+        return grid_r
 
 
 class DPRadar:
