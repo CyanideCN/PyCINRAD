@@ -234,7 +234,7 @@ class Radar:
             self.set_radar_height(info[4])
 
     def _height(self, distance, elevation):
-        return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
+        return distance * np.sin(np.deg2rad(elevation)) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
