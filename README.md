@@ -48,14 +48,14 @@ radar.draw_rhi(azimuth, drange)
 由于本程序没有完全支持CC雷达，绘制CC雷达反射率和速度的PPI的步骤稍有不同，需要先手动设置该仰角的度数再绘制。
 
 ```
-radar = Radar('2018072615.12V', radartype='CC')
+radar = Radar('2018072615.12V')
 radar.set_elevation_angle(0.5)
-radar.draw_ppi(0, 230, datatype='r')
+radar.draw_ppi(0, 230, 'r')
 ```
 
 #### 绘制CINRAD SD(S波段双偏振)雷达数据
 
-目前本程序支持绘制基本反射率和差分反射率，后续产品还在开发中。
+目前本程序已支持绘制除了差分相移之外的所有L2产品(REF, ZDR, KDP, CC)
 
 ```
 from CINRAD_radar import DPRadar
@@ -63,6 +63,5 @@ radar = DPRadar('Z_RADR_I_Z9210_20180401000152_O_DOR_SA_CAP.bin')
 radar.draw_ppi(0, 100, 'REF')
 ```
 
-REF为基本反射率，ZDR为差分反射率。
 
 PS:如在使用该脚本中有任何问题和建议，可以发邮件给我 274555447@qq.com
