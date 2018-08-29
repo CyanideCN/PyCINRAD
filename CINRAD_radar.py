@@ -29,6 +29,10 @@ rhi_cmap_smooth = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v'
 r_cmap_smooth = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
 zdr_cmap = form_colormap('colormap\\zdr_main.txt', sep=False)
 zdr_cbar = form_colormap('colormap\\zdr_cbar.txt', sep=True)
+kdp_cmap = form_colormap('colormap\\kdp_main.txt', sep=False)
+kdp_cbar = form_colormap('colormap\\kdp_cbar.txt', sep=True)
+cc_cmap = form_colormap('colormap\\cc_main.txt', sep=False)
+cc_cbar = form_colormap('colormap\\cc_cbar.txt', sep=True)
 et_cmap = form_colormap('colormap\\et.txt', sep=False)
 et_cbar = form_colormap('colormap\\etbar.txt', sep=True)
 radarinfo = np.load('RadarStation.npy')
@@ -696,16 +700,37 @@ class DPRadar:
         self.stationlat = self.f.sweeps[0][0][1].lat
 
     def get_data(self, level, drange, dtype):
+        if dtype.__class__ is str:
+            self.dtype = dtype.upper().encode()
+        elif dtype.__class__ is bytes:
+            self.dtype = dtype.upper()
+        if self.dtype in [b'REF', b'VEL', b'SW', b'ZDR', b'PHI', b'RHO']:
+            if self.dtype in [b'VEL', b'SW'] and level in [0, 2]:
+                level += 1
+                warnings.warn('Elevation angle {} does not contain {} data, automatically switch to level {}'.format(
+                    level - 1, self.dtype.decode(), level))
+            elif self.dtype in [b'ZDR', b'PHI', b'RHO'] and level in [1, 3]:
+                level -= 1
+                warnings.warn('Elevation angle {} does not contain {} data, automatically switch to level {}'.format(
+                    level + 1, self.dtype.decode(), level))
+            hdr = self.f.sweeps[level][0][4][self.dtype][0]
+            self.reso = hdr.gate_width
+            raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[level]])
+        elif self.dtype == b'KDP':
+            phi = np.array([ray[4][b'PHI'][1] for ray in self.f.sweeps[level]])
+            header = self.f.sweeps[0][0][4][b'PHI'][0]
+            self.reso = header.gate_width
+            kdp = list()
+            for i in phi:
+                i_ = np.append(i[1:], i[-1])
+                kdp.append((i_ - i) / (self.reso * 2))
+            raw = np.concatenate(kdp).reshape(phi.shape)
+        else:
+            raise RadarError('Unknown data type {}'.format(self.dtype.decode()))
+        cut = raw.T[:int(drange / self.reso)]
         self.level = level
         self.drange = drange
-        if dtype.__class__ is str:
-            self.dtype = dtype.encode()
-        elif dtype.__class__ is bytes:
-            self.dtype = dtype
         self.elev = self.el[level]
-        hdr = self.f.sweeps[level][0][4][self.dtype][0]
-        raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[level]])
-        cut = raw.T[:int(drange / hdr.gate_width)]
         return cut.T
 
     def _get_coordinate(self, distance, angle):
@@ -727,8 +752,11 @@ class DPRadar:
         return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1)
 
     def projection(self):
-        header = self.f.sweeps[self.level][0][4][self.dtype][0]
-        self.reso = header.gate_width
+        if self.dtype == b'KDP':
+            dt = b'PHI'
+        else:
+            dt = self.dtype
+        header = self.f.sweeps[self.level][0][4][dt][0]
         gatenum = header.num_gates
         firstgate = header.first_gate
         data_range = np.arange(gatenum) * self.reso + firstgate
@@ -759,18 +787,38 @@ class DPRadar:
             norms = cmx.Normalize(0, 75)
             norms_ = norms
             if smooth:
-                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 256, cmap=r_cmap_smooth, norm=norms, tri=True)
+                m.contourf(lons.flatten(), lats.flatten(), data.flatten(), 256, cmap=r_cmap_smooth
+                           , norm=norms, tri=True)
                 suffix = '_smooth'
             else:
                 data[data <= 2] = None
-                m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
         elif self.dtype.decode() == 'ZDR':
             typestring = 'Differential Ref.'
             cmaps = zdr_cmap
             cbar_cmap = zdr_cbar
             norms = cmx.Normalize(-4, 5)
             norms_ = cmx.Normalize(0, 1)
-            m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
+            tlabel = ['', '5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0.8', '0.5', '0.2', '0'
+                      , '-1', '-2', '-3', '-4']
+        elif self.dtype.decode() == 'KDP':
+            typestring = 'Specific Diff. Phase'
+            cmaps = kdp_cmap
+            cbar_cmap = kdp_cbar
+            norms = cmx.Normalize(-0.8, 20)
+            norms_ = cmx.Normalize(0, 1)
+            data[data < -10] = np.nan
+            data[data >50] = np.nan
+            tlabel = ['', '20', '7', '3.1', '2.4', '1.7', '1.1', '0.75', '0.5', '0.33', '0.22', '0.15'
+                      , '0.1', '-0.1', '-0.2', '-0.4', '-0.8']
+        elif self.dtype.decode() == 'RHO':
+            typestring = 'Correlation Coe.'
+            cmaps = cc_cmap
+            cbar_cmap = cc_cbar
+            norms = cmx.Normalize(0, 0.99)
+            norms_ = cmx.Normalize(0, 1)
+            tlabel = ['', '0.99', '0.98', '0.97', '0.96', '0.95', '0.94', '0.92', '0.9', '0.85', '0.8'
+                      , '0.7', '0.6', '0.5', '0.3', '0.1', '0']
+        m.pcolormesh(lons, lats, data, norm=norms, cmap=cmaps)
         r1 = data[np.logical_not(np.isnan(data))]
         if draw_china:
             m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
@@ -783,9 +831,9 @@ class DPRadar:
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cbar_cmap, norm=norms_, orientation='vertical', drawedges=False)
         cbar.ax.tick_params(labelsize=8)
-        if self.dtype.decode() == 'ZDR':
+        if self.dtype.decode() in ['ZDR', 'KDP', 'RHO']:
             cbar.set_ticks(np.linspace(0, 1, 17))
-            cbar.set_ticklabels(['', '5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0.8', '0.5', '0.2', '0', '-1', '-2', '-3', '-4'])
+            cbar.set_ticklabels(tlabel)
         ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
         ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(self.reso) , fontproperties=font2)
@@ -798,6 +846,7 @@ class DPRadar:
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
-            folderpath, self.name, self.timestr, self.elev, self.drange, self.dtype.decode().upper(), suffix), bbox_inches='tight', pad_inches = 0)
+            folderpath, self.name, self.timestr, self.elev, self.drange, self.dtype.decode().upper(), suffix)
+                    , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
