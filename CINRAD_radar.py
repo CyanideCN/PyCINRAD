@@ -705,11 +705,7 @@ class DPRadar:
         elif dtype.__class__ is bytes:
             self.dtype = dtype.upper()
         if self.dtype in [b'REF', b'VEL', b'SW', b'ZDR', b'PHI', b'RHO']:
-            if self.dtype in [b'VEL', b'SW'] and level in [0, 2]:
-                level += 1
-                warnings.warn('Elevation angle {} does not contain {} data, automatically switch to level {}'.format(
-                    level - 1, self.dtype.decode(), level))
-            elif self.dtype in [b'ZDR', b'PHI', b'RHO'] and level in [1, 3]:
+            if self.dtype in [b'ZDR', b'PHI', b'RHO'] and level in [1, 3]:
                 level -= 1
                 warnings.warn('Elevation angle {} does not contain {} data, automatically switch to level {}'.format(
                     level + 1, self.dtype.decode(), level))
