@@ -51,7 +51,7 @@ def find_intersection(line1, line2):
     k2 = line2[0]
     b2 = line2[1]
     if k1 == k2:
-        raise ValueError('No intersection exist')
+        raise ValueError('No intersection')
     x = (b2 - b1) / (k1 - k2)
     y = k1 * x + b1
     return (x, y)
@@ -109,7 +109,7 @@ class Radar:
         elif radartype in ['SC', 'CD']:
             blocklength = 4000
         else:
-            raise RadarError('Radar type should be specified')
+            raise RadarError('Unknown radar type')
         vraw = list()
         rraw = list()
         copy = f.read(blocklength)
@@ -310,28 +310,35 @@ class Radar:
             pass
         return r1.T
 
-    @check_radartype(['SA', 'SB', 'CB'])
+    @check_radartype(['SA', 'SB', 'CB', 'CC'])
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
-        if level in [0, 2]:
-            warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-        self.elev = self.z[self.boundary[level]]
-        print(self.elev)
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            if level in [0, 2]:
+                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
+            self.elev = self.z[self.boundary[level]]
+            print(self.elev)
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.vraw.shape[1] * self.Vreso)
-        if self.dv == 2:
-            v = (self.vraw - 2) / 2 - 63.5
-        elif self.dv == 4:
-            v = (self.vraw - 2) - 127
-        v = v[self.boundary[level]:self.boundary[level + 1]]
-        v1 = v.transpose()[:int(drange / self.Vreso)]
-        v1[v1 == -64.5] = np.nan
-        rf = np.ma.array(v1, mask=(v1 != -64))
-        return v1.transpose(), rf.transpose()
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            if self.dv == 2:
+                v = (self.vraw - 2) / 2 - 63.5
+            elif self.dv == 4:
+                v = (self.vraw - 2) - 127
+            v = v[self.boundary[level]:self.boundary[level + 1]]
+            v1 = v.transpose()[:int(drange / self.Vreso)]
+            v1[v1 == -64.5] = np.nan
+            rf = np.ma.array(v1, mask=(v1 != -64))
+            return v1.T, rf.T
+        elif self.radartype == 'CC':
+            v = self.vraw / 10
+            v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
+            v1[v1 == -3276.8] = np.nan
+            return v1.T, None
 
     def _get_coordinate(self, distance, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
@@ -416,7 +423,8 @@ class Radar:
             reso = self.Vreso
             m.pcolormesh(lons, lats, data, cmap=v_cmap, norm=norm2)
             rfmap = cmx.ListedColormap('#660066', '#FFFFFF')
-            m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
+            if rf is not None:
+                m.pcolormesh(lons, lats, rf, cmap=rfmap, norm=cmx.Normalize(-1, 0))
         elif datatype == 'et':
             typestring = 'Echo Tops'
             cmaps = et_cbar
@@ -570,7 +578,7 @@ class Radar:
                     et.append(w1 * h2 + w2 * h1)
         return np.array(et).reshape(361, 230)
 
-    @check_radartype(['SA'])
+    @check_radartype([])
     def cross_section(self, startpos, endpos):
         s_dis = startpos[0]
         s_ang = startpos[1]
