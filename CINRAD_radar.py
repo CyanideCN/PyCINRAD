@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+#Author: Du puyuan
+
+from form_colormap import form_colormap
+
+import warnings
+import datetime
+from pathlib import Path
+import json
+
 import numpy as np
 import matplotlib as mpl
 #mpl.use('Agg')
@@ -7,11 +16,6 @@ import matplotlib.colors as cmx
 from mpl_toolkits.basemap import Basemap
 from matplotlib.font_manager import FontProperties
 from scipy.interpolate import griddata
-import warnings
-import datetime
-from pathlib import Path
-import json
-from form_colormap import form_colormap
 
 mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
@@ -22,11 +26,11 @@ deg2rad = np.pi / 180
 config = open('config.ini').read()
 folderpath = json.loads(config)['filepath']
 
-r_cmap = form_colormap('colormap\\radarnmc.txt', sep=True)
-v_cmap = form_colormap('colormap\\radarnmc2.txt', sep=False)
-vel_cbar = form_colormap('colormap\\radarnmc2a.txt', sep=True)
-rhi_cmap_smooth = form_colormap('colormap\\radarnmc.txt', sep=False, spacing='v')
-r_cmap_smooth = form_colormap('colormap\\radarnmca.txt', sep=False, spacing='v')
+r_cmap = form_colormap('colormap\\r_main.txt', sep=True)
+v_cmap = form_colormap('colormap\\v_main.txt', sep=False)
+vel_cbar = form_colormap('colormap\\v_cbar.txt', sep=True)
+rhi_cmap_smooth = form_colormap('colormap\\r_main.txt', sep=False, spacing='v')
+r_cmap_smooth = form_colormap('colormap\\r_smooth.txt', sep=False, spacing='v')
 zdr_cmap = form_colormap('colormap\\zdr_main.txt', sep=False)
 zdr_cbar = form_colormap('colormap\\zdr_cbar.txt', sep=True)
 kdp_cmap = form_colormap('colormap\\kdp_main.txt', sep=False)
@@ -48,17 +52,6 @@ def check_radartype(accept_list):
             return func(self, *args, **kwargs)
         return inner
     return check
-
-def find_intersection(line1, line2):
-    k1 = line1[0]
-    b1 = line1[1]
-    k2 = line2[0]
-    b2 = line2[1]
-    if k1 == k2:
-        raise ValueError('No intersection')
-    x = (b2 - b1) / (k1 - k2)
-    y = k1 * x + b1
-    return (x, y)
 
 class RadarError(Exception):
     def __init__(self, description):
@@ -396,7 +389,7 @@ class Radar:
         elif datatype == 'v':
             data, rf = self.velocity(level, drange)
         elif datatype == 'et':
-            data = self.echo_top()
+            data = self.echo_top(drange)
             self.set_elevation_angle(0)
         elif datatype == 'cr':
             lons, lats, data = self.composite_reflectivity()
@@ -530,24 +523,24 @@ class Radar:
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
 
-    def _r_resample(self):
-        Rrange = np.arange(1, 231, 1)
+    def _r_resample(self, datarange=230):
+        Rrange = np.arange(1, datarange + 1, 1)
         Trange = np.arange(0, 361, 1)
         dist, theta = np.meshgrid(Rrange, Trange)
         r_resampled = list()
         for i in self.anglelist_r:
-            r = self.reflectivity(i, 230)
+            r = self.reflectivity(i, datarange)
             azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
             dist_, theta_ = np.meshgrid(Rrange, azimuth)
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
         r_res = np.concatenate(r_resampled)
-        return r_res.reshape(r_res.shape[0] // 361, 361, 230), dist, theta
+        return r_res.reshape(r_res.shape[0] // 361, 361, datarange), dist, theta
 
     @check_radartype(['SA', 'SB'])
-    def echo_top(self, threshold=18):
+    def echo_top(self, datarange, threshold=18):
         '''Calculate max height of echo data'''
-        data = self._r_resample()
+        data = self._r_resample(datarange=datarange)
         r = np.ma.array(data[0], mask=(data[0] > threshold))
         elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
         h_ = list()
@@ -627,6 +620,7 @@ class Radar:
         from metpy.interpolate import cross_section
 
     def _grid_2d(self, resolution=(230, 230)):
+        r'''Interpolate points in same elevation angle into regular 2-d grid'''
         r = self._r_resample()[0]
         phi = self.elevanglelist[self.anglelist_r]
         x = list()
@@ -653,6 +647,8 @@ class Radar:
 
     @check_radartype(['SA'])
     def composite_reflectivity(self):
+        r'''Find max ref value in single coordinate and mask data outside
+        obervation range'''
         lon, lat, r_raw = self._grid_2d()
         r_max = np.max(r_raw, axis=0)
         xdim, ydim = r_max.shape
@@ -721,7 +717,7 @@ class DPRadar:
 
     @staticmethod
     def _height(distance, elevation):
-        return distance * np.sin(elevation) + distance ** 2 / (2 * Rm1)
+        return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * Rm1)
 
     def projection(self):
         if self.dtype == b'KDP':
