@@ -360,21 +360,18 @@ class Radar:
             length = 512
         if datatype == 'r':
             r = np.arange(self.Rreso, int(self.drange) + self.Rreso, self.Rreso)
-            xshape, yshape = (length, int(self.drange / self.Rreso))
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, int(self.drange) + self.Vreso, self.Vreso)
-            xshape, yshape = (length, int(self.drange / self.Vreso))
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
             r = np.arange(1, 231, 1)
-            xshape, yshape = (361, 230)
             theta = np.arange(0, 361, 1) * deg2rad
         lonx, latx = self._get_coordinate(r, theta)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
@@ -512,7 +509,7 @@ class Radar:
                                , height=height, interpolation=interpolation)
         rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
         plt.style.use('dark_background')
-        fig = plt.figure(figsize=(10, 4), dpi=200)
+        plt.figure(figsize=(10, 4), dpi=200)
         plt.contourf(xc, yc, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1, corner_mask=False)
         plt.ylim(0, height)
         plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {}.{}.{} {}:{} Max: {}dbz'.format(
@@ -524,17 +521,18 @@ class Radar:
                     , bbox_inches='tight')
 
     def _r_resample(self, datarange=230):
-        Rrange = np.arange(1, datarange + 1, 1)
-        Trange = np.arange(0, 361, 1)
-        dist, theta = np.meshgrid(Rrange, Trange)
-        r_resampled = list()
-        for i in self.anglelist_r:
-            r = self.reflectivity(i, datarange)
-            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
-            dist_, theta_ = np.meshgrid(Rrange, azimuth)
-            r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
-            r_resampled.append(r_)
-        r_res = np.concatenate(r_resampled)
+        if self.radartype in ['SA', 'SB']:
+            Rrange = np.arange(1, datarange + 1, 1)
+            Trange = np.arange(0, 361, 1)
+            dist, theta = np.meshgrid(Rrange, Trange)
+            r_resampled = list()
+            for i in self.anglelist_r:
+                r = self.reflectivity(i, datarange)
+                azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
+                dist_, theta_ = np.meshgrid(Rrange, azimuth)
+                r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
+                r_resampled.append(r_)
+            r_res = np.concatenate(r_resampled)
         return r_res.reshape(r_res.shape[0] // 361, 361, datarange), dist, theta
 
     @check_radartype(['SA', 'SB'])
@@ -616,9 +614,6 @@ class Radar:
         data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
         return data
 
-    def cross_section(self):
-        from metpy.interpolate import cross_section
-
     def _grid_2d(self, resolution=(230, 230)):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         r = self._r_resample()[0]
@@ -636,7 +631,6 @@ class Radar:
         t_x = np.linspace(lon.min(), lon.max(), x_res)
         t_y = np.linspace(lat.min(), lat.max(), y_res)
         x_, y_ = np.meshgrid(t_x, t_y)
-        target = np.meshgrid(t_x, t_y)
         fin = list()
         count = 0
         while count < r.shape[0]:
@@ -651,8 +645,8 @@ class Radar:
         obervation range'''
         lon, lat, r_raw = self._grid_2d()
         r_max = np.max(r_raw, axis=0)
-        xdim, ydim = r_max.shape
-        xdis, ydis = 230 / xdim, 230 / ydim
+        xdim = r_max.shape[0]
+        xdis = 230 / xdim
         xcoor = np.arange(-229, 230, xdis * 2)
         x, y = np.meshgrid(xcoor, xcoor)
         dist = np.sqrt(np.abs(x**2 + y**2))
