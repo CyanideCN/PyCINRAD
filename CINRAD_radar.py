@@ -390,6 +390,7 @@ class Radar:
     def draw_ppi(self, level, drange, datatype, draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
+        calc = True
         if datatype == 'r':
             data = self.reflectivity(level, drange)
         elif datatype == 'v':
@@ -397,8 +398,12 @@ class Radar:
         elif datatype == 'et':
             data = self.echo_top()
             self.set_elevation_angle(0)
+        elif datatype == 'cr':
+            lons, lats, data = self.composite_reflectivity()
+            calc = False
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        lons, lats, hgh = self.projection(datatype)
+        if calc:
+            lons, lats, hgh = self.projection(datatype)
         lonm, latm = np.max(lons), np.max(lats)
         x_delta = lonm - self.stationlon
         y_delta = latm - self.stationlat
@@ -436,6 +441,15 @@ class Radar:
             reso = self.Rreso
             data[data > 25] = 0
             m.pcolormesh(lons, lats, data, cmap=et_cmap, norm=cmx.Normalize(0, 21))
+        elif datatype == 'cr':
+            typestring = 'Composite Ref.'
+            cmaps = r_cmap
+            norms = norm1
+            reso = 1
+            self.set_elevation_angle(0)
+            data[data <= 2] = None
+            r1 = data[np.logical_not(np.isnan(data))]
+            m.contourf(lons, lats, data, 128, norm=norms, cmap=cmaps)
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
         plt.axis('off')
@@ -456,7 +470,7 @@ class Radar:
         ax2.text(0, 1.93, 'RDA: ' + self.name, fontproperties=font2)
         ax2.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
         ax2.text(0, 1.85, 'Elev: {:.2f}deg'.format(self.elev), fontproperties=font2)
-        if datatype == 'r':
+        if datatype in ['r', 'cr']:
             ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         elif datatype == 'et':
             ax2.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(data)), fontproperties=font2)
@@ -582,90 +596,11 @@ class Radar:
                     et.append(w1 * h2 + w2 * h1)
         return np.array(et).reshape(361, 230)
 
-    @check_radartype([])
-    def cross_section(self, startpos, endpos):
-        s_dis = startpos[0]
-        s_ang = startpos[1]
-        e_dis = endpos[0]
-        e_ang = endpos[1]
-        raw_delta = abs(s_ang - e_ang)
-        if raw_delta > 180:
-            delta_ang = 360 - raw_delta
-        else:
-            delta_ang = raw_delta
-        #resolve polar coordinate into x and y axes
-        s_x = s_dis * np.sin(s_ang * deg2rad)
-        s_y = s_dis * np.cos(s_ang * deg2rad)
-        e_x = e_dis * np.sin(e_ang * deg2rad)
-        e_y = e_dis * np.cos(e_ang * deg2rad)
-        #solve the equation for line
-        line_grad = (e_y - s_y) / (e_x - s_x)
-        line_intcpt = e_y - line_grad * e_x
-        ref = list()
-        range_ = list()
-        height = list()
-        #iterate for all elevation angles
-        for ag in self.anglelist_r:
-            self.set_level(ag)
-            s_ang_pos = self._find_azimuth_position(s_ang)
-            e_ang_pos = self._find_azimuth_position(e_ang)
-            if s_ang < e_ang:
-                if e_ang_pos < s_ang_pos:
-                    dir_array = np.concatenate((self.azim[s_ang_pos:], self.azim[:e_ang_pos]))
-                else:
-                    dir_array = self.azim[s_ang_pos:e_ang_pos]
-            else:
-                if e_ang_pos > s_ang_pos:
-                    dir_array = np.concatenate((self.azim[e_ang_pos:], self.azim[:s_ang_pos]))
-                else:
-                    dir_array = self.azim[s_ang_pos:e_ang_pos]
-            normalize = list()
-            #calculate the angle the line makes with x-axis
-            for i in dir_array:
-                if i <= np.pi:
-                    normalize.append(np.pi / 2 - i)
-                elif i > np.pi and i <= np.pi * 1.5:
-                    normalize.append(i - np.pi)
-                else:
-                    normalize.append(2 * np.pi - i)
-            #convert angle to the gradient of line
-            line_grads = np.tan(normalize)
-            #find intersections of the line of cross-section and radar beam
-            point_x = list()
-            point_y = list()
-            for i in line_grads:
-                coor = find_intersection((line_grad, line_intcpt), (i, 0))
-                point_x.append(coor[0])
-                point_y.append(coor[1])
-            x = np.array(point_x)
-            y = np.array(point_y)
-            #convert cartesian coordinates to polar coordinates
-            distance = np.sqrt(x ** 2 + y ** 2)
-            angle = np.arctan(x / y)
-            count = 0
-            r = self.reflectivity(ag, 230)
-            r_ = list()
-            d_ = list()
-            h_ = list()
-            theta = self.elev * deg2rad
-            #find data points according to calculated polar coordinates, then calculate horizontal
-            #distance and height
-            while count < len(distance):
-                pos1 = int(distance[count] / self.Rreso)
-                pos2 = self._find_azimuth_position(dir_array[count] / deg2rad)
-                r_.append(r[pos2][pos1])
-                d_.append(distance[count] * np.cos(theta))
-                h_.append(distance[count] * np.sin(theta))
-                count += 1
-            ref.append(r_)
-            range_.append(d_)
-            height.append(h_)
-        return np.concatenate(range_), np.concatenate(height), np.concatenate(ref)
-
-    @check_radartype([])
-    def _grid(self, resolution=(230, 230, 10)):
-        r'''Convert radar data to grid (test)'''
-        r, d, t = self._r_resample()
+    @check_radartype(['SA'])
+    def _grid_3d(self, resolution=(100, 100, 20)):
+        r'''Convert radar data to 3d grid (test)'''
+        from xarray import DataArray
+        r = self._r_resample()[0]
         phi = self.elevanglelist[self.anglelist_r]
         x = list()
         y = list()
@@ -682,9 +617,50 @@ class Radar:
         x_res, y_res, z_res = resolution
         grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
                                             , 0:20:z_res * 1j]
-        grid_r = griddata((lon.flatten(), lat.flatten(), height.flatten()), r.flatten(), (grid_x, grid_y, grid_z)
+        height_mask = np.ma.array(height, mask=(height<=20)).mask
+        grid_r = griddata((lon[height_mask], lat[height_mask], height[height_mask]), r[height_mask], (grid_x, grid_y, grid_z)
                             , method = 'nearest')
-        return grid_r
+        data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
+        return data
+
+    def cross_section(self):
+        from metpy.interpolate import cross_section
+
+    def _grid_2d(self, resolution=(230, 230)):
+        r = self._r_resample()[0]
+        phi = self.elevanglelist[self.anglelist_r]
+        x = list()
+        y = list()
+        for i in phi:
+            self.set_elevation_angle(i)
+            x_, y_, z_ = self.projection(datatype='et')
+            x.append(x_.reshape(361, 230))
+            y.append(y_.reshape(361, 230))
+        lon = np.array(x)
+        lat = np.array(y)
+        x_res, y_res = resolution
+        t_x = np.linspace(lon.min(), lon.max(), x_res)
+        t_y = np.linspace(lat.min(), lat.max(), y_res)
+        x_, y_ = np.meshgrid(t_x, t_y)
+        target = np.meshgrid(t_x, t_y)
+        fin = list()
+        count = 0
+        while count < r.shape[0]:
+            grid_r = griddata((lon[count].flatten(), lat[count].flatten()), r[count].flatten(), (x_, y_), method='nearest')
+            fin.append(grid_r)
+            count += 1
+        return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
+
+    @check_radartype(['SA'])
+    def composite_reflectivity(self):
+        lon, lat, r_raw = self._grid_2d()
+        r_max = np.max(r_raw, axis=0)
+        xdim, ydim = r_max.shape
+        xdis, ydis = 230 / xdim, 230 / ydim
+        xcoor = np.arange(-229, 230, xdis * 2)
+        x, y = np.meshgrid(xcoor, xcoor)
+        dist = np.sqrt(np.abs(x**2 + y**2))
+        return lon, lat, np.ma.array(r_max, mask=(dist>230))
 
 
 class DPRadar:
