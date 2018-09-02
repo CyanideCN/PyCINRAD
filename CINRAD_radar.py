@@ -339,8 +339,6 @@ class Radar:
 
     def _get_coordinate(self, distance, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
-        if self.stationlat is None or self.stationlon is None:
-            raise RadarError('The position of radar should be assigned before projection')
         if self.elev is None:
             raise RadarError('The elevation angle is not defined')
         elev = self.elev
@@ -372,7 +370,10 @@ class Radar:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
-            theta = np.arange(0, 361, 1) * deg2rad
+            if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+                theta = np.arange(0, 361, 1) * deg2rad
+            else:
+                theta = np.linspace(0, 360, 512) * deg2rad
         lonx, latx = self._get_coordinate(r, theta)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, height
@@ -389,7 +390,7 @@ class Radar:
             data = self.echo_top(drange)
             self.set_elevation_angle(0)
         elif datatype == 'cr':
-            lons, lats, data = self.composite_reflectivity()
+            lons, lats, data = self.composite_reflectivity(drange=drange)
             calc = False
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         if calc:
@@ -617,8 +618,16 @@ class Radar:
 
     def _grid_2d(self, resolution=(500, 500)):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
-        r = self._r_resample()[0]
-        phi = self.elevanglelist[self.anglelist_r]
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            r = self._r_resample()[0]
+            phi = self.elevanglelist[self.anglelist_r]
+        elif self.radartype == 'CC':
+            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            r = list()
+            for i in phin:
+                r.append(self.reflectivity(i, 150))
+            r = np.array(r)
+            phi = np.zeros(9)
         x = list()
         y = list()
         for i in phi:
@@ -640,18 +649,18 @@ class Radar:
             count += 1
         return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
 
-    @check_radartype(['SA', 'CA'])
-    def composite_reflectivity(self):
+    @check_radartype(['SA', 'CA', 'CB', 'CC'])
+    def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
         lon, lat, r_raw = self._grid_2d()
         r_max = np.max(r_raw, axis=0)
         xdim = r_max.shape[0]
-        xdis = 230 / xdim
-        xcoor = np.linspace(-230, 230, xdim)
+        xdis = drange / xdim
+        xcoor = np.linspace(-1 * drange, drange, xdim)
         x, y = np.meshgrid(xcoor, xcoor)
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
-        return lon, lat, np.ma.array(r_max, mask=(dist > 230))
+        return lon, lat, np.ma.array(r_max, mask=(dist > drange))
 
 
 class DPRadar:
