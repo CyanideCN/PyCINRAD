@@ -2,9 +2,9 @@
 CINRAD data reader.
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/07b8b5e7259f4cb0948f7cedc862b0e7)](https://www.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=CyanideCN/PyCINRAD&amp;utm_campaign=Badge_Grade)
 
-A python class which can be used to read CINRAD SA/SB/CB files and plot graphs including PPI and RHI.
+A python class which can be used to read CINRAD radar files and plot graphs including PPI and RHI.
 
-读取CINRAD雷达基数据的Python脚本，目前支持SA/SB/CB三种雷达数据格式（部分支持CC雷达和双偏振雷达），具体函数用法请看脚本注释。
+读取CINRAD雷达基数据的Python脚本，具体函数用法请看脚本注释。
 该脚本目前还在继续开发中，欢迎提Issue/发PR^_^
 
 
@@ -73,5 +73,9 @@ radar.draw_ppi(0, 100, 'REF')
 |组合反射率|√|√|√|×|
 |回波顶高|√|×|×|×|
 |双偏振要素|×|×|×|√|
+
+#### 后续开发
+
+目前CC雷达的数据读取并不完整，SC/CD雷达的数据也没有读取成功，说明文档里用C写的读取程序放在/dataformat文件夹下，欢迎继续开发。
 
 PS:如在使用该脚本中有任何问题和建议，可以发邮件给我 274555447@qq.com
