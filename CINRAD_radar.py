@@ -656,7 +656,6 @@ class Radar:
         lon, lat, r_raw = self._grid_2d()
         r_max = np.max(r_raw, axis=0)
         xdim = r_max.shape[0]
-        xdis = drange / xdim
         xcoor = np.linspace(-1 * drange, drange, xdim)
         x, y = np.meshgrid(xcoor, xcoor)
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
