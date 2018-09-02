@@ -1,6 +1,5 @@
 # PyCINRAD
 CINRAD data reader.
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/07b8b5e7259f4cb0948f7cedc862b0e7)](https://www.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=CyanideCN/PyCINRAD&amp;utm_campaign=Badge_Grade)
 
 A python class which can be used to read CINRAD radar files and plot graphs including PPI and RHI.
 
