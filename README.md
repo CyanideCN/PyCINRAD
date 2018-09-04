@@ -27,6 +27,11 @@ Auto fill radar station info failed, please set code manually
 radar.set_code('Z9576')
 ```
 
+同时，可以在读取之前声明雷达类型，传入的雷达类型为最高优先级（如果和检索结果有冲突将采用传入的雷达类型读取数据）。
+```
+radar = Radar(file, radar_type='SA')
+```
+
 #### 绘制PPI
 ```
 radar.draw_ppi(level, drange, 'r', smooth=True)
@@ -73,8 +78,5 @@ radar.draw_ppi(0, 100, 'REF')
 |回波顶高|√|×|×|×|×|
 |双偏振要素|×|×|×|√|×|
 
-#### 后续开发
-
-目前CC雷达的数据读取并不完整，SC/CD雷达的数据也没有读取成功，说明文档里用C写的读取程序放在/dataformat文件夹下，欢迎继续开发。
 
 PS:如在使用该脚本中有任何问题和建议，可以发邮件给我 274555447@qq.com
