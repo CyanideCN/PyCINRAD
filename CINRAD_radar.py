@@ -62,7 +62,7 @@ class RadarError(Exception):
 
 class Radar:
     r'''Class handling CINRAD radar reading and plotting.'''
-    def __init__(self, filepath, radartype=None):
+    def __init__(self, filepath, radar_type=None):
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
@@ -97,6 +97,8 @@ class Radar:
             radartype = 'CD'
         elif det_cc:
             radartype = 'CC'
+        if radar_type:
+            radartype = radar_type
         self.radartype = radartype
         if radartype in ['SA', 'SB']:
             blocklength = 2432
@@ -188,25 +190,26 @@ class Radar:
         elif radartype == 'SC':
             utc_offset = datetime.timedelta(hours=8)
             f.seek(853)
-            scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
-                                         day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
-                                         minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
+            try:
+                scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
+                                             day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
+                                             minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
+            except Exception:
+                pass
             f.seek(1024)
             self.Rreso = 0.3
             self.Vreso = 0.3
-            r = list()
-            v = list()
             elev = list()
             count = 0
             while count < 3240:
                 q = f.read(4000)
                 elev.append(np.fromstring(q[2:4], 'u2')[0])
                 x = np.fromstring(q[8:], 'u1').astype(float)
-                r.append(x[slice(None, None, 4)])
-                v.append(x[slice(1, None, 4)])
+                rraw.append(x[slice(None, None, 4)])
+                vraw.append(x[slice(1, None, 4)])
                 count += 1
-            self.rraw = np.concatenate(r).reshape(3240, 998)
-            self.vraw = np.concatenate(v).reshape(3240, 998)
+            self.rraw = np.concatenate(rraw).reshape(3240, 998)
+            self.vraw = np.concatenate(vraw).reshape(3240, 998)
             self.eleang = np.array(elev[slice(359, None, 360)]) * con2
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
