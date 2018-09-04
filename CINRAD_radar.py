@@ -21,6 +21,7 @@ mpl.rc('font', family='Arial')
 font = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\Dengl.ttf")
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 con = (180 / 4096) * 0.125
+con2 = 0.001824 # calculated manually
 Rm1 = 8500
 deg2rad = np.pi / 180
 config = open('config.ini').read()
@@ -184,14 +185,29 @@ class Radar:
             self.vraw = np.array(vraw)
             self.Rreso = 0.3
             self.Vreso = 0.3
-        elif radartype in ['SC', 'CD']:
+        elif radartype == 'SC':
             utc_offset = datetime.timedelta(hours=8)
             f.seek(853)
             scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
                                          day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
                                          minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
             f.seek(1024)
-            self.Rreso = 0.6
+            self.Rreso = 0.3
+            self.Vreso = 0.3
+            r = list()
+            v = list()
+            elev = list()
+            count = 0
+            while count < 3240:
+                q = f.read(4000)
+                elev.append(np.fromstring(q[2:4], 'u2')[0])
+                x = np.fromstring(q[8:], 'u1').astype(float)
+                r.append(x[slice(None, None, 4)])
+                v.append(x[slice(1, None, 4)])
+                count += 1
+            self.rraw = np.concatenate(r).reshape(3240, 998)
+            self.vraw = np.concatenate(v).reshape(3240, 998)
+            self.eleang = np.array(elev[slice(359, None, 360)]) * con2
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
@@ -271,7 +287,7 @@ class Radar:
         pos = np.where(self.azim == a_sorted[count])[0][0]
         return pos
 
-    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC'])
+    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -292,6 +308,10 @@ class Radar:
         elif self.radartype == 'CC':
             dbz = self.rraw / 10
             r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T
+        elif self.radartype == 'SC':
+            self.elev = self.eleang[level]
+            dbz = (self.rraw - 64) / 2
+            r1 = dbz[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
         r1[r1 < 0] = 0
         radialavr = list()
         for i in r1:
@@ -307,7 +327,7 @@ class Radar:
             pass
         return r1.T
 
-    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC'])
+    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -336,6 +356,12 @@ class Radar:
             v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
             v1[v1 == -3276.8] = np.nan
             return v1.T, None
+        elif self.radartype == 'SC':
+            self.elev = self.eleang[level]
+            v = (self.vraw - 128) / 2
+            v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
+            v1[v1 == -64] = np.nan
+            return v1.T, None
 
     def _get_coordinate(self, distance, angle):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
@@ -356,17 +382,23 @@ class Radar:
             length = self.boundary[self.level + 1] - self.boundary[self.level]
         elif self.radartype == 'CC':
             length = 512
+        elif self.radartype == 'SC':
+            length = 360
         if datatype == 'r':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
                 theta = np.linspace(0, 360, length) * deg2rad
+            elif self.radartype == 'SC':
+                theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype == 'CC':
+                theta = np.linspace(0, 360, length) * deg2rad
+            elif self.radartype == 'SC':
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
