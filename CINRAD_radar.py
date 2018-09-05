@@ -573,58 +573,6 @@ class Radar:
         return r_res.reshape(r_res.shape[0] // 361, 361, int(drange / self.Rreso)), dist, theta
 
     @check_radartype(['SA', 'SB'])
-    def _echo_top(self, drange, threshold=18):
-        '''Calculate max height of echo data'''
-        data = self._r_resample(drange=drange)
-        r = np.ma.array(data[0], mask=(data[0] > threshold))
-        elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
-        h_ = list()
-        for i in elev:
-            h = self._height(data[1], i / deg2rad)
-            h_.append(h)
-        hght = np.concatenate(h_).reshape(r.shape)
-        h_mask = hght * r.mask
-        et = list()
-        xshape, yshape = r[0].shape
-        for i in range(0, xshape):
-            for j in range(0, yshape):
-                vert_h = list()
-                vert_r = list()
-                vert_h_ = list()
-                for k in range(1, 10):
-                    #index from highest angle
-                    h_pt = h_mask[-1 * k][i][j]
-                    r_pt = data[0][-1 * k][i][j]
-                    h_pt_ = hght[-1 * k][i][j]
-                    vert_h.append(h_pt)
-                    vert_r.append(r_pt)
-                    vert_h_.append(h_pt_)
-                vertical = np.array(vert_h)
-                position = np.where(vertical > 0)[0]
-                try:
-                    pos = position[0]
-                except IndexError:#empty array
-                    et.append(0)
-                    continue
-                if pos == 0:
-                    height = vertical[pos]
-                    et.append(height)
-                else:
-                    try:
-                        elev[pos - 1]
-                    except IndexError:
-                        et.append(vertical[pos])
-                        continue
-                    z1 = vert_r[pos]
-                    z2 = vert_r[pos - 1]
-                    h1 = vertical[pos]
-                    h2 = vert_h_[pos - 1]
-                    w1 = (z1 - threshold) / (z1 - z2)
-                    w2 = 1 - w1
-                    #linear interpolation
-                    et.append(w1 * h2 + w2 * h1)
-        return np.array(et).reshape(xshape, yshape)
-
     def echo_top(self, drange, threshold=18.):
         import et_util
         data = self._r_resample(drange=drange)
