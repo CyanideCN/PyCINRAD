@@ -159,7 +159,6 @@ class Radar:
             self.z = np.array(eleang) * con
             self.aziangle = np.array(azimuthx) * con
             self.rad = self.aziangle * deg2rad
-            self.eleang = np.array(eleang)
             self.vraw = np.array(vraw)
             self.dv = veloreso[0]
             anglelist = np.arange(0, anglenum[0], 1)
@@ -190,12 +189,9 @@ class Radar:
         elif radartype == 'SC':
             utc_offset = datetime.timedelta(hours=8)
             f.seek(853)
-            try:
-                scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
-                                             day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
-                                             minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
-            except Exception:
-                pass
+            scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
+                                         day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
+                                         minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
             f.seek(1024)
             self.Rreso = 0.3
             self.Vreso = 0.3
@@ -210,7 +206,8 @@ class Radar:
                 count += 1
             self.rraw = np.concatenate(rraw).reshape(3240, 998)
             self.vraw = np.concatenate(vraw).reshape(3240, 998)
-            self.eleang = np.array(elev[slice(359, None, 360)]) * con2
+            self.elevanglelist = np.array(elev[slice(359, None, 360)]) * con2
+            self.aziangle = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
         
@@ -312,7 +309,7 @@ class Radar:
             dbz = self.rraw / 10
             r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T
         elif self.radartype == 'SC':
-            self.elev = self.eleang[level]
+            self.elev = self.elevanglelist[level]
             dbz = (self.rraw - 64) / 2
             r1 = dbz[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
         r1[r1 < 0] = 0
@@ -360,7 +357,7 @@ class Radar:
             v1[v1 == -3276.8] = np.nan
             return v1.T, None
         elif self.radartype == 'SC':
-            self.elev = self.eleang[level]
+            self.elev = self.elevanglelist[level]
             v = (self.vraw - 128) / 2
             v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
             v1[v1 == -64] = np.nan
@@ -407,8 +404,10 @@ class Radar:
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = np.arange(0, 361, 1) * deg2rad
-            else:
+            elif self.radartype == 'CC':
                 theta = np.linspace(0, 360, 512) * deg2rad
+            elif self.radartype == 'SC':
+                theta = np.linspace(0, 360, 360) * deg2rad
         lonx, latx = self._get_coordinate(r, theta)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, height
@@ -557,18 +556,19 @@ class Radar:
                     , bbox_inches='tight')
 
     def _r_resample(self, datarange=230):
+        Rrange = np.arange(self.Rreso, datarange + self.Rreso, self.Rreso)
+        Trange = np.arange(0, 361, 1)
+        dist, theta = np.meshgrid(Rrange, Trange)
+        r_resampled = list()
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            Rrange = np.arange(self.Rreso, datarange + self.Rreso, self.Rreso)
-            Trange = np.arange(0, 361, 1)
-            dist, theta = np.meshgrid(Rrange, Trange)
-            r_resampled = list()
-            for i in self.anglelist_r:
-                r = self.reflectivity(i, datarange)
-                azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
-                dist_, theta_ = np.meshgrid(Rrange, azimuth)
-                r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
-                r_resampled.append(r_)
-            r_res = np.concatenate(r_resampled)
+            anglelist = self.anglelist_r
+        for i in anglelist:
+            r = self.reflectivity(i, datarange)
+            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
+            dist_, theta_ = np.meshgrid(Rrange, azimuth)
+            r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
+            r_resampled.append(r_)
+        r_res = np.concatenate(r_resampled)
         return r_res.reshape(r_res.shape[0] // 361, 361, int(datarange / self.Rreso)), dist, theta
 
     @check_radartype(['SA', 'SB'])
@@ -651,16 +651,23 @@ class Radar:
         data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
         return data
 
-    def _grid_2d(self, resolution=(500, 500)):
+    def _grid_2d(self, drange, resolution=(500, 500)):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            r = self._r_resample()[0]
+            r = self._r_resample(datarange=drange)[0]
             phi = self.elevanglelist[self.anglelist_r]
         elif self.radartype == 'CC':
             phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             r = list()
             for i in phin:
-                r.append(self.reflectivity(i, 150))
+                r.append(self.reflectivity(i, drange))
+            r = np.array(r)
+            phi = np.zeros(9)
+        elif self.radartype == 'SC':
+            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            r = list()
+            for i in phin:
+                r.append(self.reflectivity(i, drange))
             r = np.array(r)
             phi = np.zeros(9)
         x = list()
@@ -684,11 +691,11 @@ class Radar:
             count += 1
         return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
 
-    @check_radartype(['SA', 'CA', 'CB', 'CC'])
+    @check_radartype(['SA', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
-        lon, lat, r_raw = self._grid_2d()
+        lon, lat, r_raw = self._grid_2d(drange=drange)
         r_max = np.max(r_raw, axis=0)
         xdim = r_max.shape[0]
         xcoor = np.linspace(-1 * drange, drange, xdim)
