@@ -261,7 +261,7 @@ class Radar:
             self.set_radar_height(info[4])
 
     def _height(self, distance, elevation):
-        return distance * np.sin(np.deg2rad(elevation)) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
+        return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
 
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -556,31 +556,31 @@ class Radar:
         plt.savefig('{}{}_{}_RHI_{}_{}.png'.format(folderpath, self.code, self.timestr, self.drange, azimuth)
                     , bbox_inches='tight')
 
-    def _r_resample(self, datarange=230):
-        Rrange = np.arange(self.Rreso, datarange + self.Rreso, self.Rreso)
+    def _r_resample(self, drange=230):
+        Rrange = np.arange(self.Rreso, drange + self.Rreso, self.Rreso)
         Trange = np.arange(0, 361, 1)
         dist, theta = np.meshgrid(Rrange, Trange)
         r_resampled = list()
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             anglelist = self.anglelist_r
         for i in anglelist:
-            r = self.reflectivity(i, datarange)
+            r = self.reflectivity(i, drange)
             azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
             dist_, theta_ = np.meshgrid(Rrange, azimuth)
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
         r_res = np.concatenate(r_resampled)
-        return r_res.reshape(r_res.shape[0] // 361, 361, int(datarange / self.Rreso)), dist, theta
+        return r_res.reshape(r_res.shape[0] // 361, 361, int(drange / self.Rreso)), dist, theta
 
     @check_radartype(['SA', 'SB'])
-    def echo_top(self, datarange, threshold=18):
+    def _echo_top(self, drange, threshold=18):
         '''Calculate max height of echo data'''
-        data = self._r_resample(datarange=datarange)
+        data = self._r_resample(drange=drange)
         r = np.ma.array(data[0], mask=(data[0] > threshold))
         elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
         h_ = list()
         for i in elev:
-            h = self._height(data[1], i)
+            h = self._height(data[1], i / deg2rad)
             h_.append(h)
         hght = np.concatenate(h_).reshape(r.shape)
         h_mask = hght * r.mask
@@ -625,6 +625,13 @@ class Radar:
                     et.append(w1 * h2 + w2 * h1)
         return np.array(et).reshape(xshape, yshape)
 
+    def echo_top(self, drange, threshold=18.):
+        import et_util
+        data = self._r_resample(drange=drange)
+        elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
+        et = et_util.echo_top(data, elev, self.radarheight, threshold)
+        return et
+
     @check_radartype(['SA'])
     def _grid_3d(self, resolution=(100, 100, 20)):
         r'''Convert radar data to 3d grid (test)'''
@@ -655,7 +662,7 @@ class Radar:
     def _grid_2d(self, drange, resolution=(500, 500)):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            r = self._r_resample(datarange=drange)[0]
+            r = self._r_resample(drange=drange)[0]
             phi = self.elevanglelist[self.anglelist_r]
         elif self.radartype == 'CC':
             phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
