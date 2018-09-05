@@ -475,8 +475,9 @@ class Radar:
             data[data <= 2] = None
             r1 = data[np.logical_not(np.isnan(data))]
             m.contourf(lons, lats, data, 128, norm=norms, cmap=cmaps)
-        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.5, color='grey')
-        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=0.8, color='white')
+        m.readshapefile('shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
+        m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
+        m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
         plt.axis('off')
         ax2 = fig.add_axes([0.92, 0.12, 0.04, 0.35])
         cbar = mpl.colorbar.ColorbarBase(ax2, cmap=cmaps, norm=norms, orientation='vertical', drawedges=False)
