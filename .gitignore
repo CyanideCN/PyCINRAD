@@ -6,3 +6,4 @@
 /setup.py
 *.pyc
 /.vs/*
+*.npy
