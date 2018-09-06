@@ -2,6 +2,7 @@
 #Author: Du puyuan
 
 from form_colormap import form_colormap
+import calc
 
 import warnings
 import datetime
@@ -210,7 +211,7 @@ class Radar:
             self.aziangle = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self._update_radar_info()
-        
+
     def set_station_position(self, stationlon, stationlat):
         self.stationlon = stationlon
         self.stationlat = stationlat
@@ -574,10 +575,9 @@ class Radar:
 
     @check_radartype(['SA', 'SB'])
     def echo_top(self, drange, threshold=18.):
-        import et_util
         data = self._r_resample(drange=drange)
         elev = np.delete(self.elevanglelist * deg2rad, [1, 3]).tolist()
-        et = et_util.echo_top(data, elev, self.radarheight, threshold)
+        et = calc.echo_top(data, elev, self.radarheight, threshold)
         return et
 
     @check_radartype(['SA'])
