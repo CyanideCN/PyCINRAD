@@ -607,19 +607,12 @@ class Radar:
         data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
         return data
 
-    def _grid_2d(self, drange, resolution=(500, 500)):
+    def _grid_2d(self, drange, resolution=500, grid='e'):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             r = self._r_resample(drange=drange)[0]
             phi = self.elevanglelist[self.anglelist_r]
-        elif self.radartype == 'CC':
-            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            r = list()
-            for i in phin:
-                r.append(self.reflectivity(i, drange))
-            r = np.array(r)
-            phi = np.zeros(9)
-        elif self.radartype == 'SC':
+        elif self.radartype in ['CC', 'SC']:
             phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             r = list()
             for i in phin:
@@ -635,10 +628,15 @@ class Radar:
             y.append(y_)
         lon = np.array(x)
         lat = np.array(y)
-        x_res, y_res = resolution
-        t_x = np.linspace(lon.min(), lon.max(), x_res)
-        t_y = np.linspace(lat.min(), lat.max(), y_res)
-        x_, y_ = np.meshgrid(t_x, t_y)
+        if grid == 'e':
+            x_res = y_res = resolution
+            t_x = np.linspace(lon.min(), lon.max(), x_res)
+            t_y = np.linspace(lat.min(), lat.max(), y_res)
+            x_, y_ = np.meshgrid(t_x, t_y)
+        elif grid == 'geo':
+            t_x = np.arange(lon.min(), lon.max(), 0.01)
+            t_y = np.arange(lat.min(), lat.max(), 0.01)
+            x_, y_ = np.meshgrid(t_x, t_y)
         fin = list()
         count = 0
         while count < r.shape[0]:
@@ -819,3 +817,17 @@ class DPRadar:
                     , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
+
+class RadarMosaic:
+    def __init__(self, *filepath):
+        self.filelist = list(filepath)
+        rawgrid = list()
+        for i in filepath:
+            rawgrid.append(self._read(i))
+
+    def _read(self, filepath):
+        radar = Radar(filepath)
+        return radar._grid_2d(grid='geo')
+
+    def add_radar(self, filepath):
+        pass
