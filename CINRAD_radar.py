@@ -637,13 +637,15 @@ class Radar:
             t_x = np.arange(lon.min(), lon.max(), 0.01)
             t_y = np.arange(lat.min(), lat.max(), 0.01)
             x_, y_ = np.meshgrid(t_x, t_y)
+            x_res = (lon.max() - lon.min()) // 0.01 + 1
+            y_res = (lat.max() - lat.min()) // 0.01 + 1
         fin = list()
         count = 0
         while count < r.shape[0]:
             grid_r = griddata((lon[count].flatten(), lat[count].flatten()), r[count].flatten(), (x_, y_), method='nearest')
             fin.append(grid_r)
             count += 1
-        return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
+        return x_, y_, np.concatenate(fin).reshape(len(phi), int(x_res), int(y_res))
 
     @check_radartype(['SA', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
@@ -827,7 +829,7 @@ class RadarMosaic:
 
     def _read(self, filepath):
         radar = Radar(filepath)
-        return radar._grid_2d(grid='geo')
+        return radar._grid_2d(230, grid='geo')
 
     def add_radar(self, filepath):
         pass
