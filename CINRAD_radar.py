@@ -607,19 +607,12 @@ class Radar:
         data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
         return data
 
-    def _grid_2d(self, drange, resolution=(500, 500)):
+    def _grid_2d(self, drange, resolution=500, grid='e'):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             r = self._r_resample(drange=drange)[0]
             phi = self.elevanglelist[self.anglelist_r]
-        elif self.radartype == 'CC':
-            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            r = list()
-            for i in phin:
-                r.append(self.reflectivity(i, drange))
-            r = np.array(r)
-            phi = np.zeros(9)
-        elif self.radartype == 'SC':
+        elif self.radartype in ['CC', 'SC']:
             phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             r = list()
             for i in phin:
@@ -635,19 +628,26 @@ class Radar:
             y.append(y_)
         lon = np.array(x)
         lat = np.array(y)
-        x_res, y_res = resolution
-        t_x = np.linspace(lon.min(), lon.max(), x_res)
-        t_y = np.linspace(lat.min(), lat.max(), y_res)
-        x_, y_ = np.meshgrid(t_x, t_y)
+        if grid == 'e':
+            x_res = y_res = resolution
+            t_x = np.linspace(lon.min(), lon.max(), x_res)
+            t_y = np.linspace(lat.min(), lat.max(), y_res)
+            x_, y_ = np.meshgrid(t_x, t_y)
+        elif grid == 'geo':
+            t_x = np.arange(lon.min(), lon.max(), 0.01)
+            t_y = np.arange(lat.min(), lat.max(), 0.01)
+            x_, y_ = np.meshgrid(t_x, t_y)
+            x_res = (lon.max() - lon.min()) // 0.01 + 1
+            y_res = (lat.max() - lat.min()) // 0.01 + 1
         fin = list()
         count = 0
         while count < r.shape[0]:
             grid_r = griddata((lon[count].flatten(), lat[count].flatten()), r[count].flatten(), (x_, y_), method='nearest')
             fin.append(grid_r)
             count += 1
-        return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
+        return x_, y_, np.concatenate(fin).reshape(len(phi), int(x_res), int(y_res))
 
-    @check_radartype(['SA', 'CA', 'CB', 'CC', 'SC'])
+    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
@@ -819,3 +819,36 @@ class DPRadar:
                     , bbox_inches='tight', pad_inches = 0)
         plt.cla()
         del fig
+
+class RadarMosaic:
+    def __init__(self, *filepath, mode='r'):
+        self.filelist = list(filepath)
+        self.rawgrid = list()
+        for i in filepath:
+            self.rawgrid.append(self._read(i))
+
+    @staticmethod
+    def _read(filepath, mode='r'):
+        radar = Radar(filepath)
+        if mode == 'r':
+            r = radar.reflectivity(0, 230)
+            data = radar.projection('r')
+            return data[0], data[1], r
+        elif mode == 'cr':
+            return radar.composite_reflectivity()
+
+    def add_radar(self, filepath):
+        self.rawgrid.append(self._read(filepath))
+
+    def remap(self):
+        lon = np.array([i[0] for i in self.rawgrid])
+        lat = np.array([i[1] for i in self.rawgrid])
+        r = np.array([i[2] for i in self.rawgrid])
+        x = np.arange(lon.min(), lon.max(), 0.01)
+        y = np.arange(lat.min(), lat.max(), 0.01)
+        x_, y_ = np.meshgrid(x, y)
+        grid_r = griddata((lon.flatten(), lat.flatten()), r.flatten(), (x_, y_), method='linear')
+        return x_, y_, grid_r
+
+    def _mask(self, centerlon, centerlat, drange):
+        pass
