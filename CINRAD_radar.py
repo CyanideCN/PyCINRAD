@@ -847,5 +847,8 @@ class RadarMosaic:
         x = np.arange(lon.min(), lon.max(), 0.01)
         y = np.arange(lat.min(), lat.max(), 0.01)
         x_, y_ = np.meshgrid(x, y)
-        grid_r = griddata((lon.flatten(), lat.flatten()), r.flatten(), (x_, y_), method='nearest')
+        grid_r = griddata((lon.flatten(), lat.flatten()), r.flatten(), (x_, y_), method='linear')
         return x_, y_, grid_r
+
+    def _mask(self, centerlon, centerlat, drange):
+        pass
