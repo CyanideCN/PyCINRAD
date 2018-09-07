@@ -821,16 +821,31 @@ class DPRadar:
         del fig
 
 class RadarMosaic:
-    def __init__(self, *filepath):
+    def __init__(self, *filepath, mode='r'):
         self.filelist = list(filepath)
-        rawgrid = list()
+        self.rawgrid = list()
         for i in filepath:
-            rawgrid.append(self._read(i))
+            self.rawgrid.append(self._read(i))
 
     @staticmethod
-    def _read(filepath):
+    def _read(filepath, mode='r'):
         radar = Radar(filepath)
-        return radar._grid_2d(230, grid='geo')
+        if mode == 'r':
+            r = radar.reflectivity(0, 230)
+            data = radar.projection('r')
+            return data[0], data[1], r
+        elif mode == 'cr':
+            return radar.composite_reflectivity()
 
     def add_radar(self, filepath):
-        pass
+        self.rawgrid.append(self._read(filepath))
+
+    def remap(self):
+        lon = np.array([i[0] for i in self.rawgrid])
+        lat = np.array([i[1] for i in self.rawgrid])
+        r = np.array([i[2] for i in self.rawgrid])
+        x = np.arange(lon.min(), lon.max(), 0.01)
+        y = np.arange(lat.min(), lat.max(), 0.01)
+        x_, y_ = np.meshgrid(x, y)
+        grid_r = griddata((lon.flatten(), lat.flatten()), r.flatten(), (x_, y_), method='nearest')
+        return x_, y_, grid_r
