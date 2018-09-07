@@ -647,7 +647,7 @@ class Radar:
             count += 1
         return x_, y_, np.concatenate(fin).reshape(len(phi), int(x_res), int(y_res))
 
-    @check_radartype(['SA', 'CA', 'CB', 'CC', 'SC'])
+    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
@@ -827,7 +827,8 @@ class RadarMosaic:
         for i in filepath:
             rawgrid.append(self._read(i))
 
-    def _read(self, filepath):
+    @staticmethod
+    def _read(filepath):
         radar = Radar(filepath)
         return radar._grid_2d(230, grid='geo')
 
