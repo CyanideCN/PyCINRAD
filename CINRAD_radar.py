@@ -221,7 +221,7 @@ class Radar:
         elev = list()
         count = 0
         while count < 3240:
-            q = f.read(4000)
+            q = f.read(blocklength)
             elev.append(np.fromstring(q[2:4], 'u2')[0])
             x = np.fromstring(q[8:], 'u1').astype(float)
             rraw.append(x[slice(None, None, 4)])
@@ -309,7 +309,6 @@ class Radar:
         pos = np.where(self.azim == a_sorted[count])[0][0]
         return pos
 
-    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -349,7 +348,6 @@ class Radar:
             pass
         return r1.T
 
-    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -437,7 +435,7 @@ class Radar:
     def draw_ppi(self, level, drange, datatype, draw_author=True, smooth=False, dpi=350):
         r'''Plot reflectivity PPI scan with the default plot settings.'''
         suffix = ''
-        calc = True
+        calc_ = True
         if datatype == 'r':
             data = self.reflectivity(level, drange)
         elif datatype == 'v':
@@ -447,10 +445,11 @@ class Radar:
             self.set_elevation_angle(0)
         elif datatype == 'cr':
             lons, lats, data = self.composite_reflectivity(drange=drange)
-            calc = False
+            calc_ = False
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        if calc:
-            lons, lats, hgh = self.projection(datatype)
+        if calc_:
+            coor = self.projection(datatype)
+            lons, lats = coor[0], coor[1]
         lonm, latm = np.max(lons), np.max(lats)
         x_delta = lonm - self.stationlon
         y_delta = latm - self.stationlat
@@ -651,9 +650,9 @@ class Radar:
         y = list()
         for i in phi:
             self.set_elevation_angle(i)
-            x_, y_, z_ = self.projection(datatype='et')
-            x.append(x_)
-            y.append(y_)
+            coor = self.projection(datatype='et')
+            x.append(coor[0])
+            y.append(coor[1])
         lon = np.array(x)
         lat = np.array(y)
         x_res, y_res = resolution
@@ -760,7 +759,9 @@ class DPRadar:
         suffix = ''
         data = self.get_data(level, drange, dtype)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
-        lons, lats, hgh = self.projection()
+        coor = self.projection()
+        lons = coor[0]
+        lats = coor[1]
         lonm, latm = np.max(lons), np.max(lats)
         x_delta = lonm - self.stationlon
         y_delta = latm - self.stationlat
