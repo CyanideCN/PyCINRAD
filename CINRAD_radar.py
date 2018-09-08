@@ -72,6 +72,21 @@ class Radar:
             f = bz2.open(filepath, 'rb')
         else:
             f = open(filepath, 'rb')
+        radartype = self._detect_radartype(f, filename, type_assert=radar_type)
+        if radartype in ['SA', 'SB']:
+            self._SAB_handler(f)
+        elif radartype in ['CA', 'CB']:
+            self._SAB_handler(f, SAB=False)
+        elif radartype == 'CC':
+            self._CC_handler(f)
+        elif radartype == 'SC':
+            self._SC_handler(f)
+        else:
+            raise RadarError('Unrecognized data')
+        self._update_radar_info()
+        self.radartype = radartype
+
+    def _detect_radartype(self, f, filename, type_assert=None):
         f.seek(100)
         typestring = f.read(9)
         det_sc = typestring == b'CINRAD/SC'
@@ -98,119 +113,125 @@ class Radar:
             radartype = 'CD'
         elif det_cc:
             radartype = 'CC'
-        if radar_type:
-            radartype = radar_type
-        self.radartype = radartype
-        if radartype in ['SA', 'SB']:
-            blocklength = 2432
-        elif radartype in ['CA', 'CB']:
-            blocklength = 4132
-        elif radartype == 'CC':
-            blocklength = 3000
-        elif radartype in ['SC', 'CD']:
-            blocklength = 4000
-        else:
-            raise RadarError('Unknown radar type')
+        if type_assert:
+            radartype = type_assert
+        return radartype
+
+    def _SAB_handler(self, f, SAB=True):
         vraw = list()
         rraw = list()
+        if SAB:
+            blocklength = 2432
+        else:
+            blocklength = 4132
         copy = f.read(blocklength)
         f.seek(0)
         datalength = len(f.read())
         num = int(datalength / blocklength)
-        if radartype in ['SA', 'SB', 'CA', 'CB']:
-            azimuthx = list()
-            eleang = list()
-            self.boundary = list()
-            count = 0
-            deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
-            deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
-            start = datetime.datetime(1969, 12, 31)
-            deltday = datetime.timedelta(days=int(deltdays))
-            deltsec = datetime.timedelta(milliseconds=int(deltsecs))
-            scantime = start + deltday + deltsec
-            self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
-            self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
-            f.seek(0)
-            while count < num:
-                a = f.read(blocklength)
-                azimuth = np.fromstring(a[36:38], dtype='u2')
-                datacon = np.fromstring(a[40:42], dtype='u2')
-                elevangle = np.fromstring(a[42:44], dtype='u2')
-                anglenum = np.fromstring(a[44:46], dtype='u2')
-                veloreso = np.fromstring(a[70:72], dtype='u2')
-                if radartype in ['SA', 'SB']:
-                    R = np.fromstring(a[128:588], dtype='u1')
-                    V = np.fromstring(a[128:1508], dtype='u1')
-                elif radartype in ['CA', 'CB']:
-                    R = np.fromstring(a[128:928], dtype='u1')
-                    V = np.fromstring(a[128:2528], dtype='u1')
-                azimuthx.append(azimuth[0])
-                eleang.append(elevangle[0])
-                vraw.append(V.tolist())
-                rraw.append(R.tolist())
-                if datacon[0] == 3:
-                    self.boundary.append(0)
-                elif datacon[0] == 0:
-                    self.boundary.append(count)
-                elif datacon[0] == 4:
-                    self.boundary.append(num - 1)
-                count = count + 1
-
-            self.rraw = np.array(rraw)
-            self.z = np.array(eleang) * con
-            self.aziangle = np.array(azimuthx) * con
-            self.rad = self.aziangle * deg2rad
-            self.vraw = np.array(vraw)
-            self.dv = veloreso[0]
-            anglelist = np.arange(0, anglenum[0], 1)
-            self.anglelist_r = np.delete(anglelist, [1, 3])
-            self.anglelist_v = np.delete(anglelist, [0, 2])
-            self.elevanglelist = self.z[self.boundary][:-1]
-        elif radartype == 'CC':
-            f.seek(106)
-            self.code = f.read(10).decode().split('\x00')[0]
-            f.seek(184)
-            scantime = datetime.datetime(year=np.fromstring(f.read(1), dtype='u1')[0] * 100 + np.fromstring(f.read(1), dtype='u1')[0],
-                                         month=np.fromstring(f.read(1), dtype='u1')[0], day=np.fromstring(f.read(1), dtype='u1')[0],
-                                         hour=np.fromstring(f.read(1), dtype='u1')[0], minute=np.fromstring(f.read(1), dtype='u1')[0],
-                                         second=np.fromstring(f.read(1), dtype='u1')[0])
-            count = 0
-            f.seek(1024)
-            while count < num:
-                a = f.read(blocklength)
-                r = np.fromstring(a[:1000], dtype=np.short).astype(float)
-                v = np.fromstring(a[1000:2000], dtype=np.short).astype(float)
-                rraw.append(r)
-                vraw.append(v)
-                count += 1
-            self.rraw = np.array(rraw)
-            self.vraw = np.array(vraw)
-            self.Rreso = 0.3
-            self.Vreso = 0.3
-        elif radartype == 'SC':
-            utc_offset = datetime.timedelta(hours=8)
-            f.seek(853)
-            scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
-                                         day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
-                                         minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
-            f.seek(1024)
-            self.Rreso = 0.3
-            self.Vreso = 0.3
-            elev = list()
-            count = 0
-            while count < 3240:
-                q = f.read(4000)
-                elev.append(np.fromstring(q[2:4], 'u2')[0])
-                x = np.fromstring(q[8:], 'u1').astype(float)
-                rraw.append(x[slice(None, None, 4)])
-                vraw.append(x[slice(1, None, 4)])
-                count += 1
-            self.rraw = np.concatenate(rraw).reshape(3240, 998)
-            self.vraw = np.concatenate(vraw).reshape(3240, 998)
-            self.elevanglelist = np.array(elev[slice(359, None, 360)]) * con2
-            self.aziangle = np.arange(0, 360, 1) * deg2rad
+        azimuthx = list()
+        eleang = list()
+        self.boundary = list()
+        count = 0
+        deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
+        deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
+        start = datetime.datetime(1969, 12, 31)
+        deltday = datetime.timedelta(days=int(deltdays))
+        deltsec = datetime.timedelta(milliseconds=int(deltsecs))
+        scantime = start + deltday + deltsec
+        self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
+        self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
+        f.seek(0)
+        while count < num:
+            a = f.read(blocklength)
+            azimuth = np.fromstring(a[36:38], dtype='u2')
+            datacon = np.fromstring(a[40:42], dtype='u2')
+            elevangle = np.fromstring(a[42:44], dtype='u2')
+            anglenum = np.fromstring(a[44:46], dtype='u2')
+            veloreso = np.fromstring(a[70:72], dtype='u2')
+            if SAB:
+                R = np.fromstring(a[128:588], dtype='u1')
+                V = np.fromstring(a[128:1508], dtype='u1')
+            else:
+                R = np.fromstring(a[128:928], dtype='u1')
+                V = np.fromstring(a[128:2528], dtype='u1')
+            azimuthx.append(azimuth[0])
+            eleang.append(elevangle[0])
+            vraw.append(V.tolist())
+            rraw.append(R.tolist())
+            if datacon[0] == 3:
+                self.boundary.append(0)
+            elif datacon[0] == 0:
+                self.boundary.append(count)
+            elif datacon[0] == 4:
+                self.boundary.append(num - 1)
+            count = count + 1
+        self.rraw = np.array(rraw)
+        self.z = np.array(eleang) * con
+        self.aziangle = np.array(azimuthx) * con
+        self.rad = self.aziangle * deg2rad
+        self.vraw = np.array(vraw)
+        self.dv = veloreso[0]
+        anglelist = np.arange(0, anglenum[0], 1)
+        self.anglelist_r = np.delete(anglelist, [1, 3])
+        self.anglelist_v = np.delete(anglelist, [0, 2])
+        self.elevanglelist = self.z[self.boundary][:-1]
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
-        self._update_radar_info()
+
+    def _CC_handler(self, f):
+        vraw = list()
+        rraw = list()
+        blocklength = 3000
+        f.seek(0)
+        datalength = len(f.read())
+        num = int(datalength / blocklength)
+        f.seek(106)
+        self.code = f.read(10).decode().split('\x00')[0]
+        f.seek(184)
+        scantime = datetime.datetime(year=np.fromstring(f.read(1), dtype='u1')[0] * 100 + np.fromstring(f.read(1), dtype='u1')[0],
+                                        month=np.fromstring(f.read(1), dtype='u1')[0], day=np.fromstring(f.read(1), dtype='u1')[0],
+                                        hour=np.fromstring(f.read(1), dtype='u1')[0], minute=np.fromstring(f.read(1), dtype='u1')[0],
+                                        second=np.fromstring(f.read(1), dtype='u1')[0])
+        count = 0
+        f.seek(1024)
+        while count < num:
+            a = f.read(blocklength)
+            r = np.fromstring(a[:1000], dtype=np.short).astype(float)
+            v = np.fromstring(a[1000:2000], dtype=np.short).astype(float)
+            rraw.append(r)
+            vraw.append(v)
+            count += 1
+        self.rraw = np.array(rraw)
+        self.vraw = np.array(vraw)
+        self.Rreso = 0.3
+        self.Vreso = 0.3
+        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+
+    def _SC_handler(self, f):
+        vraw = list()
+        rraw = list()
+        blocklength = 4000
+        utc_offset = datetime.timedelta(hours=8)
+        f.seek(853)
+        scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
+                                        day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
+                                        minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
+        f.seek(1024)
+        self.Rreso = 0.3
+        self.Vreso = 0.3
+        elev = list()
+        count = 0
+        while count < 3240:
+            q = f.read(4000)
+            elev.append(np.fromstring(q[2:4], 'u2')[0])
+            x = np.fromstring(q[8:], 'u1').astype(float)
+            rraw.append(x[slice(None, None, 4)])
+            vraw.append(x[slice(1, None, 4)])
+            count += 1
+        self.rraw = np.concatenate(rraw).reshape(3240, 998)
+        self.vraw = np.concatenate(vraw).reshape(3240, 998)
+        self.elevanglelist = np.array(elev[slice(359, None, 360)]) * con2
+        self.aziangle = np.arange(0, 360, 1) * deg2rad
+        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
     def set_station_position(self, stationlon, stationlat):
         self.stationlon = stationlon
@@ -647,7 +668,7 @@ class Radar:
             count += 1
         return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
 
-    @check_radartype(['SA', 'CA', 'CB', 'CC', 'SC'])
+    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
