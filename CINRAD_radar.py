@@ -136,8 +136,8 @@ class Radar:
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
         scantime = start + deltday + deltsec
-        self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
-        self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
+        self.Rreso = 1
+        self.Vreso = 0.25
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
@@ -165,7 +165,7 @@ class Radar:
             count = count + 1
         self.rraw = np.array(rraw)
         self.z = np.array(eleang) * con
-        self.aziangle = np.array(azimuthx) * con
+        self.aziangle = np.array(azimuthx) * con * deg2rad
         self.vraw = np.array(vraw)
         self.dv = veloreso[0]
         anglelist = np.arange(0, anglenum[0], 1)
@@ -404,13 +404,13 @@ class Radar:
         if datatype == 'r':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
@@ -569,7 +569,7 @@ class Radar:
             anglelist = self.anglelist_r
         for i in anglelist:
             r = self.reflectivity(i, drange)
-            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
+            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]] / deg2rad
             dist_, theta_ = np.meshgrid(Rrange, azimuth)
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
@@ -661,6 +661,40 @@ class Radar:
         x, y = np.meshgrid(xcoor, xcoor)
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
         return lon, lat, np.ma.array(r_max, mask=(dist > drange))
+
+    def vert_integrated_liquid(self, drange=230, threshold=18):
+        const = 3.44e-6
+        true_elev = self.elevanglelist[self.anglelist_r] * deg2rad
+        v_beam_width = 0.99 * deg2rad
+        data = self._r_resample(drange=drange)
+        VIL = list()
+        distance = data[1]
+        xshape, yshape = data[0][0].shape
+        for i in range(xshape):
+            for j in range(yshape):
+                vert_r = list()
+                dist = distance[i][j] * 1000
+                for k in range(0, 9):
+                    #index from lowest angle
+                    r_pt = data[0][k][i][j]
+                    vert_r.append(r_pt)
+                vertical = np.array(vert_r)
+                position = np.where(vertical > threshold)[0]
+                try:
+                    pos_s = position[0]
+                    pos_e = position[-1]
+                except IndexError:
+                    VIL.append(0)
+                    continue
+                m1 = 0
+                hi = dist * np.sin(v_beam_width / 2)
+                for l in position[:-1].astype(int):
+                    ht = dist * (np.sin(true_elev[l + 1]) - np.sin(true_elev[l]))
+                    m1 += const * ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7) * ht
+                mb = const * vertical[pos_s] ** (4 / 7) * hi#dist * (np.sin(true_elev[1]) - np.sin(true_elev[0]))
+                mt = const * vertical[pos_e] ** (4 / 7) * hi#dist * (np.sin(true_elev[-1]) - np.sin(true_elev[-2]))
+                VIL.append(m1 + mb + mt)
+        return np.array(VIL).reshape(xshape, yshape)
 
 
 class DPRadar:
