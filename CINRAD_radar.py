@@ -93,7 +93,6 @@ class Radar:
         det_cd = typestring == b'CINRAD/CD'
         f.seek(116)
         det_cc = f.read(9) == b'CINRAD/CC'
-        f.seek(0)
         if filename.startswith('RADA'):
             spart = filename.split('-')
             self.code = spart[1]
@@ -102,9 +101,6 @@ class Radar:
             spart = filename.split('_')
             self.code = spart[3]
             radartype = spart[7]
-        elif filetype.endswith('A'):
-            self.code = None
-            radartype = 'SA'
         else:
             self.code = None
         if det_sc:
@@ -115,6 +111,8 @@ class Radar:
             radartype = 'CC'
         if type_assert:
             radartype = type_assert
+        if radartype is None:
+            raise RadarError('Radar type undefined')
         return radartype
 
     def _SAB_handler(self, f, SAB=True):
@@ -168,7 +166,6 @@ class Radar:
         self.rraw = np.array(rraw)
         self.z = np.array(eleang) * con
         self.aziangle = np.array(azimuthx) * con
-        self.rad = self.aziangle * deg2rad
         self.vraw = np.array(vraw)
         self.dv = veloreso[0]
         anglelist = np.arange(0, anglenum[0], 1)
@@ -408,26 +405,20 @@ class Radar:
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
-            elif self.radartype == 'CC':
-                theta = np.linspace(0, 360, length) * deg2rad
-            elif self.radartype == 'SC':
+            elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
-            elif self.radartype == 'CC':
-                theta = np.linspace(0, 360, length) * deg2rad
-            elif self.radartype == 'SC':
+            elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'et':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = np.arange(0, 361, 1) * deg2rad
-            elif self.radartype == 'CC':
-                theta = np.linspace(0, 360, 512) * deg2rad
-            elif self.radartype == 'SC':
-                theta = np.linspace(0, 360, 360) * deg2rad
+            elif self.radartype in ['CC', 'SC']:
+                theta = np.linspace(0, 360, length) * deg2rad
         lonx, latx = self._get_coordinate(r, theta)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, height
@@ -528,7 +519,7 @@ class Radar:
         plt.cla()
         del fig
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15, interpolation=False):
+    def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
@@ -549,18 +540,10 @@ class Radar:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        if interpolation:
-            from metpy import gridding
-            xi = np.arange(0, drange + 1, 1)
-            yi = np.arange(0, height + 0.5, 0.5)
-            x, y = np.meshgrid(xi, yi)
-            z = gridding.natural_neighbor(xc.flatten(), yc.flatten(), rhi.flatten(), x, y)
-            return x, y, z
-        else:
-            return xc, yc, rhi
+        return xc, yc, rhi
 
     @check_radartype(['SA', 'SB', 'CB'])
-    def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15, interpolation=False):
+    def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15):
         r'''Plot reflectivity RHI scan with the default plot settings.'''
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
                                , height=height, interpolation=interpolation)
