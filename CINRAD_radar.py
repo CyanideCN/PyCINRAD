@@ -678,8 +678,9 @@ class Radar:
                     #index from lowest angle
                     r_pt = data[0][k][i][j]
                     vert_r.append(r_pt)
-                vertical = np.array(vert_r)
-                position = np.where(vertical > threshold)[0]
+                r_ = np.array(vert_r)
+                vertical = 10 ** (r_ / 10)
+                position = np.where(r_ > threshold)[0]
                 try:
                     pos_s = position[0]
                     pos_e = position[-1]
@@ -691,8 +692,8 @@ class Radar:
                 for l in position[:-1].astype(int):
                     ht = dist * (np.sin(true_elev[l + 1]) - np.sin(true_elev[l]))
                     m1 += const * ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7) * ht
-                mb = const * vertical[pos_s] ** (4 / 7) * hi#dist * (np.sin(true_elev[1]) - np.sin(true_elev[0]))
-                mt = const * vertical[pos_e] ** (4 / 7) * hi#dist * (np.sin(true_elev[-1]) - np.sin(true_elev[-2]))
+                mb = const * vertical[pos_s] ** (4 / 7) * hi
+                mt = const * vertical[pos_e] ** (4 / 7) * hi
                 VIL.append(m1 + mb + mt)
         return np.array(VIL).reshape(xshape, yshape)
 
