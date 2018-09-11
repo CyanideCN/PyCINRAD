@@ -499,7 +499,7 @@ class Radar:
             norms = cmx.Normalize(0, 1)
             reso = 1
             data[data <= 0] = np.nan
-            m.pcolormesh(lons, lats, data, norm=cmx.Normalize(0, 70), cmap=vil_cmap)
+            m.pcolormesh(lons, lats, data, norm=cmx.Normalize(0, 75), cmap=vil_cmap)
             r1 = data[np.logical_not(np.isnan(data))]
         m.readshapefile('shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
