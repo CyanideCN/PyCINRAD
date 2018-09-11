@@ -39,8 +39,10 @@ kdp_cmap = form_colormap('colormap\\kdp_main.txt', sep=False)
 kdp_cbar = form_colormap('colormap\\kdp_cbar.txt', sep=True)
 cc_cmap = form_colormap('colormap\\cc_main.txt', sep=False)
 cc_cbar = form_colormap('colormap\\cc_cbar.txt', sep=True)
-et_cmap = form_colormap('colormap\\et.txt', sep=False)
-et_cbar = form_colormap('colormap\\etbar.txt', sep=True)
+et_cmap = form_colormap('colormap\\et_main.txt', sep=False)
+et_cbar = form_colormap('colormap\\et_cbar.txt', sep=True)
+vil_cmap = form_colormap('colormap\\vil_main.txt', sep=True)
+vil_cbar = form_colormap('colormap\\vil_cbar.txt', sep=True)
 radarinfo = np.load('RadarStation.npy')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
@@ -73,6 +75,7 @@ class Radar:
         else:
             f = open(filepath, 'rb')
         radartype = self._detect_radartype(f, filename, type_assert=radar_type)
+        f.seek(0)
         if radartype in ['SA', 'SB']:
             self._SAB_handler(f)
         elif radartype in ['CA', 'CB']:
@@ -136,8 +139,8 @@ class Radar:
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
         scantime = start + deltday + deltsec
-        self.Rreso = np.fromstring(copy[50:52], dtype='u2')[0] / 1000
-        self.Vreso = np.fromstring(copy[52:54], dtype='u2')[0] / 1000
+        self.Rreso = 1
+        self.Vreso = 0.25
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
@@ -165,7 +168,7 @@ class Radar:
             count = count + 1
         self.rraw = np.array(rraw)
         self.z = np.array(eleang) * con
-        self.aziangle = np.array(azimuthx) * con
+        self.aziangle = np.array(azimuthx) * con * deg2rad
         self.vraw = np.array(vraw)
         self.dv = veloreso[0]
         anglelist = np.arange(0, anglenum[0], 1)
@@ -404,16 +407,16 @@ class Radar:
         if datatype == 'r':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.rad[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
-        elif datatype == 'et':
+        elif datatype in ['et', 'vil']:
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = np.arange(0, 361, 1) * deg2rad
@@ -437,6 +440,9 @@ class Radar:
         elif datatype == 'cr':
             lons, lats, data = self.composite_reflectivity(drange=drange)
             calc_ = False
+        elif datatype == 'vil':
+            data = self.vert_integrated_liquid()
+            self.set_elevation_angle(0)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         if calc_:
             coor = self.projection(datatype)
@@ -487,6 +493,14 @@ class Radar:
             data[data <= 2] = None
             r1 = data[np.logical_not(np.isnan(data))]
             m.contourf(lons, lats, data, 128, norm=norms, cmap=cmaps)
+        elif datatype == 'vil':
+            typestring = 'Vert Integrate Liq'
+            cmaps = vil_cbar
+            norms = cmx.Normalize(0, 1)
+            reso = 1
+            data[data <= 0] = np.nan
+            m.pcolormesh(lons, lats, data, norm=cmx.Normalize(0, 75), cmap=vil_cmap)
+            r1 = data[np.logical_not(np.isnan(data))]
         m.readshapefile('shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
@@ -500,6 +514,9 @@ class Radar:
         elif datatype == 'et':
             cbar.set_ticks(np.linspace(0, 1, 16))
             cbar.set_ticklabels(['', '21', '20', '18', '17', '15', '14', '12', '11', '9', '8', '6', '5', '3', '2', '0'])
+        elif datatype == 'vil':
+            cbar.set_ticks(np.linspace(0, 1, 16))
+            cbar.set_ticklabels(['', '70', '65', '60', '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '5', '0'])
         ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
         ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
@@ -512,6 +529,8 @@ class Radar:
             ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         elif datatype == 'et':
             ax2.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(data)), fontproperties=font2)
+        elif datatype == 'vil':
+            ax2.text(0, 1.81, 'Max: {:.1f}kg/m**2'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
@@ -569,7 +588,7 @@ class Radar:
             anglelist = self.anglelist_r
         for i in anglelist:
             r = self.reflectivity(i, drange)
-            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]]
+            azimuth = self.aziangle[self.boundary[i]:self.boundary[i + 1]] / deg2rad
             dist_, theta_ = np.meshgrid(Rrange, azimuth)
             r_ = griddata((dist_.flatten(), theta_.flatten()), r.flatten(), (dist, theta), method='nearest')
             r_resampled.append(r_)
@@ -661,6 +680,42 @@ class Radar:
         x, y = np.meshgrid(xcoor, xcoor)
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
         return lon, lat, np.ma.array(r_max, mask=(dist > drange))
+
+    @check_radartype(['SA', 'SB'])
+    def vert_integrated_liquid(self, drange=230, threshold=18):
+        const = 3.44e-6
+        true_elev = self.elevanglelist[self.anglelist_r] * deg2rad
+        v_beam_width = 0.99 * deg2rad
+        data = self._r_resample(drange=drange)
+        VIL = list()
+        distance = data[1]
+        xshape, yshape = data[0][0].shape
+        for i in range(xshape):
+            for j in range(yshape):
+                vert_r = list()
+                dist = distance[i][j] * 1000
+                for k in range(0, 9):
+                    #index from lowest angle
+                    r_pt = data[0][k][i][j]
+                    vert_r.append(r_pt)
+                r_ = np.array(vert_r)
+                vertical = 10 ** (r_ / 10)
+                position = np.where(r_ > threshold)[0]
+                try:
+                    pos_s = position[0]
+                    pos_e = position[-1]
+                except IndexError:
+                    VIL.append(0)
+                    continue
+                m1 = 0
+                hi = dist * np.sin(v_beam_width / 2)
+                for l in position[:-1].astype(int):
+                    ht = dist * (np.sin(true_elev[l + 1]) - np.sin(true_elev[l]))
+                    m1 += const * ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7) * ht
+                mb = const * vertical[pos_s] ** (4 / 7) * hi
+                mt = const * vertical[pos_e] ** (4 / 7) * hi
+                VIL.append(m1 + mb + mt)
+        return np.array(VIL).reshape(xshape, yshape)
 
 
 class DPRadar:
