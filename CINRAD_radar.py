@@ -39,8 +39,10 @@ kdp_cmap = form_colormap('colormap\\kdp_main.txt', sep=False)
 kdp_cbar = form_colormap('colormap\\kdp_cbar.txt', sep=True)
 cc_cmap = form_colormap('colormap\\cc_main.txt', sep=False)
 cc_cbar = form_colormap('colormap\\cc_cbar.txt', sep=True)
-et_cmap = form_colormap('colormap\\et.txt', sep=False)
-et_cbar = form_colormap('colormap\\etbar.txt', sep=True)
+et_cmap = form_colormap('colormap\\et_main.txt', sep=False)
+et_cbar = form_colormap('colormap\\et_cbar.txt', sep=True)
+vil_cmap = form_colormap('colormap\\vil_main.txt', sep=True)
+vil_cbar = form_colormap('colormap\\vil_cbar.txt', sep=True)
 radarinfo = np.load('RadarStation.npy')
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
@@ -73,6 +75,7 @@ class Radar:
         else:
             f = open(filepath, 'rb')
         radartype = self._detect_radartype(f, filename, type_assert=radar_type)
+        f.seek(0)
         if radartype in ['SA', 'SB']:
             self._SAB_handler(f)
         elif radartype in ['CA', 'CB']:
@@ -413,7 +416,7 @@ class Radar:
                 theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
-        elif datatype == 'et':
+        elif datatype in ['et', 'vil']:
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = np.arange(0, 361, 1) * deg2rad
@@ -437,6 +440,9 @@ class Radar:
         elif datatype == 'cr':
             lons, lats, data = self.composite_reflectivity(drange=drange)
             calc_ = False
+        elif datatype == 'vil':
+            data = self.vert_integrated_liquid()
+            self.set_elevation_angle(0)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         if calc_:
             coor = self.projection(datatype)
@@ -487,6 +493,14 @@ class Radar:
             data[data <= 2] = None
             r1 = data[np.logical_not(np.isnan(data))]
             m.contourf(lons, lats, data, 128, norm=norms, cmap=cmaps)
+        elif datatype == 'vil':
+            typestring = 'Vert Integrate Liq'
+            cmaps = vil_cbar
+            norms = cmx.Normalize(0, 1)
+            reso = 1
+            data[data <= 0] = np.nan
+            m.pcolormesh(lons, lats, data, norm=cmx.Normalize(0, 70), cmap=vil_cmap)
+            r1 = data[np.logical_not(np.isnan(data))]
         m.readshapefile('shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
         m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
         m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
@@ -500,6 +514,9 @@ class Radar:
         elif datatype == 'et':
             cbar.set_ticks(np.linspace(0, 1, 16))
             cbar.set_ticklabels(['', '21', '20', '18', '17', '15', '14', '12', '11', '9', '8', '6', '5', '3', '2', '0'])
+        elif datatype == 'vil':
+            cbar.set_ticks(np.linspace(0, 1, 16))
+            cbar.set_ticklabels(['', '70', '65', '60', '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '5', '0'])
         ax2.text(0, 2.13, typestring, fontproperties=font2)
         ax2.text(0, 2.09, 'Range: {:.0f}km'.format(self.drange), fontproperties=font2)
         ax2.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
@@ -512,6 +529,8 @@ class Radar:
             ax2.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(r1)), fontproperties=font2)
         elif datatype == 'et':
             ax2.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(data)), fontproperties=font2)
+        elif datatype == 'vil':
+            ax2.text(0, 1.81, 'Max: {:.1f}kg/m**2'.format(np.max(r1)), fontproperties=font2)
         if draw_author:
             ax2.text(0, 1.73, 'Made by HCl', fontproperties=font2)
         plt.savefig('{}{}_{}_{:.1f}_{}_{}{}.png'.format(
