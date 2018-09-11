@@ -681,6 +681,7 @@ class Radar:
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
         return lon, lat, np.ma.array(r_max, mask=(dist > drange))
 
+    @check_radartype(['SA', 'SB'])
     def vert_integrated_liquid(self, drange=230, threshold=18):
         const = 3.44e-6
         true_elev = self.elevanglelist[self.anglelist_r] * deg2rad
