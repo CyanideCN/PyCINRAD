@@ -494,7 +494,7 @@ class Radar:
             r1 = data[np.logical_not(np.isnan(data))]
             m.contourf(lons, lats, data, 128, norm=norms, cmap=cmaps)
         elif datatype == 'vil':
-            typestring = 'Vert Integrate Liq'
+            typestring = 'V Integrated Liquid'
             cmaps = vil_cbar
             norms = cmx.Normalize(0, 1)
             reso = 1
@@ -711,7 +711,10 @@ class Radar:
                 hi = dist * np.sin(v_beam_width / 2)
                 for l in position[:-1].astype(int):
                     ht = dist * (np.sin(true_elev[l + 1]) - np.sin(true_elev[l]))
-                    m1 += const * ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7) * ht
+                    factor = ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7)
+                    m1 += const * factor * ht
+                    if i < 10 and j<10:
+                        print(2 ** (4/7))
                 mb = const * vertical[pos_s] ** (4 / 7) * hi
                 mt = const * vertical[pos_e] ** (4 / 7) * hi
                 VIL.append(m1 + mb + mt)
