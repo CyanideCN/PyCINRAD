@@ -441,7 +441,7 @@ class Radar:
             lons, lats, data = self.composite_reflectivity(drange=drange)
             calc_ = False
         elif datatype == 'vil':
-            data = self.vert_integrated_liquid()
+            data = self.vert_integrated_liquid(drange=drange)
             self.set_elevation_angle(0)
         fig = plt.figure(figsize=(10, 10), dpi=dpi)
         if calc_:
@@ -538,6 +538,7 @@ class Radar:
         plt.cla()
         del fig
 
+    @check_radartype(['SA', 'SB', 'CB'])
     def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
@@ -561,7 +562,6 @@ class Radar:
         yc = np.array(ycoor)
         return xc, yc, rhi
 
-    @check_radartype(['SA', 'SB', 'CB'])
     def draw_rhi(self, azimuth, drange, startangle=0, stopangle=8, height=15):
         r'''Plot reflectivity RHI scan with the default plot settings.'''
         xc, yc, rhi = self.rhi(azimuth, drange, startangle=startangle, stopangle=stopangle
@@ -602,51 +602,13 @@ class Radar:
         et = calc.echo_top(data, elev, self.radarheight, threshold)
         return et
 
-    @check_radartype(['SA'])
-    def _grid_3d(self, resolution=(100, 100, 20)):
-        r'''Convert radar data to 3d grid (test)'''
-        from xarray import DataArray
-        r = self._r_resample()[0]
-        phi = self.elevanglelist[self.anglelist_r]
-        x = list()
-        y = list()
-        z = list()
-        for i in phi:
-            self.set_elevation_angle(i)
-            x_, y_, z_ = self.projection(datatype='et')
-            x.append(x_.reshape(361, 230))
-            y.append(y_.reshape(361, 230))
-            z.append(z_.reshape(361, 230))
-        lon = np.array(x)
-        lat = np.array(y)
-        height = np.array(z)
-        x_res, y_res, z_res = resolution
-        grid_x, grid_y, grid_z = np.mgrid[np.min(x):np.max(x):x_res * 1j, np.min(y):np.max(y):y_res * 1j
-                                            , 0:20:z_res * 1j]
-        height_mask = np.ma.array(height, mask=(height<=20)).mask
-        grid_r = griddata((lon[height_mask], lat[height_mask], height[height_mask]), r[height_mask], (grid_x, grid_y, grid_z)
-                            , method = 'nearest')
-        data = DataArray(grid_r, coords=[grid_x[:, 0, 0], grid_y[0, :, 0], grid_z[0, 0]])
-        return data
-
     def _grid_2d(self, drange, resolution=(500, 500)):
         r'''Interpolate points in same elevation angle into regular 2-d grid'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             r = self._r_resample(drange=drange)[0]
             phi = self.elevanglelist[self.anglelist_r]
-        elif self.radartype == 'CC':
-            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            r = list()
-            for i in phin:
-                r.append(self.reflectivity(i, drange))
-            r = np.array(r)
-            phi = np.zeros(9)
-        elif self.radartype == 'SC':
-            phin = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            r = list()
-            for i in phin:
-                r.append(self.reflectivity(i, drange))
-            r = np.array(r)
+        elif self.radartype in ['CC', 'SC']:
+            r = np.array([self.reflectivity(i, drange) for i in range(9)])
             phi = np.zeros(9)
         x = list()
         y = list()
@@ -669,7 +631,6 @@ class Radar:
             count += 1
         return x_, y_, np.concatenate(fin).reshape(len(phi), resolution[0], resolution[1])
 
-    @check_radartype(['SA', 'SB', 'CA', 'CB', 'CC', 'SC'])
     def composite_reflectivity(self, drange=230):
         r'''Find max ref value in single coordinate and mask data outside
         obervation range'''
@@ -681,22 +642,29 @@ class Radar:
         dist = np.sqrt(np.abs(x ** 2 + y ** 2))
         return lon, lat, np.ma.array(r_max, mask=(dist > drange))
 
-    @check_radartype(['SA', 'SB'])
+    @check_radartype(['SA', 'SB', 'SC'])
     def vert_integrated_liquid(self, drange=230, threshold=18):
         const = 3.44e-6
-        true_elev = self.elevanglelist[self.anglelist_r] * deg2rad
         v_beam_width = 0.99 * deg2rad
-        data = self._r_resample(drange=drange)
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            true_elev = self.elevanglelist[self.anglelist_r] * deg2rad
+            data = self._r_resample(drange=drange)
+            r = data[0]
+            distance = data[1]
+        elif self.radartype == 'SC':
+            true_elev = self.elevanglelist * deg2rad
+            r = np.array([self.reflectivity(i, drange) for i in range(9)])
+            dis = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
+            distance = dis * np.ones(360)[:, None]
         VIL = list()
-        distance = data[1]
-        xshape, yshape = data[0][0].shape
+        xshape, yshape = r[0].shape
         for i in range(xshape):
             for j in range(yshape):
                 vert_r = list()
                 dist = distance[i][j] * 1000
                 for k in range(0, 9):
                     #index from lowest angle
-                    r_pt = data[0][k][i][j]
+                    r_pt = r[k][i][j]
                     vert_r.append(r_pt)
                 r_ = np.array(vert_r)
                 vertical = 10 ** (r_ / 10)
@@ -713,8 +681,6 @@ class Radar:
                     ht = dist * (np.sin(true_elev[l + 1]) - np.sin(true_elev[l]))
                     factor = ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7)
                     m1 += const * factor * ht
-                    if i < 10 and j<10:
-                        print(2 ** (4/7))
                 mb = const * vertical[pos_s] ** (4 / 7) * hi
                 mt = const * vertical[pos_e] ** (4 / 7) * hi
                 VIL.append(m1 + mb + mt)
