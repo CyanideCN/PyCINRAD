@@ -334,9 +334,7 @@ class Radar:
             dbz = (self.rraw - 64) / 2
             r1 = dbz[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
         r1[r1 < 0] = 0
-        radialavr = list()
-        for i in r1:
-            radialavr.append(np.average(i))
+        radialavr = [np.average(i) for i in r1]
         threshold = 4
         g = np.gradient(radialavr)
         try:
