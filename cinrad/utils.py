@@ -67,7 +67,7 @@ def echo_top(ref, distance, elev, siteheight, drange, threshold=18.):
     elev: elevation angles in degree  numpy.ndarray or list dim=1
     siteheight: height of radar  float
     drange: range of data to be calculated  float or int
-    threshold: float    
+    threshold: float
     '''
     data = [ref, distance]
     et = calc.echo_top(data, elev, siteheight, threshold)

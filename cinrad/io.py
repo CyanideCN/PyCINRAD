@@ -2,7 +2,7 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1
-from .datastruct import R, V, L2
+from .datastruct import R, V
 
 import warnings
 import datetime
@@ -268,7 +268,6 @@ class CinradReader:
         r'''Clip desired range of reflectivity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             self.elev = self.z[self.boundary[level]]
-            print(self.elev)
             if level in [1, 3]:
                 warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
         self.level = level
@@ -310,7 +309,6 @@ class CinradReader:
             if level in [0, 2]:
                 warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
             self.elev = self.z[self.boundary[level]]
-            print(self.elev)
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso

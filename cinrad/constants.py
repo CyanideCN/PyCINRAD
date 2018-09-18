@@ -3,8 +3,6 @@
 
 from .form_colormap import form_colormap
 
-import os
-
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
@@ -30,6 +28,9 @@ et_cmap = form_colormap('colormap\\et_main.txt', sep=False)
 et_cbar = form_colormap('colormap\\et_cbar.txt', sep=True)
 vil_cmap = form_colormap('colormap\\vil_main.txt', sep=True)
 vil_cbar = form_colormap('colormap\\vil_cbar.txt', sep=True)
+rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
+norm3 = cmx.Normalize(-1, 0)
+norm4 = cmx.Normalize(0, 1)
