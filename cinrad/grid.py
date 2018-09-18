@@ -16,8 +16,8 @@ def resample(data, distance, azimuth, xreso, yreso):
 
 def grid_2d(data, x, y, resolution=(500, 500)):
     r_x, r_y = resolution
-    x_cor = np.linspace(x.min, x.max, r_x)
-    y_cor = np.linspace(y.min, y.max, r_y)
+    x_cor = np.linspace(x.min(), x.max(), r_x)
+    y_cor = np.linspace(y.min(), y.max(), r_y)
     t_x, t_y = np.meshgrid(x_cor, y_cor)
     r = griddata((x.flatten(), y.flatten()), data.flatten(), (t_x, t_y), method='nearest')
-    return r
+    return r, x_cor, y_cor

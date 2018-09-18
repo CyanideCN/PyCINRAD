@@ -2,6 +2,7 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1
+from .datastruct import R, V, L2
 
 import warnings
 import datetime
@@ -298,7 +299,10 @@ class CinradReader:
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
-        return r1.T
+        r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr)
+        x, y, z = self.projection('r')
+        r_obj.add_geoc(x, y, z)
+        return r_obj
 
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
@@ -322,24 +326,27 @@ class CinradReader:
             v1 = v.transpose()[:int(drange / self.Vreso)]
             v1[v1 == -64.5] = np.nan
             rf = np.ma.array(v1, mask=(v1 != -64))
-            return v1.T, rf.T
+            v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr)
         elif self.radartype == 'CC':
             v = self.vraw / 10
             v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
             v1[v1 == -3276.8] = np.nan
-            return v1.T, None
+            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, include_rf=False)
         elif self.radartype == 'SC':
             self.elev = self.elevanglelist[level]
             v = (self.vraw - 128) / 2
             v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
             v1[v1 == -64] = np.nan
-            return v1.T, None
+            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, include_rf=False)
+        x, y, z = self.projection('v')
+        v_obj.add_geoc(x, y, z)
+        return v_obj
 
-    def _get_coordinate(self, distance, angle):
+    def _get_coordinate(self, distance, angle, h_offset=True):
         r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
         if self.elev is None:
             raise RadarError('The elevation angle is not defined')
-        elev = self.elev
+        elev = self.elev if h_offset else 0
         deltav = np.cos(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
         deltah = np.sin(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
         deltalat = deltav / 111
@@ -348,7 +355,7 @@ class CinradReader:
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
-    def projection(self, datatype):
+    def projection(self, datatype, h_offset=True):
         r'''Calculate the geographic coordinates of the requested data range.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             length = self.boundary[self.level + 1] - self.boundary[self.level]
@@ -374,7 +381,7 @@ class CinradReader:
                 theta = np.arange(0, 361, 1) * deg2rad
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
-        lonx, latx = self._get_coordinate(r, theta)
+        lonx, latx = self._get_coordinate(r, theta, h_offset=h_offset)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, height
 
