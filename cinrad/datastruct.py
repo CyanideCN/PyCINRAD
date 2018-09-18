@@ -43,8 +43,8 @@ class V(Raw):
         Raw.__init__(self, data, drange, elev, reso, code, name, time, 'v')
         self.include_rf = include_rf
         if include_rf:
-            if type(data) not in [tuple, list]:
-                raise TypeError('Expected tuple or list, get {}'.format(type(data)))
+            if not isinstance(data, (tuple, list)):
+                raise TypeError('Expect tuple or list, get {}'.format(type(data)))
 
 class L2(Raw):
     def __init__(self, data, drange, elev, reso, code, name, time, dtype):
