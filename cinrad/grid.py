@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 #Author: Du puyuan
 
+from .constants import deg2rad
+
 import numpy as np
 from scipy.interpolate import griddata
 
 def resample(data, distance, azimuth, reso):
     #Target grid
     Rrange = np.arange(reso, distance.max() + reso, reso)
-    Trange = np.arange(0, 361, 1)
+    Trange = np.arange(0, 361, 1) * deg2rad
     dist, theta = np.meshgrid(Rrange, Trange)
     #Original grid
     d, t = np.meshgrid(distance, azimuth)

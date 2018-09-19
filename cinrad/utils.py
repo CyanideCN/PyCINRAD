@@ -2,12 +2,9 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, Rm1
-from . import calc
+from .projection import height
 
 import numpy as np
-
-def _height(distance, elevation, radarheight):
-    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * Rm1) + radarheight / 1000
 
 def composite_reflectivity(ref, drange=230):
     r'''Find max ref value in single coordinate and mask data outside obervation range
@@ -76,23 +73,24 @@ def echo_top_(ref, distance, elev, threshold=18.):
     et = calc.echo_top(data, elev, 0, threshold)
     return et
 
-def echo_top(ref, distance, elev, threshold=18):
-    '''Calculate max height of echo data'''
+def echo_top(ref, distance, elev, radarheight, threshold):
+    et = list()
     r = np.ma.array(ref, mask=(ref > threshold))
+    xshape, yshape = r[0].shape
     h_ = list()
     for i in elev:
-        h = _height(distance, i, 0)
+        h = height(distance, i, radarheight)
         h_.append(h)
     hght = np.concatenate(h_).reshape(r.shape)
     h_mask = hght * r.mask
-    et = list()
-    for i in range(0, 361):
-        for j in range(0, 230):
+    for i in range(xshape):
+        for j in range(yshape):
             vert_h = list()
             vert_r = list()
             vert_h_ = list()
             for k in range(1, 10):
-                h_pt = h_mask[-1 * k][i][j]#从高仰角开始索引
+                #index from highest angle
+                h_pt = h_mask[-1 * k][i][j]
                 r_pt = ref[-1 * k][i][j]
                 h_pt_ = hght[-1 * k][i][j]
                 vert_h.append(h_pt)
@@ -102,16 +100,15 @@ def echo_top(ref, distance, elev, threshold=18):
             position = np.where(vertical > 0)[0]
             try:
                 pos = position[0]
-            except IndexError:#空array
+            except IndexError:#empty array
                 et.append(0)
                 continue
-            if pos == 0:#第一个反射率大于18的仰角是最高的仰角
-                height = vertical[pos]
-                et.append(height)
+            if pos == 0:
+                height_ = vertical[pos]
+                et.append(height_)
             else:
-                e1 = elev[pos]
                 try:
-                    e2 = elev[pos - 1]
+                    elev[pos - 1]
                 except IndexError:
                     et.append(vertical[pos])
                     continue
@@ -121,5 +118,5 @@ def echo_top(ref, distance, elev, threshold=18):
                 h2 = vert_h_[pos - 1]
                 w1 = (z1 - threshold) / (z1 - z2)
                 w2 = 1 - w1
-                et.append(w1 * h2 + w2 * h1)#线性内插
-    return np.array(et).reshape(361, 230)
+                et.append(w1 * h2 + w2 * h1)
+    return np.array(et).reshape(xshape, yshape)

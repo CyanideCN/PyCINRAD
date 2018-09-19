@@ -3,7 +3,7 @@
 
 class Raw:
     def __init__(self, data, drange, elev, reso, code, name
-                 , time, dtype, lon=None, lat=None, height=None):
+                 , time, dtype, stlon, stlat, lon=None, lat=None, height=None):
         self.data = data
         self.drange = drange
         self.elev = elev
@@ -15,6 +15,7 @@ class Raw:
         self.lon = lon
         self.lat = lat
         self.height = height
+        self.stp = {'lon':stlon, 'lat':stlat}
         if lon == lat == None:
             self.geoflag = False
         else:
@@ -39,17 +40,17 @@ class Raw:
         self.az = azimuth
 
 class R(Raw):
-    def __init__(self, data, drange, elev, reso, code, name, time):
-        Raw.__init__(self, data, drange, elev, reso, code, name, time, 'r')
+    def __init__(self, data, drange, elev, reso, code, name, time, stlon, stlat):
+        Raw.__init__(self, data, drange, elev, reso, code, name, time, 'r', stlon, stlat)
 
 class V(Raw):
-    def __init__(self, data, drange, elev, reso, code, name, time, include_rf=True):
-        Raw.__init__(self, data, drange, elev, reso, code, name, time, 'v')
+    def __init__(self, data, drange, elev, reso, code, name, time, stlon, stlat, include_rf=True):
+        Raw.__init__(self, data, drange, elev, reso, code, name, time, 'v', stlon, stlat)
         self.include_rf = include_rf
         if include_rf:
             if not isinstance(data, (tuple, list)):
                 raise TypeError('Expect tuple or list, get {}'.format(type(data)))
 
 class L2(Raw):
-    def __init__(self, data, drange, elev, reso, code, name, time, dtype):
-        Raw.__init__(self, data, drange, elev, reso, code, name, time, dtype)
+    def __init__(self, data, drange, elev, reso, code, name, time, dtype, stlon, stlat):
+        Raw.__init__(self, data, drange, elev, reso, code, name, time, dtype, stlon, stlat)

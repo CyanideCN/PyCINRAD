@@ -3,6 +3,7 @@
 
 from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import R, V
+from .projection import get_coordinate, height
 
 import warnings
 import datetime
@@ -202,7 +203,7 @@ class CinradReader:
         self.code = code
         self._update_radar_info()
 
-    def set_radar_height(self, height):
+    def set_radarheight(self, height):
         self.radarheight = height
 
     def set_elevation_angle(self, angle):
@@ -235,10 +236,7 @@ class CinradReader:
         else:
             self.set_station_position(info[1], info[2])
             self.set_station_name(info[0])
-            self.set_radar_height(info[4])
-
-    def _height(self, distance, elevation):
-        return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * Rm1) + self.radarheight / 1000
+            self.set_radarheight(info[4])
 
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
@@ -298,7 +296,8 @@ class CinradReader:
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
-        r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr)
+        r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+                  self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
@@ -325,7 +324,8 @@ class CinradReader:
             v1 = v.transpose()[:int(drange / self.Vreso)]
             v1[v1 == -64.5] = np.nan
             rf = np.ma.array(v1, mask=(v1 != -64))
-            v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr)
+            v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+                      self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
             v = self.vraw / 10
             v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
@@ -336,24 +336,12 @@ class CinradReader:
             v = (self.vraw - 128) / 2
             v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
             v1[v1 == -64] = np.nan
-            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, include_rf=False)
+            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name,
+                      self.timestr, self.stationlon, self.stationlat, include_rf=False)
         x, y, z, d, a = self.projection('v')
         v_obj.add_geoc(x, y, z)
         v.obj.add_polarc(d, a)
         return v_obj
-
-    def _get_coordinate(self, distance, angle, h_offset=True):
-        r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
-        if self.elev is None:
-            raise RadarError('The elevation angle is not defined')
-        elev = self.elev if h_offset else 0
-        deltav = np.cos(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
-        deltah = np.sin(angle[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
-        deltalat = deltav / 111
-        actuallat = deltalat + self.stationlat
-        deltalon = deltah / 111
-        actuallon = deltalon + self.stationlon
-        return actuallon, actuallat
 
     def projection(self, datatype, h_offset=False):
         r'''Calculate the geographic coordinates of the requested data range.'''
@@ -381,9 +369,9 @@ class CinradReader:
                 theta = np.arange(0, 361, 1) * deg2rad
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
-        lonx, latx = self._get_coordinate(r, theta, h_offset=h_offset)
-        height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
-        return lonx, latx, height, r, theta
+        lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat, h_offset=h_offset)
+        hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
+        return lonx, latx, hght, r, theta
 
     def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''

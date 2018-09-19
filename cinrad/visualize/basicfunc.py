@@ -42,3 +42,7 @@ def add_shp(m):
 def setup_basemap(lon, lat):
     m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
     return m
+
+def change_cbar_text(cbar, tick, text):
+    cbar.set_ticks(tick)
+    cbar.set_ticklabels(text)
