@@ -4,15 +4,15 @@
 import numpy as np
 from scipy.interpolate import griddata
 
-def resample(data, distance, azimuth, xreso, yreso):
+def resample(data, distance, azimuth, reso):
     #Target grid
-    Rrange = np.arange(self.Rreso, drange + self.Rreso, self.Rreso)
+    Rrange = np.arange(reso, distance.max() + reso, reso)
     Trange = np.arange(0, 361, 1)
     dist, theta = np.meshgrid(Rrange, Trange)
     #Original grid
     d, t = np.meshgrid(distance, azimuth)
     r = griddata((d.flatten(), t.flatten()), data.flatten(), (dist, theta), method='nearest')
-    return r
+    return r, dist, theta
 
 def grid_2d(data, x, y, resolution=(500, 500)):
     r_x, r_y = resolution

@@ -21,8 +21,8 @@ class Raw:
             self.geoflag = True
 
     def __repr__(self):
-        repr_s = ('Datatype: {}\nStation name:{}\nScan time:{}\nElevation angle:' 
-        + '{}\nRange:{}')
+        repr_s = ('Datatype: {}\nStation name: {}\nScan time: {}\nElevation angle: '
+        + '{}\nRange: {}')
         return repr_s.format(
             self.dtype.upper(), self.name, self.time, self.elev, self.drange)
 
@@ -33,6 +33,10 @@ class Raw:
         self.lat = lat
         self.height = height
         self.geoflag = True
+
+    def add_polarc(self, distance, azimuth):
+        self.dist = distance
+        self.az = azimuth
 
 class R(Raw):
     def __init__(self, data, drange, elev, reso, code, name, time):
