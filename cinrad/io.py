@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #Author: Du puyuan
 
-from .constants import deg2rad, con, con2, Rm1
+from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import R, V
 
 import warnings
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-radarinfo = np.load('RadarStation.npy')
+radarinfo = np.load(modpath + '\\RadarStation.npy')
 
 class RadarError(Exception):
     def __init__(self, description):

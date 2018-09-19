@@ -2,7 +2,7 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, Rm1
-import calc
+from . import calc
 
 import numpy as np
 

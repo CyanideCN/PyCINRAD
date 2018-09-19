@@ -6,28 +6,35 @@ from .form_colormap import form_colormap
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
+import os
+
+try:
+    path = os.environ['CINRAD_PATH']
+except KeyError:
+    os.environ['CINRAD_PATH'] = 'D:\\'
+
 deg2rad = 3.141592653589793 / 180
 Rm1 = 8500
 con = (180 / 4096) * 0.125
 con2 = 0.001824 # calculated manually
 
-folderpath = 'D:\\'
-
-r_cmap = form_colormap('colormap\\r_main.txt', sep=True)
-v_cmap = form_colormap('colormap\\v_main.txt', sep=False)
-vel_cbar = form_colormap('colormap\\v_cbar.txt', sep=True)
-rhi_cmap_smooth = form_colormap('colormap\\r_main.txt', sep=False, spacing='v')
-r_cmap_smooth = form_colormap('colormap\\r_smooth.txt', sep=False, spacing='v')
-zdr_cmap = form_colormap('colormap\\zdr_main.txt', sep=False)
-zdr_cbar = form_colormap('colormap\\zdr_cbar.txt', sep=True)
-kdp_cmap = form_colormap('colormap\\kdp_main.txt', sep=False)
-kdp_cbar = form_colormap('colormap\\kdp_cbar.txt', sep=True)
-cc_cmap = form_colormap('colormap\\cc_main.txt', sep=False)
-cc_cbar = form_colormap('colormap\\cc_cbar.txt', sep=True)
-et_cmap = form_colormap('colormap\\et_main.txt', sep=False)
-et_cbar = form_colormap('colormap\\et_cbar.txt', sep=True)
-vil_cmap = form_colormap('colormap\\vil_main.txt', sep=True)
-vil_cbar = form_colormap('colormap\\vil_cbar.txt', sep=True)
+modpath = os.path.dirname(os.path.abspath(__file__))
+CMAP_DIR = os.path.join(modpath, 'colormap')
+r_cmap = form_colormap(CMAP_DIR + '\\r_main.txt', sep=True)
+v_cmap = form_colormap(CMAP_DIR + '\\v_main.txt', sep=False)
+vel_cbar = form_colormap(CMAP_DIR + '\\v_cbar.txt', sep=True)
+rhi_cmap_smooth = form_colormap(CMAP_DIR + '\\r_main.txt', sep=False, spacing='v')
+r_cmap_smooth = form_colormap(CMAP_DIR + '\\r_smooth.txt', sep=False, spacing='v')
+zdr_cmap = form_colormap(CMAP_DIR + '\\zdr_main.txt', sep=False)
+zdr_cbar = form_colormap(CMAP_DIR + '\\zdr_cbar.txt', sep=True)
+kdp_cmap = form_colormap(CMAP_DIR + '\\kdp_main.txt', sep=False)
+kdp_cbar = form_colormap(CMAP_DIR + '\\kdp_cbar.txt', sep=True)
+cc_cmap = form_colormap(CMAP_DIR + '\\cc_main.txt', sep=False)
+cc_cbar = form_colormap(CMAP_DIR + '\\cc_cbar.txt', sep=True)
+et_cmap = form_colormap(CMAP_DIR + '\\et_main.txt', sep=False)
+et_cbar = form_colormap(CMAP_DIR + '\\et_cbar.txt', sep=True)
+vil_cmap = form_colormap(CMAP_DIR + '\\vil_main.txt', sep=True)
+vil_cbar = form_colormap(CMAP_DIR + '\\vil_cbar.txt', sep=True)
 rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 norm1 = cmx.Normalize(0, 75)
