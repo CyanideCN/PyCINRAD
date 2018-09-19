@@ -1,83 +1,81 @@
 # PyCINRAD
-CINRAD data reader.
+A python package which handles CINRAD radar data reading and plotting.
 
-A python class which can be used to read CINRAD radar files and plot graphs including PPI and RHI.
+读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
-读取CINRAD雷达基数据的Python脚本，具体函数用法请看脚本注释。
-该脚本目前还在继续开发中，欢迎提Issue/发PR^_^
-
-
-### 用法
-如要自定义文件保存路径，打开config.ini，编辑键"filepath"对应的值即可
+## 安装
 
 ```
-from CINRAD_radar import Radar
-file = 'Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin'
-radar = Radar(file)
-```
-由于SA/SB/CB雷达文件里并未记录站号，程序会尝试从文件名里提取站号然后寻找到对应的地理信息，形如 Z_RADR_I_Z9576_20180629043900_O_DOR_SA_CAP.bin 和 RADA_CHN_DOR_L2_O-Z9558-SA-CAP-20180725084700.bin 这两种形式的文件都是可以自动识别的。注：bz2格式的压缩文件也可直接打开。
-
-如果程序没有读出站号，就会抛出警告:
-```
-Auto fill radar station info failed, please set code manually
+python setup.py install
 ```
 
-这时候则需要手动设置站号。
-```
-radar.set_code('Z9576')
-```
+### 设置图片保存路径
 
-同时，可以在读取之前声明雷达类型，传入的雷达类型为最高优先级（如果和检索结果有冲突将采用传入的雷达类型读取数据）。
-```
-radar = Radar(file, radar_type='SA')
-```
+程序默认将图片保存在`D:\`目录下，如要设置到其他路径，请使用`cinrad.set_savepath`函数。
 
-#### 绘制PPI
-```
-radar.draw_ppi(level, drange, 'r', smooth=True)
-```
-datatype参数目前支持 'r', 'v', 'et', 'cr'和'vil'，对应反射率，速度，回波顶高，组合反射率和垂直积分液态含水量。
+例子：
 
-当datatype为'r'时，smooth参数可以对反射率进行平滑处理。
-
-
-#### 绘制RHI
-```
-radar.draw_rhi(azimuth, drange)
-```
-传入方位角和距离即可绘制。
-
-#### 绘制CINRAD CC雷达数据
-
-由于本程序没有完全支持CC雷达，绘制CC雷达反射率和速度的PPI的步骤稍有不同，需要先手动设置该仰角的度数再绘制。
-
-```
-radar = Radar('2018072615.12V')
-radar.set_elevation_angle(0.5)
-radar.draw_ppi(0, 230, 'r')
+```python
+import cinrad
+cinrad.set_savepath('D:\\1\\')
 ```
 
-#### 绘制CINRAD SD(S波段双偏振)雷达数据
+## 模块介绍
 
-目前本程序已支持绘制除了差分相移之外的所有L2产品(REF, ZDR, KDP, CC)
+### cinrad.datastruct
 
+构建本模块所使用的数据类型
+
+基本类型: `cinrad.datastruct.Raw`
+
+反射率数据类型: `cinrad.datastruct.R` (base: `cinrad.datastruct.Raw`)
+
+速度数据类型: `cinrad.datastruct.V` (base: `cinrad.datastruct.Raw`)
+
+该基本类型包含该要素数据，经纬度数据和雷达其他信息（雷达站名，扫描时间等）
+
+### cinrad.io
+
+读取CINRAD雷达数据。
+
+例子：
+
+```python
+from cinrad.io import CinradReader
+f = CinradReader(your_radar_file)
+f.reflectivity(elevation_angle_level, data_range) #获取反射率数据（为cinrad.datastruct.R类型）
+f.velocity(elevation_angle_level, data_range) #获取速度数据（为cinrad.datastruct.V类型）
 ```
-from CINRAD_radar import DPRadar
-radar = DPRadar('Z_RADR_I_Z9210_20180401000152_O_DOR_SA_CAP.bin')
-radar.draw_ppi(0, 100, 'REF')
+
+### cinrad.utils
+
+提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用，
+而不仅仅是能计算此程序读取出来的CINRAD雷达数据。
+
+函数名：
+`composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
+
+### cinrad.easycalc
+
+提供雷达衍生产品的计算（接受`cinrad.datastruct.Raw`）
+使用cinrad.io读取的数据可直接带入该模块下的函数来计算。
+
+函数名：
+`quick_cr`, `quick_et`, `quick_vil`
+
+### cinrad.visualize
+
+雷达数据可视化，目前包括`cinrad.visualize.ppi`，仅接受`cinrad.datastruct.Raw`类型。
+
+函数名：`base_reflectivity`, `base_velocity`, `echo_tops`, `vert_integrated_liquid`, 
+`composite_reflectivity`
+
+例子：
+
+```python
+from cinrad.visualize.ppi import base_reflectivity
+base_reflectivity(R) #绘制基本反射率图片
 ```
-
-#### 不同雷达可绘制产品总结图
-
-|产品|SA/SB|CA/CB|CC|SD|SC|
-|:-:|:-:|:-:|:-:|:-:|:-:|
-|基本反射率|√|√|√|√|√|
-|多普勒速度|√|√|√|×|√|
-|RHI|√|√|×|×|×|
-|组合反射率|√|√|√|×|√|
-|回波顶高|√|×|×|×|×|
-|VIL|√|×|×|×|√|
-|双偏振要素|×|×|×|√|×|
 
 回波顶高及垂直积分液态含水量算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
 
