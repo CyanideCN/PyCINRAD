@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #Author: Du puyuan
 
-from ..constants import font2
+from ..constants import font2, modpath
 
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
@@ -35,9 +35,9 @@ def save(folderpath, code, timestr, elev, drange, datatype):
     plt.cla()
 
 def add_shp(m):
-    m.readshapefile('shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
-    m.readshapefile('shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
-    m.readshapefile('shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
+    m.readshapefile(modpath + '\\shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
+    m.readshapefile(modpath + '\\shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
+    m.readshapefile(modpath + '\\shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
 
 def setup_basemap(lon, lat):
     m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
