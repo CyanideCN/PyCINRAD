@@ -6,7 +6,18 @@ A python package which handles CINRAD radar data reading and plotting.
 ## 安装
 
 ```
-python setup.py
+python setup.py install
+```
+
+### 设置图片保存路径
+
+程序默认将图片保存在`D:\`目录下，如要设置到其他路径，请使用`cinrad.set_savepath`函数。
+
+例子：
+
+```python
+import cinrad
+cinrad.set_savepath('D:\\1\\')
 ```
 
 ## 模块介绍
@@ -38,28 +49,34 @@ f.velocity(elevation_angle_level, data_range) #获取速度数据（为cinrad.da
 
 ### cinrad.utils
 
-提供雷达衍生产品的计算（接受`numpy.ndarray`）
+提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用，
+而不仅仅是能计算此程序读取出来的CINRAD雷达数据。
+
+函数名：
+`composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
+```
 
 ### cinrad.easycalc
 
 提供雷达衍生产品的计算（接受`cinrad.datastruct.Raw`）
+使用cinrad.io读取的数据可直接带入该模块下的函数来计算。
+
+函数名：
+`quick_cr`, `quick_et`, `quick_vil`
 
 ### cinrad.visualize
 
-雷达数据可视化，目前包括`cinrad.visualize.ppi`
+雷达数据可视化，目前包括`cinrad.visualize.ppi`，仅接受`cinrad.datastruct.Raw`类型。
+
+函数名：`base_reflectivity`, `base_velocity`, `echo_tops`, `vert_integrated_liquid`, 
+`composite_reflectivity`
 
 例子：
 
 ```python
 from cinrad.visualize.ppi import base_reflectivity
 base_reflectivity(R) #绘制基本反射率图片
-
-from cinrad.visualize.ppi import base_velocity
-base_velocity(V) #绘制基本速度图片
 ```
-
-
-未完待续
 
 回波顶高及垂直积分液态含水量算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
 

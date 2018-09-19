@@ -14,13 +14,13 @@ def form_colormap(filepath, proportion=True, sep=False, spacing='c'):
     filepath: string
         The path of the colormap txt file.
     proportion: boolean, default is True
-        When proportion is True, LinearSegmentedColormap will be formed 
+        When proportion is True, LinearSegmentedColormap will be formed
         by the input values.
     sep: boolean, default is False
         When sep is True, the colormap will be a set of color blocks 
         (no color gradient).
     spacing: string, default is 'c', only used when sep is False.
-        When spacing is 'c', the color blocks will be equally spaced. 
+        When spacing is 'c', the color blocks will be equally spaced.
         A ListedColormap will be returned.
         When spacing is 'v', the length of color blocks will be based 
         on the input values. A LinearSegmentedColormap will be returned.
@@ -39,7 +39,7 @@ def form_colormap(filepath, proportion=True, sep=False, spacing='c'):
             value = []
             count = 0
             while count < len(ar1[1]):
-                value.append((int(ar1[1][count]) / 255, int(ar1[2][count]) / 255, 
+                value.append((int(ar1[1][count]) / 255, int(ar1[2][count]) / 255,
                               int(ar1[3][count]) / 255))
                 count = count + 1
             return cmx.ListedColormap(value, 256)

@@ -4,6 +4,7 @@
 from .utils import composite_reflectivity, echo_top, vert_integrated_liquid
 from .datastruct import L2
 from .grid import grid_2d, resample
+from .projection import get_coordinate
 
 import numpy as np
 
@@ -26,9 +27,11 @@ def quick_et(Rlist):
         r_data.append(x)
         elev.append(i.elev)
     data = np.concatenate(r_data).reshape(9, 361, 230)
-    et = echo_top(data, d, elev)
-    l2_obj = L2(et, i.drange, 0, 1, i.code, i.name, i.time, 'et')
-    l2_obj.add_geoc(i.lon, i.lat, np.zeros(i.lon.shape))
+    et = echo_top(data, d, elev, 0, 18)
+    l2_obj = L2(et, i.drange, 0, 1, i.code, i.name, i.time, 'et',
+                i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
+    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
 def quick_vil(Rlist):
@@ -40,6 +43,8 @@ def quick_vil(Rlist):
         elev.append(i.elev)
     data = np.concatenate(r_data).reshape(9, 361, 230)
     vil = vert_integrated_liquid(data, d, elev)
-    l2_obj = L2(vil, i.drange, 0, 1, i.code, i.name, i.time, 'vil')
-    l2_obj.add_geoc(i.lon, i.lat, np.zeros(i.lon.shape))
+    l2_obj = L2(vil, i.drange, 0, 1, i.code, i.name, i.time, 'vil',
+                i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d, a, 0, i.stp['lon'], i.stp['lat'])
+    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
