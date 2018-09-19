@@ -15,7 +15,8 @@ def quick_cr(Rlist):
         r_data.append(r)
     cr = composite_reflectivity(r_data)
     x, y = np.meshgrid(x, y)
-    l2_obj = L2(cr, i.drange, 0, 1, i.code, i.name, i.time, 'cr')
+    l2_obj = L2(cr, i.drange, 0, 1, i.code, i.name, i.time, 'cr',
+                i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(x, y, np.zeros(x.shape))
     return l2_obj
 

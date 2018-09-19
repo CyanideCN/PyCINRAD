@@ -330,7 +330,8 @@ class CinradReader:
             v = self.vraw / 10
             v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
             v1[v1 == -3276.8] = np.nan
-            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, include_rf=False)
+            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr
+                      ,self.stationlon, self.stationlat, include_rf=False)
         elif self.radartype == 'SC':
             self.elev = self.elevanglelist[level]
             v = (self.vraw - 128) / 2
@@ -340,7 +341,7 @@ class CinradReader:
                       self.timestr, self.stationlon, self.stationlat, include_rf=False)
         x, y, z, d, a = self.projection('v')
         v_obj.add_geoc(x, y, z)
-        v.obj.add_polarc(d, a)
+        v_obj.add_polarc(d, a)
         return v_obj
 
     def projection(self, datatype, h_offset=False):
