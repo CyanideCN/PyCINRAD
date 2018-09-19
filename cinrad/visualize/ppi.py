@@ -56,3 +56,24 @@ def base_velocity(data, draw_author=True):
     ax.text(0, 2.13, 'Base Velocity', fontproperties=font2)
     ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
     save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+
+def echo_tops(data, draw_author=True):
+    from ..constants import norm5, et_cmap, et_cbar
+    if not data.geoflag:
+        raise ValueError('Geographic information should be contained in data')
+    else:
+        lon, lat = data.lon, data.lat
+        et = data.data
+    if data.dtype is not 'et':
+        raise ValueError('Expected datatype is "et", received "{}"'.format(data.dtype))
+    fig = setup_plot(350)
+    m = setup_basemap(lon, lat)
+    dmax = et[np.logical_not(np.isnan(et))]
+    m.pcolormesh(lon, lat, et, norm=norm5, cmap=et_cmap)
+    add_shp(m)
+    ax, cbar = setup_axes(fig, et_cbar, norm4)
+    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
+    ax.text(0, 2.13, 'Echo Tops', fontproperties=font2)
+    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
+    ax.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(dmax)), fontproperties=font2)
+    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)

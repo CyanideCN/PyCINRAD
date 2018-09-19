@@ -11,7 +11,7 @@ CINRAD data reader.
 
 例子：
 
-```
+```python
 from cinrad.io import CinradReader
 f = CinradReader(your_radar_file)
 f.reflectivity(elevation_angle_level, data_range) #获取反射率数据（为cinrad.datastruct.R类型）
@@ -24,7 +24,7 @@ f.velocity(elevation_angle_level, data_range) #获取速度数据（为cinrad.da
 
 例子：
 
-```
+```python
 from cinrad.visualize.ppi import base_reflectivity
 base_reflectivity(R) #绘制基本反射率图片
 
@@ -36,11 +36,11 @@ base_velocity(V) #绘制基本速度图片
 
 构建本模块所使用的数据类型
 
-基本类型: cinrad.datastruct.Raw
+基本类型: `cinrad.datastruct.Raw`
 
-反射率数据类型: cinrad.datastruct.R (base: cinrad.datastruct.Raw)
+反射率数据类型: `cinrad.datastruct.R` (base: `cinrad.datastruct.Raw`)
 
-速度数据类型: cinrad.datastruct.V (base: cinrad.datastruct.Raw)
+速度数据类型: `cinrad.datastruct.V` (base: `cinrad.datastruct.Raw`)
 
 该基本类型包含该要素数据，经纬度数据和雷达其他信息（雷达站名，扫描时间等）
 

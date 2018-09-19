@@ -299,8 +299,9 @@ class CinradReader:
         except IndexError:
             pass
         r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr)
-        x, y, z = self.projection('r')
+        x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
+        r_obj.add_polarc(d, a)
         return r_obj
 
     def velocity(self, level, drange):
@@ -336,8 +337,9 @@ class CinradReader:
             v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
             v1[v1 == -64] = np.nan
             v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, include_rf=False)
-        x, y, z = self.projection('v')
+        x, y, z, d, a = self.projection('v')
         v_obj.add_geoc(x, y, z)
+        v.obj.add_polarc(d, a)
         return v_obj
 
     def _get_coordinate(self, distance, angle, h_offset=True):
@@ -353,7 +355,7 @@ class CinradReader:
         actuallon = deltalon + self.stationlon
         return actuallon, actuallat
 
-    def projection(self, datatype, h_offset=True):
+    def projection(self, datatype, h_offset=False):
         r'''Calculate the geographic coordinates of the requested data range.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             length = self.boundary[self.level + 1] - self.boundary[self.level]
@@ -381,7 +383,7 @@ class CinradReader:
                 theta = np.linspace(0, 360, length) * deg2rad
         lonx, latx = self._get_coordinate(r, theta, h_offset=h_offset)
         height = self._height(r, self.elev) * np.ones(theta.shape[0])[:, np.newaxis]
-        return lonx, latx, height
+        return lonx, latx, height, r, theta
 
     def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
