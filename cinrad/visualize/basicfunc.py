@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from mpl_toolkits.basemap import Basemap
 
-def setup_plot(dpi):
-    fig = plt.figure(figsize=(10, 10), dpi=dpi)
+def setup_plot(dpi, figsize=(10, 10)):
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis('off')
     plt.style.use('dark_background')
     return fig

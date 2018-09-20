@@ -3,13 +3,11 @@
 
 from .basicfunc import (add_shp, save, setup_axes, setup_plot, setup_basemap,
                         text, change_cbar_text)
-from ..constants import font2, norm4
+from ..constants import font2, norm4, folderpath
 
 import os
 
 import numpy as np
-
-folderpath = os.environ['CINRAD_PATH']
 
 def base_reflectivity(data, smooth=False, draw_author=True):
     from ..constants import norm1, r_cmap
