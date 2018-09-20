@@ -27,7 +27,7 @@ def quick_et(Rlist):
         x, d, a = resample(i.data, i.dist, i.az, i.reso)
         r_data.append(x)
         elev.append(i.elev)
-    data = np.concatenate(r_data).reshape(9, 361, 230)
+    data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])
     et = echo_top(data, d, elev, 0, 18)
     l2_obj = L2(et, i.drange, 0, 1, i.code, i.name, i.time, 'et',
                 i.stp['lon'], i.stp['lat'])
@@ -38,14 +38,15 @@ def quick_et(Rlist):
 def quick_vil(Rlist):
     r_data = list()
     elev = list()
+    areso = Rlist[0].a_reso if Rlist[0].a_reso else 360
     for i in Rlist:
-        x, d, a = resample(i.data, i.dist, i.az, i.reso)
+        x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
         r_data.append(x)
         elev.append(i.elev)
-    data = np.concatenate(r_data).reshape(9, 361, 230)
+    data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])
     vil = vert_integrated_liquid(data, d, elev)
     l2_obj = L2(vil, i.drange, 0, 1, i.code, i.name, i.time, 'vil',
                 i.stp['lon'], i.stp['lat'])
-    lon, lat = get_coordinate(d, a, 0, i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
