@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 
-def base_reflectivity(data, smooth=False, draw_author=True):
+def base_reflectivity(data, fname=None, smooth=False, draw_author=True):
     from ..constants import norm1, r_cmap
     if not data.geoflag:
         raise ValueError('Geographic information should be contained in data')
@@ -97,7 +97,8 @@ def vert_integrated_liquid(data, draw_author=True):
         raise ValueError('Expected datatype is "vil", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
     m = setup_basemap(lon, lat)
-    dmax = et[np.logical_not(np.isnan(et))]
+    dmax = vil[np.logical_not(np.isnan(vil))]
+    vil[vil <= 0] = None
     m.pcolormesh(lon, lat, vil, norm=norm1, cmap=vil_cmap)
     add_shp(m)
     ax, cbar = setup_axes(fig, vil_cbar, norm4)

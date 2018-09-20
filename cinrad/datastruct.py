@@ -4,7 +4,8 @@
 class Raw:
     r'''Basic radar data struct'''
     def __init__(self, data, drange, elev, reso, code, name
-                 , time, dtype, stlon, stlat, lon=None, lat=None, height=None):
+                 , time, dtype, stlon, stlat, lon=None, lat=None
+                 , height=None, a_reso=None):
         self.data = data
         self.drange = drange
         self.elev = elev
@@ -16,6 +17,7 @@ class Raw:
         self.lon = lon
         self.lat = lat
         self.height = height
+        self.a_reso = a_reso
         self.stp = {'lon':stlon, 'lat':stlat}
         if lon == lat == None:
             self.geoflag = False

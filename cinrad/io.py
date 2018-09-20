@@ -36,10 +36,12 @@ class CinradReader:
             self._SAB_handler(f)
         elif radartype in ['CA', 'CB']:
             self._SAB_handler(f, SAB=False)
-        elif radartype == 'CC':
+        elif radartype is 'CC':
             self._CC_handler(f)
-        elif radartype == 'SC':
+        elif radartype is 'SC':
             self._SC_handler(f)
+        elif radartype is 'CD':
+            raise RadarError('CD radar is not supported')
         else:
             raise RadarError('Unrecognized data')
         self._update_radar_info()
@@ -89,8 +91,8 @@ class CinradReader:
         eleang = list()
         self.boundary = list()
         count = 0
-        deltdays = np.fromstring(copy[32:34], dtype='u2')[0]
-        deltsecs = np.fromstring(copy[28:32], dtype='u4')[0]
+        deltdays = np.fromstring(copy[32:34], 'u2')[0]
+        deltsecs = np.fromstring(copy[28:32], 'u4')[0]
         start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
@@ -100,17 +102,17 @@ class CinradReader:
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
-            azimuth = np.fromstring(a[36:38], dtype='u2')
-            datacon = np.fromstring(a[40:42], dtype='u2')
-            elevangle = np.fromstring(a[42:44], dtype='u2')
-            anglenum = np.fromstring(a[44:46], dtype='u2')
-            veloreso = np.fromstring(a[70:72], dtype='u2')
+            azimuth = np.fromstring(a[36:38], 'u2')
+            datacon = np.fromstring(a[40:42], 'u2')
+            elevangle = np.fromstring(a[42:44], 'u2')
+            anglenum = np.fromstring(a[44:46], 'u2')
+            veloreso = np.fromstring(a[70:72], 'u2')
             if SAB:
-                R = np.fromstring(a[128:588], dtype='u1')
-                V = np.fromstring(a[128:1508], dtype='u1')
+                R = np.fromstring(a[128:588], 'u1')
+                V = np.fromstring(a[128:1508], 'u1')
             else:
-                R = np.fromstring(a[128:928], dtype='u1')
-                V = np.fromstring(a[128:2528], dtype='u1')
+                R = np.fromstring(a[128:928], 'u1')
+                V = np.fromstring(a[128:2528], 'u1')
             azimuthx.append(azimuth[0])
             eleang.append(elevangle[0])
             vraw.append(V.tolist())
@@ -123,14 +125,14 @@ class CinradReader:
                 self.boundary.append(num - 1)
             count = count + 1
         self.rraw = np.array(rraw)
-        self.z = np.array(eleang) * con
-        self.aziangle = np.array(azimuthx) * con * deg2rad
         self.vraw = np.array(vraw)
+        self.elevdeg = np.array(eleang) * con
+        self.azimuth = np.array(azimuthx) * con * deg2rad
         self.dv = veloreso[0]
-        anglelist = np.arange(0, anglenum[0], 1)
-        self.anglelist_r = np.delete(anglelist, [1, 3])
-        self.anglelist_v = np.delete(anglelist, [0, 2])
-        self.elevanglelist = self.z[self.boundary][:-1]
+        angleindex = np.arange(0, anglenum[0], 1)
+        self.angleindex_r = np.delete(angleindex, [1, 3])
+        self.angleindex_v = np.delete(angleindex, [0, 2])
+        self.elevindex = self.elevdeg[self.boundary][:-1]
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
     def _CC_handler(self, f):
@@ -143,16 +145,16 @@ class CinradReader:
         f.seek(106)
         self.code = f.read(10).decode().split('\x00')[0]
         f.seek(184)
-        scantime = datetime.datetime(year=np.fromstring(f.read(1), dtype='u1')[0] * 100 + np.fromstring(f.read(1), dtype='u1')[0],
-                                        month=np.fromstring(f.read(1), dtype='u1')[0], day=np.fromstring(f.read(1), dtype='u1')[0],
-                                        hour=np.fromstring(f.read(1), dtype='u1')[0], minute=np.fromstring(f.read(1), dtype='u1')[0],
-                                        second=np.fromstring(f.read(1), dtype='u1')[0])
+        scantime = datetime.datetime(year=np.fromstring(f.read(1), 'u1')[0] * 100 + np.fromstring(f.read(1), 'u1')[0],
+                                        month=np.fromstring(f.read(1), 'u1')[0], day=np.fromstring(f.read(1), 'u1')[0],
+                                        hour=np.fromstring(f.read(1), 'u1')[0], minute=np.fromstring(f.read(1), 'u1')[0],
+                                        second=np.fromstring(f.read(1), 'u1')[0])
         count = 0
         f.seek(1024)
         while count < num:
             a = f.read(blocklength)
-            r = np.fromstring(a[:1000], dtype=np.short).astype(float)
-            v = np.fromstring(a[1000:2000], dtype=np.short).astype(float)
+            r = np.fromstring(a[:1000], np.short).astype(float)
+            v = np.fromstring(a[1000:2000], np.short).astype(float)
             rraw.append(r)
             vraw.append(v)
             count += 1
@@ -161,6 +163,7 @@ class CinradReader:
         self.Rreso = 0.3
         self.Vreso = 0.3
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.elevdeg = [0.5, 1.5, 2.4, 3.4, 4.3, 6, 9.89, 14.6, 19.5]
 
     def _SC_handler(self, f):
         vraw = list()
@@ -185,8 +188,8 @@ class CinradReader:
             count += 1
         self.rraw = np.concatenate(rraw).reshape(3240, 998)
         self.vraw = np.concatenate(vraw).reshape(3240, 998)
-        self.elevanglelist = np.array(elev[slice(359, None, 360)]) * con2
-        self.aziangle = np.arange(0, 360, 1) * deg2rad
+        self.elevindex = np.array(elev[slice(359, None, 360)]) * con2
+        self.azimuth = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
     def set_station_position(self, stationlon, stationlat):
@@ -241,7 +244,7 @@ class CinradReader:
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
-        self.azim = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]] * deg2rad
+        self.azim = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]] * deg2rad
         if azimuth < 0.3:
             azimuth = 0.5
         azimuth_ = azimuth * deg2rad
@@ -264,10 +267,6 @@ class CinradReader:
 
     def reflectivity(self, level, drange):
         r'''Clip desired range of reflectivity data.'''
-        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            self.elev = self.z[self.boundary[level]]
-            if level in [1, 3]:
-                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
         self.level = level
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
@@ -275,15 +274,19 @@ class CinradReader:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.rraw.shape[1] * self.Rreso)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            dbz = (self.rraw - 2) / 2 - 32
-            r = dbz[self.boundary[level]:self.boundary[level + 1]]
-            r1 = r.transpose()[:int(drange / self.Rreso)]
+            self.elev = self.elevdeg[self.boundary[level]]
+            if level not in self.angleindex_r:
+                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
+            r = self.rraw[self.boundary[level]:self.boundary[level + 1]]
+            r = (r - 2) / 2 - 32
+            r1 = r.T[:int(drange / self.Rreso)]
         elif self.radartype == 'CC':
-            dbz = self.rraw / 10
-            r1 = dbz[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T
+            self.elev = self.elevdeg[level]
+            r1 = self.rraw[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T / 10
         elif self.radartype == 'SC':
-            self.elev = self.elevanglelist[level]
-            dbz = (self.rraw - 64) / 2
+            self.elev = self.elevindex[level]
+            r = self.rraw[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
+            dbz = (r - 64) / 2
             r1 = dbz[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
         r1[r1 < 0] = 0
         radialavr = [np.average(i) for i in r1]
@@ -301,14 +304,15 @@ class CinradReader:
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
+        r_obj.a_reso = 512
         return r_obj
 
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            if level in [0, 2]:
+            if level not in self.angleindex_v:
                 warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-            self.elev = self.z[self.boundary[level]]
+            self.elev = self.elevdeg[self.boundary[level]]
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
@@ -316,27 +320,27 @@ class CinradReader:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            v = self.vraw[self.boundary[level]:self.boundary[level + 1]]
+            v1 = v.T[:int(drange / self.Vreso)]
+            rf = np.ma.array(v1, mask=(v1 != 1))
+            v1[v1 == 0] = np.nan
             if self.dv == 2:
-                v = (self.vraw - 2) / 2 - 63.5
+                v1 = (v1 - 2) / 2 - 63.5
             elif self.dv == 4:
-                v = (self.vraw - 2) - 127
-            v = v[self.boundary[level]:self.boundary[level + 1]]
-            v1 = v.transpose()[:int(drange / self.Vreso)]
-            v1[v1 == -64.5] = np.nan
-            rf = np.ma.array(v1, mask=(v1 != -64))
+                v1 = (v1 - 2) - 127
             v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
                       self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
-            v = self.vraw / 10
-            v1 = v[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
-            v1[v1 == -3276.8] = np.nan
+            v = self.vraw[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
+            v[v == -32768] = np.nan
+            v1 = v / 10
             v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr
                       ,self.stationlon, self.stationlat, include_rf=False)
         elif self.radartype == 'SC':
-            self.elev = self.elevanglelist[level]
-            v = (self.vraw - 128) / 2
-            v1 = v[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
-            v1[v1 == -64] = np.nan
+            self.elev = self.elevindex[level]
+            v = self.vraw[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
+            v[v == -64] = np.nan
+            v1 = (v - 128) / 2
             v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name,
                       self.timestr, self.stationlon, self.stationlat, include_rf=False)
         x, y, z, d, a = self.projection('v')
@@ -355,13 +359,13 @@ class CinradReader:
         if datatype == 'r':
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype == 'v':
             r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.aziangle[self.boundary[self.level]:self.boundary[self.level + 1]]
+                theta = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]]
             elif self.radartype in ['CC', 'SC']:
                 theta = np.linspace(0, 360, length) * deg2rad
         elif datatype in ['et', 'vil']:
@@ -380,7 +384,7 @@ class CinradReader:
         xcoor = list()
         ycoor = list()
         dist = np.arange(1, drange + 1, 1)
-        for i in self.anglelist_r[startangle:stopangle]:
+        for i in self.angleindex_r[startangle:stopangle]:
             cac = self.reflectivity(i, drange).data
             pos = self._find_azimuth_position(azimuth)
             if pos is None:
