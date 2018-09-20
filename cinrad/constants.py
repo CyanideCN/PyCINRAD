@@ -13,6 +13,7 @@ try:
 except KeyError:
     os.environ['CINRAD_PATH'] = 'D:\\'
 
+folderpath = os.environ['CINRAD_PATH']
 deg2rad = 3.141592653589793 / 180
 Rm1 = 8500
 con = (180 / 4096) * 0.125
