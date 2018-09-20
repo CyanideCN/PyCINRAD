@@ -2,7 +2,7 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1, modpath
-from .datastruct import R, V
+from .datastruct import R, V, Section
 from .projection import get_coordinate, height
 
 import warnings
@@ -381,7 +381,7 @@ class CinradReader:
         ycoor = list()
         dist = np.arange(1, drange + 1, 1)
         for i in self.anglelist_r[startangle:stopangle]:
-            cac = self.reflectivity(i, drange)
+            cac = self.reflectivity(i, drange).data
             pos = self._find_azimuth_position(azimuth)
             if pos is None:
                 nanarray = np.zeros((drange))
@@ -395,4 +395,5 @@ class CinradReader:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return xc, yc, rhi
+        return Section(rhi, xcoor, ycoor, azimuth, drange, self.timestr, self.code, self.name,
+                       'rhi')
