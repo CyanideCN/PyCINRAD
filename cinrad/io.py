@@ -188,7 +188,7 @@ class CinradReader:
             count += 1
         self.rraw = np.concatenate(rraw).reshape(3240, 998)
         self.vraw = np.concatenate(vraw).reshape(3240, 998)
-        self.elevindex = np.array(elev[slice(359, None, 360)]) * con2
+        self.elevdeg = np.array(elev[slice(359, None, 360)]) * con2
         self.azimuth = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
