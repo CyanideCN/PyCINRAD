@@ -2,6 +2,7 @@
 #Author: Du puyuan
 
 class Raw:
+    r'''Basic radar data struct'''
     def __init__(self, data, drange, elev, reso, code, name
                  , time, dtype, stlon, stlat, lon=None, lat=None, height=None):
         self.data = data
@@ -54,3 +55,16 @@ class V(Raw):
 class L2(Raw):
     def __init__(self, data, drange, elev, reso, code, name, time, dtype, stlon, stlat):
         Raw.__init__(self, data, drange, elev, reso, code, name, time, dtype, stlon, stlat)
+
+class Section:
+    def __init__(self, data, xcor, ycor, azimuth, drange, tstr, code, name, dtype):
+        self.data = data
+        self.xcor = xcor
+        self.ycor = ycor
+        self.az = azimuth
+        self.drange = drange
+        self.tstr = tstr
+        self.code = code
+        self.name = name
+        self.dtype = dtype
+        
