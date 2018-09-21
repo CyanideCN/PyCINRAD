@@ -3,6 +3,8 @@
 
 from ..constants import font2, modpath
 
+import os
+
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from mpl_toolkits.basemap import Basemap

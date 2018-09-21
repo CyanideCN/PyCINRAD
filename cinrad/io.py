@@ -322,7 +322,7 @@ class CinradReader:
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             v = self.vraw[self.boundary[level]:self.boundary[level + 1]]
-            v1 = v.T[:int(drange / self.Vreso)]
+            v1 = v.T[:int(drange / self.Vreso)].astype(float)
             rf = np.ma.array(v1, mask=(v1 != 1))
             v1[v1 == 0] = np.nan
             if self.dv == 2:
