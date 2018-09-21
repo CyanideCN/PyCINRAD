@@ -23,8 +23,9 @@ def quick_cr(Rlist):
 def quick_et(Rlist):
     r_data = list()
     elev = list()
+    areso = Rlist[0].a_reso if Rlist[0].a_reso else 360
     for i in Rlist:
-        x, d, a = resample(i.data, i.dist, i.az, i.reso)
+        x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
         r_data.append(x)
         elev.append(i.elev)
     data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])

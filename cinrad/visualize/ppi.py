@@ -46,13 +46,12 @@ def base_velocity(data, draw_author=True):
             rf = data.data[1]
         else:
             v = data.data
-            rf = None
     if data.dtype is not 'v':
         raise ValueError('Expected datatype is "v", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
     m = setup_basemap(lon, lat)
     m.pcolormesh(lon, lat, v, cmap=v_cmap, norm=norm2)
-    if rf:
+    if data.include_rf:
         m.pcolormesh(lon, lat, rf, cmap=rf_cmap, norm=norm3)
     add_shp(m)
     ax, cbar = setup_axes(fig, v_cbar, norm4)
