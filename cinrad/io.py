@@ -5,13 +5,14 @@ from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import R, V, Section
 from .projection import get_coordinate, height
 
+import os
 import warnings
 import datetime
 from pathlib import Path
 
 import numpy as np
 
-radarinfo = np.load(modpath + '\\RadarStation.npy')
+radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
 class RadarError(Exception):
     def __init__(self, description):

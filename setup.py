@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
+import os
 import glob
-
 setup(
     name = "cinrad",
     version = "1.0",
@@ -14,8 +14,8 @@ setup(
     platforms = "Windows",
     install_requires = [],
     data_files=[('cinrad', ['RadarStation.npy']),
-                    ('cinrad\\colormap', glob.glob(r'colormap/*.txt')),
-                    ('cinrad\\shapefile', glob.glob(r'shapefile/*'))],
+                    ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.txt')),
+                    ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
     scripts = [],
     entry_points = {
         'console_scripts': [

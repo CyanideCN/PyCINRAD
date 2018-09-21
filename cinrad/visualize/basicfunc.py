@@ -35,9 +35,9 @@ def save(folderpath, code, timestr, elev, drange, datatype):
     plt.cla()
 
 def add_shp(m):
-    m.readshapefile(modpath + '\\shapefile\\County', 'states', drawbounds=True, linewidth=0.5, color='grey')
-    m.readshapefile(modpath + '\\shapefile\\City', 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
-    m.readshapefile(modpath + '\\shapefile\\Province', 'states', drawbounds=True, linewidth=1, color='white')
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5, color='grey')
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1, color='white')
 
 def setup_basemap(lon, lat):
     m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
