@@ -1,1 +1,7 @@
 language: python
+sudo: true
+python:
+  - 3.6
+install:
+    - pip install metpy
+	- apt-get install python3-mpltoolkits.basemap
