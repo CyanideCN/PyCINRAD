@@ -7,4 +7,3 @@ install:
     - sudo apt-get install mpltoolkits.basemap
 script: 
     - python setup.py install
-    - python test.py

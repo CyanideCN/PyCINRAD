@@ -4,6 +4,7 @@
 from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import R, V, Section
 from .projection import get_coordinate, height
+from .error import RadarDecodeError
 
 import os
 import warnings
@@ -13,12 +14,6 @@ from pathlib import Path
 import numpy as np
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
-
-class RadarError(Exception):
-    def __init__(self, description):
-        self.dsc = description
-    def __str__(self):
-        return repr(self.dsc)
 
 class CinradReader:
     r'''Class handling CINRAD radar reading'''
@@ -42,13 +37,20 @@ class CinradReader:
         elif radartype is 'SC':
             self._SC_handler(f)
         elif radartype is 'CD':
-            raise RadarError('CD radar is not supported')
+            raise RadarDecodeError('CD radar is not supported')
         else:
-            raise RadarError('Unrecognized data')
+            raise RadarDecodeError('Unrecognized data')
         self._update_radar_info()
+        if self.radartype is not radar_type:
+            warnings.warn('Contradictory information from input radar type and\
+            radar type searched from database.')
+            if self.radartype is not radartype:
+                raise RadarDecodeError('Contradictory information: Input {}\nDetected {}\n Searched {}'.format(
+                    radar_type, radartype, self.radartype))
         self.radartype = radartype
 
     def _detect_radartype(self, f, filename, type_assert=None):
+        r'''Detect radar type from records in file'''
         f.seek(100)
         typestring = f.read(9)
         det_sc = typestring == b'CINRAD/SC'
@@ -74,7 +76,7 @@ class CinradReader:
         if type_assert:
             radartype = type_assert
         if radartype is None:
-            raise RadarError('Radar type undefined')
+            raise RadarDecodeError('Radar type undefined')
         return radartype
 
     def _SAB_handler(self, f, SAB=True):
@@ -224,7 +226,7 @@ class CinradReader:
         try:
             pos = np.where(radarinfo[0] == self.code)[0][0]
         except IndexError:
-            raise RadarError('Invalid radar code')
+            raise RadarDecodeError('Invalid radar code')
         name = radarinfo[1][pos]
         lon = radarinfo[2][pos]
         lat = radarinfo[3][pos]

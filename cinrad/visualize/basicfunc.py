@@ -2,12 +2,16 @@
 #Author: Du puyuan
 
 from ..constants import font2, modpath
+from ..error import RadarPlotError
 
 import os
 
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
-from mpl_toolkits.basemap import Basemap
+try:
+    from mpl_toolkits.basemap import Basemap
+except ImportError:
+    raise RadarPlotError('Basemap not installed')
 
 def setup_plot(dpi, figsize=(10, 10)):
     fig = plt.figure(figsize=figsize, dpi=dpi)
