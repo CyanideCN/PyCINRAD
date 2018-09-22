@@ -1,9 +1,18 @@
 # PyCINRAD
+
+[![Build Status](https://travis-ci.com/CyanideCN/PyCINRAD.svg?branch=master)](https://travis-ci.com/CyanideCN/PyCINRAD)
+
 A python package which handles CINRAD radar data reading and plotting.
 
 读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
 ## 安装及初始化设置
+
+### 安装要求
+
+Python 3.5 及以上
+Metpy
+Basemap
 
 ```
 python setup.py install
