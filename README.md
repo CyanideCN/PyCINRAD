@@ -12,8 +12,14 @@ A python package which handles CINRAD radar data reading and plotting.
 ### 安装要求
 
 Python 3.5 及以上
-Metpy
+
 Basemap
+
+Metpy
+
+Shapefile
+
+### 安装方法
 
 ```
 python setup.py install
@@ -100,6 +106,16 @@ from cinrad.visualize.ppi import base_reflectivity
 base_reflectivity(R) #绘制基本反射率图片
 from cinrad.visualize.rhi import rhi
 rhi(Section) #绘制RHI
+```
+
+#### highlight参数
+
+`ppi`中的每一个函数都有`highlight`参数，这个参数的作用是高亮地区边界。
+
+示例：
+```python
+from cinrad.visualize.ppi import base_reflectivity
+base_reflectivity(R, highlight='成都市')
 ```
 
 ## 其他

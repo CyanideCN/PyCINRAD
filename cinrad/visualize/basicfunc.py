@@ -41,9 +41,9 @@ def save(folderpath, code, timestr, elev, drange, datatype):
     plt.cla()
 
 def add_shp(m):
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5, color='grey')
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7, color='lightgrey')
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1, color='white')
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5, color='grey', zorder=1)
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7, color='lightgrey', zorder=1)
+    m.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1, color='white', zorder=1)
 
 def setup_basemap(lon, lat):
     m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
@@ -52,3 +52,10 @@ def setup_basemap(lon, lat):
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)
     cbar.set_ticklabels(text)
+
+def draw_highlight_area(area):
+    from .shapepatch import highlight_area
+    patch = highlight_area(area)
+    ax_ = plt.gca()
+    pat = ax_.add_patch(patch)
+    pat.set_zorder(2)
