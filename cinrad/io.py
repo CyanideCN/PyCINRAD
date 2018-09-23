@@ -41,13 +41,13 @@ class CinradReader:
         else:
             raise RadarDecodeError('Unrecognized data')
         self._update_radar_info()
-        if self.radartype is not radar_type:
-            warnings.warn('Contradictory information from input radar type and\
-            radar type searched from database.')
-            if self.radartype is not radartype:
-                raise RadarDecodeError('Contradictory information: Input {}\nDetected {}\n Searched {}'.format(
-                    radar_type, radartype, self.radartype))
-        self.radartype = radartype
+        if radar_type:
+            if radartype is not radar_type:
+                warnings.warn('Contradictory information from input radar type and\
+                radar type detected from input file.')
+            self.radartype = radar_type
+        else:
+            self.radartype = radartype
 
     def _detect_radartype(self, f, filename, type_assert=None):
         r'''Detect radar type from records in file'''
@@ -287,10 +287,9 @@ class CinradReader:
             self.elev = self.elevdeg[level]
             r1 = self.rraw[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T / 10
         elif self.radartype == 'SC':
-            self.elev = self.elevindex[level]
+            self.elev = self.elevdeg[level]
             r = self.rraw[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
-            dbz = (r - 64) / 2
-            r1 = dbz[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
+            r1 = (r - 64) / 2
         r1[r1 < 0] = 0
         radialavr = [np.average(i) for i in r1]
         threshold = 4
