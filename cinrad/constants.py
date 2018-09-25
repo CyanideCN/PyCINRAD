@@ -7,11 +7,15 @@ import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
 import os
+from pathlib import Path
 
 try:
-    path = os.environ['CINRAD_PATH']
+    folderpath = os.environ['CINRAD_PATH']
 except KeyError:
-    os.environ['CINRAD_PATH'] = 'D:\\'
+    folderpath = os.path.join(str(Path.home()), 'PyCINRAD')
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+    os.environ['CINRAD_PATH'] = folderpath
 
 folderpath = os.environ['CINRAD_PATH']
 deg2rad = 3.141592653589793 / 180
