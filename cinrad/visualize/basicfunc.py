@@ -3,6 +3,7 @@
 
 from ..constants import font2, modpath
 from ..error import RadarPlotError
+from .shapepatch import highlight_area
 
 import os
 
@@ -11,7 +12,11 @@ from matplotlib.colorbar import ColorbarBase
 try:
     from mpl_toolkits.basemap import Basemap
 except ImportError:
-    raise RadarPlotError('Basemap not installed')
+    from cartopy.io import shapereader
+    import cartopy.crs as ccrs
+    USE_BASEMAP = False
+else:
+    USE_BASEMAP = True
 
 def setup_plot(dpi, figsize=(10, 10)):
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -40,11 +45,24 @@ def save(folderpath, code, timestr, elev, drange, datatype):
         folderpath, code, timestr, elev, drange, datatype.upper()), bbox_inches='tight', pad_inches = 0)
     plt.cla()
 
-def add_shp(m):
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5, color='grey', zorder=1)
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7, color='lightgrey', zorder=1)
-    m.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1, color='white', zorder=1)
+#Basemap only
+def add_shp(renderer):
+    if USE_BASEMAP:
+        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5
+                               , color='grey', zorder=1)
+        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7
+                               , color='lightgrey', zorder=1)
+        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1
+                               , color='white', zorder=1)
+    else:
+        root = os.path.join(modpath, 'shapefile')
+        flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
+        shps = [shapereader.Reader(i).geometries() for i in flist]
+        renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor='grey', facecolor='None', zorder=1, linewidth=0.5)
+        renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor='lightgrey', facecolor='None', zorder=1, linewidth=0.7)
+        renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor='white', facecolor='None', zorder=1, linewidth=1)
 
+#Basemap only
 def setup_basemap(lon, lat):
     m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
     return m
@@ -54,8 +72,14 @@ def change_cbar_text(cbar, tick, text):
     cbar.set_ticklabels(text)
 
 def draw_highlight_area(area):
-    from .shapepatch import highlight_area
     patch = highlight_area(area)
     ax_ = plt.gca()
     pat = ax_.add_patch(patch)
     pat.set_zorder(2)
+
+#cartopy only
+def set_geoaxes(lon, lat):
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.background_patch.set_fill(False)
+    ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], ccrs.PlateCarree())
+    return ax

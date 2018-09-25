@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #Author: Du puyuan
 
-from .constants import deg2rad, Rm1
+from .constants import deg2rad
 from .projection import height
 
 import numpy as np
@@ -60,20 +60,15 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
             VIL.append(m1 + mb + mt)
     return np.array(VIL).reshape(xshape, yshape)
 
-def echo_top_(ref, distance, elev, threshold=18.):
+def echo_top(ref, distance, elev, radarheight, threshold):
     r'''Calculate height of echo tops (ET) in one full scan
     ref: reflectivity data  numpy.ndarray dim=3 (elevation angle, distance, azimuth)
     distance: distance from radar site  numpy.ndarray dim=2 (distance, azimuth)
     elev: elevation angles in degree  numpy.ndarray or list dim=1
-    siteheight: height of radar  float
+    radarheight: height of radar  float
     drange: range of data to be calculated  float or int
     threshold: float
     '''
-    data = (ref, distance)
-    et = calc.echo_top(data, elev, 0, threshold)
-    return et
-
-def echo_top(ref, distance, elev, radarheight, threshold):
     et = list()
     r = np.ma.array(ref, mask=(ref > threshold))
     xshape, yshape = r[0].shape
