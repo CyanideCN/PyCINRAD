@@ -2,13 +2,11 @@
 #Author: Du puyuan
 
 from .basicfunc import (add_shp, save, setup_axes, setup_plot, setup_basemap,
-                        text, change_cbar_text, draw_highlight_area)
+                        text, change_cbar_text, draw_highlight_area, set_geoaxes
+                        , USE_BASEMAP)
 from ..constants import font2, norm4, folderpath
 
-import os
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 def base_reflectivity(data, fname=None, smooth=False, draw_author=True, highlight=None):
     from ..constants import norm1, r_cmap
@@ -20,15 +18,18 @@ def base_reflectivity(data, fname=None, smooth=False, draw_author=True, highligh
     if data.dtype is not 'r':
         raise ValueError('Expected datatype is "r", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
-    m = setup_basemap(lon, lat)
+    if USE_BASEMAP:
+        renderer = setup_basemap(lon, lat)
+    else:
+        renderer = set_geoaxes(lon, lat)
     dmax = r[np.logical_not(np.isnan(r))]
     if smooth:
-        m.contourf(lons.flatten(), lats.flatten(), r.flatten(), 256, cmap=r_cmap_smooth
+        renderer.contourf(lons.flatten(), lats.flatten(), r.flatten(), 256, cmap=r_cmap_smooth
                    , norm=norm1, tri=True)
     else:
         r[r <= 2] = None
-        m.pcolormesh(lon, lat, r, norm=norm1, cmap=r_cmap)
-    add_shp(m)
+        renderer.pcolormesh(lon, lat, r, norm=norm1, cmap=r_cmap)
+    add_shp(renderer)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, r_cmap, norm1)

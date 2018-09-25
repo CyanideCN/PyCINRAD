@@ -401,5 +401,4 @@ class CinradReader:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return Section(rhi, xcoor, ycoor, azimuth, drange, self.timestr, self.code, self.name,
-                       'rhi')
+        return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
