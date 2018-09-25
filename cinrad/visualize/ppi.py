@@ -53,11 +53,14 @@ def base_velocity(data, draw_author=True, highlight=None):
     if data.dtype is not 'v':
         raise ValueError('Expected datatype is "v", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
-    m = setup_basemap(lon, lat)
-    m.pcolormesh(lon, lat, v, cmap=v_cmap, norm=norm2)
+    if USE_BASEMAP:
+        renderer = setup_basemap(lon, lat)
+    else:
+        renderer = set_geoaxes(lon, lat)
+    renderer.pcolormesh(lon, lat, v, cmap=v_cmap, norm=norm2)
     if data.include_rf:
-        m.pcolormesh(lon, lat, rf, cmap=rf_cmap, norm=norm3)
-    add_shp(m)
+        renderer.pcolormesh(lon, lat, rf, cmap=rf_cmap, norm=norm3)
+    add_shp(renderer)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, v_cbar, norm4)
@@ -78,10 +81,13 @@ def echo_tops(data, draw_author=True, highlight=None):
     if data.dtype is not 'et':
         raise ValueError('Expected datatype is "et", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
-    m = setup_basemap(lon, lat)
+    if USE_BASEMAP:
+        renderer = setup_basemap(lon, lat)
+    else:
+        renderer = set_geoaxes(lon, lat)
     dmax = et[np.logical_not(np.isnan(et))]
-    m.pcolormesh(lon, lat, et, norm=norm5, cmap=et_cmap)
-    add_shp(m)
+    renderer.pcolormesh(lon, lat, et, norm=norm5, cmap=et_cmap)
+    add_shp(renderer)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, et_cbar, norm4)
@@ -103,11 +109,14 @@ def vert_integrated_liquid(data, draw_author=True, highlight=None):
     if data.dtype is not 'vil':
         raise ValueError('Expected datatype is "vil", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
-    m = setup_basemap(lon, lat)
+    if USE_BASEMAP:
+        renderer = setup_basemap(lon, lat)
+    else:
+        renderer = set_geoaxes(lon, lat)
     dmax = vil[np.logical_not(np.isnan(vil))]
     vil[vil <= 0] = None
-    m.pcolormesh(lon, lat, vil, norm=norm1, cmap=vil_cmap)
-    add_shp(m)
+    renderer.pcolormesh(lon, lat, vil, norm=norm1, cmap=vil_cmap)
+    add_shp(renderer)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, vil_cbar, norm4)
@@ -129,11 +138,14 @@ def composite_reflectivity(data, draw_author=True, highlight=None):
     if data.dtype is not 'cr':
         raise ValueError('Expected datatype is "cr", received "{}"'.format(data.dtype))
     fig = setup_plot(350)
-    m = setup_basemap(lon, lat)
+    if USE_BASEMAP:
+        renderer = setup_basemap(lon, lat)
+    else:
+        renderer = set_geoaxes(lon, lat)
     dmax = r[np.logical_not(np.isnan(r))]
     r[r <= 2] = None
-    m.contourf(lon, lat, r, 128, norm=norm1, cmap=r_cmap)
-    add_shp(m)
+    renderer.contourf(lon, lat, r, 128, norm=norm1, cmap=r_cmap)
+    add_shp(renderer)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, r_cmap, norm1)
