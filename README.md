@@ -27,7 +27,7 @@ python setup.py install
 
 ### 设置图片保存路径
 
-程序默认将图片保存在`D:\`目录下，如要设置到其他路径，请使用`cinrad.set_savepath`函数。
+程序默认将图片保存在用户目录（Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹，如要设置到其他路径，请使用`cinrad.set_savepath`函数。
 
 例子：
 
