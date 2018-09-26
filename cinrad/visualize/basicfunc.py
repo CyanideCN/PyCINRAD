@@ -41,11 +41,12 @@ def text(ax, drange, timestr, name, elev, draw_author=True):
         ax.text(0, 1.73, 'Made by HCl', fontproperties=font2)
 
 def save(folderpath, code, timestr, elev, drange, datatype):
+    if not folderpath.endswith(os.path.sep):
+        folderpath += os.path.sep
     plt.savefig('{}{}_{}_{:.1f}_{}_{}.png'.format(
         folderpath, code, timestr, elev, drange, datatype.upper()), bbox_inches='tight', pad_inches = 0)
     plt.cla()
 
-#Basemap only
 def add_shp(renderer):
     if USE_BASEMAP:
         renderer.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5
