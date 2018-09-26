@@ -24,11 +24,11 @@ def highlight_area(area):
         name = np.array([i.record[2].decode('GBK') for i in rec])
         mask = np.ma.array(name, mask=(name==i))
         target = np.array(rec)[mask.mask]
-        for i in target:
-            codes += [Path.MOVETO] + [Path.LINETO] * (len(i.shape.points) - 1)
-            vertices += i.shape.points
+        for j in target:
+            codes += [Path.MOVETO] + [Path.LINETO] * (len(j.shape.points) - 1)
+            vertices += j.shape.points
         codes += [Path.CLOSEPOLY]
-        vertices += [i.shape.points[0]]
+        vertices += [j.shape.points[0]]
         path = Path(vertices, codes)
     patch = PathPatch(path, facecolor='None', edgecolor='red')
     return patch
