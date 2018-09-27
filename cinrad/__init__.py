@@ -3,7 +3,7 @@ from . import grid
 from . import utils
 from . import easycalc
 
-__version__ = '1.0'
+__version__ = '1.1'
 
 def set_savepath(path):
     import os
