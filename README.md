@@ -13,7 +13,7 @@ A python package which handles CINRAD radar data reading and plotting.
 
 Python 3.5 及以上
 
-Basemap 或者 Cartopy
+Cartopy
 
 Metpy
 

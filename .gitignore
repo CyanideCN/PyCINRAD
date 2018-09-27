@@ -6,3 +6,4 @@
 /.vs/*
 *.npy
 .idea/*
+/shapefile/*
