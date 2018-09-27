@@ -40,7 +40,7 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
                 #index from lowest angle
                 r_pt = ref[k][i][j]
                 vert_r.append(r_pt)
-            r_ = np.array(vert_r)
+            r_ = np.clip(vert_r, None, 55) #reduce the influence of hails
             vertical = 10 ** (r_ / 10)
             position = np.where(r_ > threshold)[0]
             try:

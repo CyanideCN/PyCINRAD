@@ -9,14 +9,8 @@ import os
 
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
-try:
-    from mpl_toolkits.basemap import Basemap
-except ImportError:
-    from cartopy.io import shapereader
-    import cartopy.crs as ccrs
-    USE_BASEMAP = False
-else:
-    USE_BASEMAP = True
+from cartopy.io import shapereader
+import cartopy.crs as ccrs
 
 def setup_plot(dpi, figsize=(10, 10)):
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -30,8 +24,9 @@ def setup_axes(fig, cmap, norm):
     cbar.ax.tick_params(labelsize=8)
     return ax, cbar
 
-def text(ax, drange, timestr, name, elev, draw_author=True):
+def text(ax, drange, reso, timestr, name, elev, draw_author=True):
     ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font2)
+    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
     ax.text(0, 2.01, 'Date: {}.{}.{}'.format(timestr[:4], timestr[4:6], timestr[6:8]), fontproperties=font2)
     ax.text(0, 1.97, 'Time: {}:{}'.format(timestr[8:10], timestr[10:12]), fontproperties=font2)
     ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font2)
@@ -48,25 +43,12 @@ def save(folderpath, code, timestr, elev, drange, datatype):
     plt.cla()
 
 def add_shp(renderer):
-    if USE_BASEMAP:
-        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'County'), 'states', drawbounds=True, linewidth=0.5
-                               , color='grey', zorder=1)
-        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'City'), 'states', drawbounds=True, linewidth=0.7
-                               , color='lightgrey', zorder=1)
-        renderer.readshapefile(os.path.join(modpath, 'shapefile', 'Province'), 'states', drawbounds=True, linewidth=1
-                               , color='white', zorder=1)
-    else:
-        root = os.path.join(modpath, 'shapefile')
-        flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
-        shps = [shapereader.Reader(i).geometries() for i in flist]
-        renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor='grey', facecolor='None', zorder=1, linewidth=0.5)
-        renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor='lightgrey', facecolor='None', zorder=1, linewidth=0.7)
-        renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor='white', facecolor='None', zorder=1, linewidth=1)
-
-#Basemap only
-def setup_basemap(lon, lat):
-    m = Basemap(llcrnrlon=lon.min(), urcrnrlon=lon.max(), llcrnrlat=lat.min(), urcrnrlat=lat.max(), resolution="l")
-    return m
+    root = os.path.join(modpath, 'shapefile')
+    flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
+    shps = [shapereader.Reader(i).geometries() for i in flist]
+    renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor='grey', facecolor='None', zorder=1, linewidth=0.5)
+    renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor='lightgrey', facecolor='None', zorder=1, linewidth=0.7)
+    renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor='white', facecolor='None', zorder=1, linewidth=1)
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)
@@ -78,7 +60,6 @@ def draw_highlight_area(area):
     pat = ax_.add_patch(patch)
     pat.set_zorder(2)
 
-#cartopy only
 def set_geoaxes(lon, lat):
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.background_patch.set_fill(False)

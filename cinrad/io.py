@@ -102,6 +102,8 @@ class CinradReader:
         scantime = start + deltday + deltsec
         self.Rreso = 1
         self.Vreso = 0.25
+        f.seek(98)
+        self.code = f.read(5).decode()
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
@@ -380,7 +382,7 @@ class CinradReader:
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
+    def rhi(self, azimuth, drange, startangle=0, stopangle=9):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
