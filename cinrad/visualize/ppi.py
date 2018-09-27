@@ -21,10 +21,7 @@ def base_reflectivity(data, smooth=False, draw_author=True, highlight=None):
     from ..constants import norm1, r_cmap
     lon, lat, r = _prepare(data, 'r')
     fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
+    renderer = set_geoaxes(lon, lat)
     dmax = r[np.logical_not(np.isnan(r))]
     if smooth:
         renderer.tricontourf(lons.flatten(), lats.flatten(), r.flatten(), 256, cmap=r_cmap_smooth
