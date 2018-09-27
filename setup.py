@@ -3,7 +3,7 @@ import os
 import glob
 setup(
     name = 'cinrad',
-    version = '1.0',
+    version = '1.1',
     description = 'cinrad reading and plotting',
     long_description = 'cinrad reading and plotting',
     license = 'GPL Licence',
