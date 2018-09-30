@@ -59,8 +59,9 @@ cinrad.set_savepath('D:\\1\\')
 例子：
 
 ```python
-from cinrad.io import CinradReader
-f = CinradReader(your_radar_file)
+from cinrad.io import CinradReader, StandardData
+f = CinradReader(your_radar_file) #老版本数据
+f = StandardData(your_radar_file) #新版本标准数据
 f.reflectivity(elevation_angle_level, data_range) #获取反射率数据（为cinrad.datastruct.R类型）
 f.velocity(elevation_angle_level, data_range) #获取速度数据（为cinrad.datastruct.V类型）
 f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
