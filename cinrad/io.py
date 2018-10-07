@@ -15,6 +15,12 @@ import numpy as np
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
+def create_dict(dict, index):
+    try:
+        test = dict[index]
+    except Exception:
+        dict[index] = list()
+
 class CinradReader:
     r'''Class handling CINRAD radar reading'''
     def __init__(self, filepath, radar_type=None):
@@ -407,7 +413,7 @@ class CinradReader:
 
 
 class StandardData:
-    r'''Class handling new cinrad standard data.'''
+    r'''Class handling new cinrad standard data reading'''
     def __init__(self, filepath):
         f = open(filepath, 'rb')
         f.seek(32)
@@ -415,7 +421,6 @@ class StandardData:
         f.seek(332)
         seconds = np.frombuffer(f.read(4), 'u4')[0]
         scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
-        el_number = np.frombuffer(f.read(4), 'u4')[0]
         f.seek(460)
         self.Rreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
         self.Vreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
@@ -496,7 +501,6 @@ class StandardData:
             w = list()
             header = f.read(64)#径向头块
             radial_state = np.frombuffer(header[0:4], 'u4')[0]
-            radial_num = np.frombuffer(header[12:16], 'u4')[0]#径向计数
             el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
             for i in [r_, v_, w_, azm]:
                 create_dict(i, el_num)
@@ -559,6 +563,9 @@ class StandardData:
         if data.size == 0:
             raise RadarDecodeError('Current elevation does not contain this data.')
         length = data.shape[1] * self.Vreso
+        if length < drange:
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
+            self.drange = int(data.shape[1] * self.Vreso)
         cut = data.T[:int(drange / self.Vreso)]
         rf = cut.data * cut.mask
         rf[rf == 0] = None
