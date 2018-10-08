@@ -519,7 +519,6 @@ class StandardData:
 
                 body = f.read(blocklength)#径向数据
                 raw = np.frombuffer(body, 'u' + str(bitlength)).astype(float)
-                raw[raw == 0.] = np.nan
                 value = (raw - offset) / scale
                 if data_type == 2:
                     r.append(value)
@@ -544,11 +543,11 @@ class StandardData:
         if data.size == 0:
             raise RadarDecodeError('Current elevation does not contain this data.')
         length = data.shape[1] * self.Rreso
-        if length < drange:
-            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
-            self.drange = int(data.shape[1] * self.Rreso)
         cut = data.T[:int(drange / self.Rreso)]
-        r_obj = R(cut.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+        add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
+        r = np.concatenate((cut, add_gate))
+        r[r < 0] = 0
+        r_obj = R(r.T, r.shape[0] * self.Rreso, self.elev, self.Rreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Rreso)
         r_obj.add_geoc(x, y, z)
@@ -582,3 +581,25 @@ class StandardData:
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
+
+    def rhi(self, azimuth, drange, startangle=0, stopangle=10):
+        r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
+        rhi = list()
+        xcoor = list()
+        ycoor = list()
+        dist = np.arange(1, drange + 1, 1)
+        for i in self.angleindex_r[startangle:stopangle]:
+            cac = self.reflectivity(i, drange).data
+            pos = self._find_azimuth_position(azimuth)
+            if pos is None:
+                nanarray = np.zeros((drange))
+                rhi.append(nanarray.tolist())
+            else:
+                rhi.append(cac[pos])
+            theta = self.elev * deg2rad
+            xcoor.append((dist * np.cos(theta)).tolist())
+            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
+        rhi = np.array(rhi)
+        xc = np.array(xcoor)
+        yc = np.array(ycoor)
+        return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
