@@ -2,6 +2,7 @@ from . import io
 from . import grid
 from . import utils
 from . import easycalc
+from . import qc
 
 __version__ = '1.1'
 

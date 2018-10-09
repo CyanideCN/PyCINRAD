@@ -2,7 +2,7 @@
 #Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1, modpath
-from .datastruct import R, V, Section
+from .datastruct import R, V, W, Section
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 
@@ -547,7 +547,7 @@ class StandardData:
         add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
         r = np.concatenate((cut, add_gate))
         r[r < 0] = 0
-        r_obj = R(r.T, r.shape[0] * self.Rreso, self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r_obj = R(r.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Rreso)
         r_obj.add_geoc(x, y, z)
@@ -568,12 +568,32 @@ class StandardData:
         cut = data.T[:int(drange / self.Vreso)]
         rf = cut.data * cut.mask
         rf[rf == 0] = None
+        cut[cut <= -64] = np.nan
         v_obj = V([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Vreso)
         v_obj.add_geoc(x, y, z)
         v_obj.add_polarc(d, a)
         return v_obj
+
+    def spectrum_width(self, level, drange):
+        self.level = level
+        self.drange = drange
+        self.elev = self.el[self.level]
+        data = np.array(self.wd[level])
+        if data.size == 0:
+            raise RadarDecodeError('Current elevation does not contain this data.')
+        length = data.shape[1] * self.Vreso
+        cut = data.T[:int(drange / self.Vreso)]
+        cut[cut <= -64] = np.nan
+        add_gate = np.zeros((int(drange / self.Vreso - cut.shape[0]), cut.shape[1]))
+        w = np.concatenate((cut, add_gate))
+        w_obj = W(w.T, int(w.shape[0] * self.Vreso), self.elev, self.Vreso, self.code, self.name, self.timestr,
+                  self.stationlon, self.stationlat)
+        x, y, z, d, a = self.projection(self.Vreso)
+        w_obj.add_geoc(x, y, z)
+        w_obj.add_polarc(d, a)
+        return w_obj
 
     def projection(self, reso):
         r = np.arange(reso, self.drange + reso, reso)
