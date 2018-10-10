@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import R, V, W, Section

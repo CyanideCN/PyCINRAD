@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 class Raw:
     r'''Basic radar data struct'''

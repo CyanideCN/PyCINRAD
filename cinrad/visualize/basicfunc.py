@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from ..constants import font2, modpath
 from ..error import RadarPlotError
@@ -42,13 +42,15 @@ def save(folderpath, code, timestr, elev, drange, datatype):
         folderpath, code, timestr, elev, drange, datatype.upper()), bbox_inches='tight', pad_inches = 0)
     plt.cla()
 
-def add_shp(renderer):
+def add_shp(renderer, coastline=False):
     root = os.path.join(modpath, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
     renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor='grey', facecolor='None', zorder=1, linewidth=0.5)
     renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor='lightgrey', facecolor='None', zorder=1, linewidth=0.7)
     renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor='white', facecolor='None', zorder=1, linewidth=1)
+    if coastline:
+        renderer.coastlines(resolution='10m', color='white', zorder=1, linewidth=1)
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)

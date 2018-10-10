@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 import numpy as np
 from metpy.io.nexrad import Level3File
-import matplotlib.pyplot as plt
 from tkinter import filedialog
 
 from cinrad.datastruct import V
@@ -30,4 +29,4 @@ data = data * threshold[1] / 10 + threshold[0] / 10
 v_obj = V([data, rf], f.max_range, elev, f.ij_to_km, f.siteID, f.siteID
           , scantime.strftime('%Y%m%d%H%M%S'), slon, slat)
 v_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-ppi.base_velocity(v_obj)
+ppi.base_velocity(v_obj, coastline=True, lscale=True)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
                         , change_cbar_text, draw_highlight_area, set_geoaxes)
@@ -17,7 +17,7 @@ def _prepare(data, datatype):
         raise ValueError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
     return lon, lat, data.data
 
-def base_reflectivity(data, smooth=False, draw_author=True, highlight=None):
+def base_reflectivity(data, smooth=False, draw_author=True, highlight=None, coastline=False):
     from ..constants import norm1, r_cmap
     lon, lat, r = _prepare(data, 'r')
     fig = setup_plot(350)
@@ -29,7 +29,7 @@ def base_reflectivity(data, smooth=False, draw_author=True, highlight=None):
     else:
         r[r <= 2] = None
         renderer.pcolormesh(lon, lat, r, norm=norm1, cmap=r_cmap)
-    add_shp(renderer)
+    add_shp(renderer, coastline=coastline)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, r_cmap, norm1)
@@ -38,7 +38,7 @@ def base_reflectivity(data, smooth=False, draw_author=True, highlight=None):
     ax.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(dmax)), fontproperties=font2)
     save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
 
-def base_velocity(data, draw_author=True, highlight=None):
+def base_velocity(data, draw_author=True, highlight=None, coastline=False, lscale=False):
     from ..constants import norm2, norm3, rf_cmap, v_cmap, v_cbar
     if not data.geoflag:
         raise ValueError('Geographic information should be contained in data')
@@ -51,19 +51,31 @@ def base_velocity(data, draw_author=True, highlight=None):
             v = data.data
     if data.dtype is not 'v':
         raise ValueError('Expected datatype is "v", received "{}"'.format(data.dtype))
+    dmax = v[np.logical_not(np.isnan(v))]
+    vmax, vmin = dmax.max(), dmax.min()
+    if lscale:
+        from metpy.plots import colortables
+        norm2, v_cmap = colortables.get_with_range('NWS8bitVel', -64, 64)
+        v_cbar = v_cmap
     fig = setup_plot(350)
     renderer = set_geoaxes(lon, lat)
     renderer.pcolormesh(lon, lat, v, cmap=v_cmap, norm=norm2)
     if data.include_rf:
         renderer.pcolormesh(lon, lat, rf, cmap=rf_cmap, norm=norm3)
-    add_shp(renderer)
+    add_shp(renderer, coastline=coastline)
     if highlight:
         draw_highlight_area(highlight)
     ax, cbar = setup_axes(fig, v_cbar, norm4)
-    change_cbar_text(cbar, np.linspace(0, 1, 16), ['RF', '', '27', '20', '15', '10', '5', '1', '0'
-                                                   , '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
+    if lscale:
+        cha = [str(int(i)) for i in np.linspace(-64, 64, 17)]
+        change_cbar_text(cbar, np.linspace(0, 1, 17), cha)
+    else:
+        change_cbar_text(cbar, np.linspace(0, 1, 16), ['RF', '', '27', '20', '15', '10', '5', '1', '0'
+                                                       , '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
     text(ax, data.drange, data.reso, data.time, data.name, data.elev, draw_author=draw_author)
     ax.text(0, 2.13, 'Base Velocity', fontproperties=font2)
+    ax.text(0, 1.81, 'Max: {:.1f}m/s'.format(vmax), fontproperties=font2)
+    ax.text(0, 1.77, 'Min: {:.1f}m/s'.format(vmin), fontproperties=font2)
     save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
 
 def echo_tops(data, draw_author=True, highlight=None):
