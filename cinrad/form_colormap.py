@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Author: Du puyuan
+
 import codecs
 import re
 import numpy as np

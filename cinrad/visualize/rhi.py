@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from ..constants import rhi_cmap_smooth, norm1, font2, folderpath
 
