@@ -109,6 +109,8 @@ from cinrad.visualize.rhi import rhi
 rhi(Section) #绘制RHI
 ```
 
+如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
+
 #### highlight参数
 
 `ppi`中的每一个函数都有`highlight`参数，这个参数的作用是高亮地区边界。
