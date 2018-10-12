@@ -15,6 +15,19 @@ import numpy as np
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
+def _get_radar_info(code):
+    r'''Get radar station info from the station database according to the station code.'''
+    try:
+        pos = np.where(radarinfo[0] == code)[0][0]
+    except IndexError:
+        raise RadarDecodeError('Invalid radar code')
+    name = radarinfo[1][pos]
+    lon = radarinfo[2][pos]
+    lat = radarinfo[3][pos]
+    radartype = radarinfo[4][pos]
+    radarheight = radarinfo[5][pos]
+    return name, lon, lat, radartype, radarheight
+
 def create_dict(dict, index):
     try:
         test = dict[index]
@@ -54,6 +67,9 @@ class CinradReader:
             self.radartype = radar_type
         else:
             self.radartype = radartype
+
+    def __lt__(self, value):
+        return int(self.timestr) < int(value.timestr)
 
     def _detect_radartype(self, f, filename, type_assert=None):
         r'''Detect radar type from records in file'''
@@ -175,6 +191,7 @@ class CinradReader:
         self.Vreso = 0.3
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self.elevdeg = [0.5, 1.5, 2.4, 3.4, 4.3, 6, 9.89, 14.6, 19.5]
+        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
 
     def _SC_handler(self, f):
         vraw = list()
@@ -200,6 +217,7 @@ class CinradReader:
         self.rraw = np.concatenate(rraw).reshape(3240, 998)
         self.vraw = np.concatenate(vraw).reshape(3240, 998)
         self.elevdeg = np.array(elev[slice(359, None, 360)]) * con2
+        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
         self.azimuth = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
@@ -226,25 +244,9 @@ class CinradReader:
     def set_level(self, level):
         self.level = level
 
-    def _get_radar_info(self):
-        r'''Get radar station info from the station database according to the station code.'''
-        if self.code is None:
-            warnings.warn('Radar code undefined', UserWarning)
-            return None
-        try:
-            pos = np.where(radarinfo[0] == self.code)[0][0]
-        except IndexError:
-            raise RadarDecodeError('Invalid radar code')
-        name = radarinfo[1][pos]
-        lon = radarinfo[2][pos]
-        lat = radarinfo[3][pos]
-        radartype = radarinfo[4][pos]
-        radarheight = radarinfo[5][pos]
-        return name, lon, lat, radartype, radarheight
-
     def _update_radar_info(self):
         r'''Update radar station info automatically.'''
-        info = self._get_radar_info()
+        info = _get_radar_info(self.code)
         if info is None:
             warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
         else:
@@ -319,10 +321,9 @@ class CinradReader:
 
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
-        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            if level not in self.angleindex_v:
-                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-            self.elev = self.elevdeg[self.boundary[level]]
+        if level not in self.angleindex_v:
+            warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
+        self.elev = self.elevdeg[self.boundary[level]]
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
@@ -442,22 +443,9 @@ class StandardData:
     def set_station_name(self, name):
         self.name = name
 
-    def _get_radar_info(self):
-        r'''Get radar station info from the station database according to the station code.'''
-        try:
-            pos = np.where(radarinfo[0] == self.code)[0][0]
-        except IndexError:
-            raise RadarDecodeError('Invalid radar code')
-        name = radarinfo[1][pos]
-        lon = radarinfo[2][pos]
-        lat = radarinfo[3][pos]
-        radartype = radarinfo[4][pos]
-        radarheight = radarinfo[5][pos]
-        return name, lon, lat, radartype, radarheight
-
     def _update_radar_info(self):
         r'''Update radar station info automatically.'''
-        info = self._get_radar_info()
+        info = _get_radar_info(self.code)
         if info is None:
             warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
         else:
