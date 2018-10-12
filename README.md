@@ -87,39 +87,25 @@ f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
 
 列表生成示例：
 ```python
-r_list = [f.reflectivity(i, drange) for i in f.angleindex_r] #SA/SB/CA/CB雷达
-r_list = [f.reflectivity(i, drange) for i in range(len(f.elevdeg))] #SC/CC雷达
+r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 ```
 
 ### cinrad.visualize
 
 雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct.Raw`类型。
 
-在`ppi`下的函数：`base_reflectivity`, `base_velocity`, `echo_tops`, `vert_integrated_liquid`, 
-`composite_reflectivity`
-
-在`rhi`下的函数：`rhi`
-
 例子：
 
 ```python
-from cinrad.visualize.ppi import base_reflectivity
-base_reflectivity(R) #绘制基本反射率图片
+from cinrad.visualize.ppi import Display
+fig = Display(R, highlight='成都市') #绘制基本反射率图片
+fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize.rhi import rhi
 rhi(Section) #绘制RHI
 ```
 
 如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
 
-#### highlight参数
-
-`ppi`中的每一个函数都有`highlight`参数，这个参数的作用是高亮地区边界。
-
-示例：
-```python
-from cinrad.visualize.ppi import base_reflectivity
-base_reflectivity(R, highlight='成都市')
-```
 
 ## 其他
 
