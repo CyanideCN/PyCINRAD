@@ -5,6 +5,7 @@ import numpy as np
 import pyart
 import datetime
 from tkinter import filedialog
+from metpy.plots import colortables
 
 from cinrad.datastruct import V
 from cinrad.projection import get_coordinate
@@ -33,5 +34,6 @@ data_f = np.ma.array(data, mask=(data <= -128))
 rf = np.ma.array(data, mask=(data != -128))
 v_obj = V([data_f, rf], drange, el, reso, 'KEVX', 'KEVX', timestr, slon, slat)
 v_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-fig = ppi.Display(v_obj, coastline=True)
+norm2, v_cmap = colortables.get_with_range('NWS8bitVel', -64, 64)
+fig = ppi.Display(v_obj, coastline=True, norm=norm2, cmap=v_cmap, nlabel=17)
 fig()

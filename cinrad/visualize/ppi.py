@@ -32,22 +32,45 @@ def _prepare(data, datatype):
     return lon, lat, data.data
 
 class Display:
-    def __init__(self, data, norm=None, cmap=None, dpi=350, draw_author=True, highlight=None, coastline=False):
+    r'''Create a figure plotting plan position indicator'''
+    def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None
+                 , dpi=350, highlight=None, coastline=False):
         self.data = data
-        if not norm:
-            self.norm = norm_plot[data.dtype]
-        else:
-            self.norm = norm
-        if not cmap:
-            self.cmap = cmap_plot[data.dtype]
-        else:
-            self.cmap = cmap
-        self.settings = {'dpi':dpi, 'draw_author':draw_author, 'highlight':highlight, 'coastline':coastline}
+        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi
+                         , 'highlight':highlight, 'coastline':coastline}
 
-    def __call__(self, **fpath):
-        if not fpath.keys():
+    def __call__(self, *fpath):
+        if not fpath:
             fpath = modpath
+        else:
+            fpath = fpath[0]
         return self._plot(fpath)
+
+    def _norm(self):
+        if self.settings['norm']:
+            n = self.settings['norm']
+            if self.settings['label']:
+                clabel = self.settings['label']
+            else:
+                nlabel = self.settings['nlabel']
+                if nlabel:
+                    clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
+                else:
+                    clabel = np.linspace(n.vmin, n.vmax, 10).astype(str)
+            return n, n, clabel
+        else:
+            n = norm_plot[self.data.dtype]
+            n2 = norm_cbar[self.data.dtype]
+            return n, n2, cbar_text[self.data.dtype]
+
+    def _cmap(self):
+        if self.settings['cmap']:
+            c = self.settings['cmap']
+            return c, c
+        else:
+            c = cmap_plot[self.data.dtype]
+            c2 = cmap_cbar[self.data.dtype]
+            return c, c2
 
     def _plot(self, fpath):
         dtype = self.data.dtype
@@ -58,21 +81,21 @@ class Display:
         fig = setup_plot(self.settings['dpi'])
         geoax = set_geoaxes(lon, lat)
         popnan = var[np.logical_not(np.isnan(var))]
+        pnorm, cnorm, clabel = self._norm()
+        pcmap, ccmap = self._cmap()
         if self.data.dtype == 'cr':
-            geoax.contourf(lon, lat, var, 128, norm=norm_plot[dtype], cmap=cmap_plot[dtype])
+            geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap)
         else:
-            geoax.pcolormesh(lon, lat, var, norm=norm_plot[dtype], cmap=cmap_plot[dtype])
+            geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap)
             if self.data.dtype == 'v':
                 geoax.pcolormesh(lon, lat, rf, norm=norm_plot['rf'], cmap=cmap_plot['rf'])
         add_shp(geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
-        ax, cbar = setup_axes(fig, cmap_cbar[dtype], norm_cbar[dtype])
-        text_ = cbar_text[dtype]
-        if text_:
-            change_cbar_text(cbar, np.linspace(0, 1, len(text_)), text_)
-        text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev
-             , draw_author=self.settings['draw_author'])
+        ax, cbar = setup_axes(fig, ccmap, cnorm)
+        if not isinstance(clabel, type(None)):
+            change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
+        text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
         ax.text(0, 2.13, prodname[dtype], fontproperties=font2)
         ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'v':
