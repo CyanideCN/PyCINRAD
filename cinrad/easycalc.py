@@ -25,8 +25,8 @@ def quick_cr(Rlist):
         r_data.append(r)
     cr = composite_reflectivity(r_data)
     x, y = np.meshgrid(x, y)
-    l2_obj = L2(cr, i.drange, 0, 1, i.code, i.name, i.time, 'cr',
-                i.stp['lon'], i.stp['lat'])
+    l2_obj = L2(np.ma.array(cr, mask=(cr <= 0)), i.drange, 0, 1, i.code, i.name, i.time
+                , 'cr', i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(x, y, np.zeros(x.shape))
     return l2_obj
 
@@ -44,8 +44,8 @@ def quick_vil(Rlist):
     r_data, elev = _extract(Rlist)
     data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])
     vil = vert_integrated_liquid(data, d, elev)
-    l2_obj = L2(vil, i.drange, 0, 1, i.code, i.name, i.time, 'vil',
-                i.stp['lon'], i.stp['lat'])
+    l2_obj = L2(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time
+                , 'vil', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
