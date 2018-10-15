@@ -5,6 +5,7 @@ from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
                         , change_cbar_text, draw_highlight_area, set_geoaxes)
 from ..constants import *
 
+import os
 import numpy as np
 
 norm_plot = {'r':norm1, 'v':norm2, 'cr':norm1, 'et':norm5, 'vil':norm1, 'rf':norm3} # Normalize object used to plot
@@ -31,19 +32,24 @@ def _prepare(data, datatype):
         raise ValueError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
     return lon, lat, data.data
 
-class Display:
+class PPI:
     r'''Create a figure plotting plan position indicator'''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None
                  , dpi=350, highlight=None, coastline=False):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi
-                         , 'highlight':highlight, 'coastline':coastline}
+                         , 'highlight':highlight, 'coastline':coastline, 'path_customize':False}
 
     def __call__(self, *fpath):
         if not fpath:
             fpath = modpath
         else:
             fpath = fpath[0]
+            if fpath.upper().endswith('.PNG'):
+                self.settings['path_customize'] = True
+            else:
+                if not fpath.endswith(os.path.sep):
+                    fpath += os.path.sep
         return self._plot(fpath)
 
     def _norm(self):
@@ -100,4 +106,10 @@ class Display:
         ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'v':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
-        save(fpath, self.data.code, self.data.time, self.data.elev, self.data.drange, self.data.dtype)
+        if not self.settings['path_customize']:
+            if not folderpath.endswith(os.path.sep):
+                folderpath += os.path.sep
+            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(folderpath, code, timestr, elev, drange, datatype.upper())
+        else:
+            path_string = fpath
+        save(path_string)

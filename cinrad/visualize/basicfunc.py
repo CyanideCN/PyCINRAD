@@ -35,12 +35,8 @@ def text(ax, drange, reso, timestr, name, elev):
     ax.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
     ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font2)
 
-def save(folderpath, code, timestr, elev, drange, datatype):
-    if not folderpath.endswith(os.path.sep):
-        folderpath += os.path.sep
-    plt.savefig('{}{}_{}_{:.1f}_{}_{}.png'.format(
-        folderpath, code, timestr, elev, drange, datatype.upper()), bbox_inches='tight', pad_inches = 0)
-    plt.cla()
+def save(fpath):
+    plt.savefig(fpath, bbox_inches='tight', pad_inches = 0)
 
 def add_shp(renderer, coastline=False):
     root = os.path.join(modpath, 'shapefile')

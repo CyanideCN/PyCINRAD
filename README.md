@@ -97,19 +97,21 @@ r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 例子：
 
 ```python
-from cinrad.visualize.ppi import Display
-fig = Display(R, highlight='成都市') #绘制基本反射率图片
+from cinrad.visualize.ppi import PPI
+fig = PPI(R, highlight='成都市') #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
-from cinrad.visualize.rhi import rhi
-rhi(Section) #绘制RHI
+from cinrad.visualize.rhi import RHI
+fig = RHI(Section) #绘制RHI
+fig('D:\\')
 ```
 
 如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
-
+传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png	`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
+（Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
 #### 自定义绘图
 
-`Display`支持传入自定义`colormap`和`norm`。（分别是`cmap`和`norm`参数）。同时，`nlabel`参数控制色阶条标注的个数
-，如果不传入将会设置成10个。
+`PPI`支持传入自定义`colormap`和`norm`。（分别是`cmap`和`norm`参数）。同时，`nlabel`参数控制色阶条标注的个数
+，如果不传入将会设置成10个。如果传入`label`参数的话，程序将会优先使用来标注色阶条。
 
 
 ## 其他
