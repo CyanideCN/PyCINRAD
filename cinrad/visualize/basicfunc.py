@@ -24,16 +24,16 @@ def setup_axes(fig, cmap, norm):
     cbar.ax.tick_params(labelsize=8)
     return ax, cbar
 
-def text(ax, drange, reso, timestr, name, elev, draw_author=True):
+def text(ax, drange, reso, timestr, name, elev):
     ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font2)
     ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
     ax.text(0, 2.01, 'Date: {}.{}.{}'.format(timestr[:4], timestr[4:6], timestr[6:8]), fontproperties=font2)
     ax.text(0, 1.97, 'Time: {}:{}'.format(timestr[8:10], timestr[10:12]), fontproperties=font2)
+    if name is None:
+        name = 'Unknown'
     ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font2)
     ax.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
     ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font2)
-    if draw_author:
-        ax.text(0, 1.73, 'Made by HCl', fontproperties=font2)
 
 def save(folderpath, code, timestr, elev, drange, datatype):
     if not folderpath.endswith(os.path.sep):

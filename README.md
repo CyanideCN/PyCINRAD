@@ -78,7 +78,7 @@ f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
 ### cinrad.easycalc
 
 提供雷达衍生产品的计算（接受`list(cinrad.datastruct.Raw)`）
-使用cinrad.io读取的数据可直接带入该模块下的函数来计算。
+使用`cinrad.io`读取的数据可直接带入该模块下的函数来计算。
 
 函数名：
 `quick_cr`, `quick_et`, `quick_vil`
@@ -105,6 +105,11 @@ rhi(Section) #绘制RHI
 ```
 
 如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
+
+#### 自定义绘图
+
+`Display`支持传入自定义`colormap`和`norm`。（分别是`cmap`和`norm`参数）。同时，`nlabel`参数控制色阶条标注的个数
+，如果不传入将会设置成10个。
 
 
 ## 其他
