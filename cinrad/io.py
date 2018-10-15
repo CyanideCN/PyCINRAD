@@ -300,7 +300,6 @@ class CinradReader:
             self.elev = self.elevdeg[level]
             r = self.rraw[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
             r1 = (r - 64) / 2
-        r1[r1 < 0] = 0
         radialavr = [np.average(i) for i in r1]
         threshold = 4
         g = np.gradient(radialavr)
@@ -311,7 +310,8 @@ class CinradReader:
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
-        r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r2 = np.ma.array(r1, mask=(r1 <= 0))
+        r_obj = R(r2.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
@@ -534,8 +534,8 @@ class StandardData:
         cut = data.T[:int(drange / self.Rreso)]
         add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
         r = np.concatenate((cut, add_gate))
-        r[r < 0] = 0
-        r_obj = R(r.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r1 = np.ma.array(r, mask=(r <= 0))
+        r_obj = R(r1.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Rreso)
         r_obj.add_geoc(x, y, z)
