@@ -6,7 +6,3 @@ from . import qc
 from . import visualize
 
 __version__ = '1.1'
-
-def set_savepath(path):
-    import os
-    os.environ['CINRAD_PATH'] = path

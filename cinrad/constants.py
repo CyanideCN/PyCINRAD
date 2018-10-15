@@ -9,15 +9,6 @@ from matplotlib.font_manager import FontProperties
 import os
 from pathlib import Path
 
-try:
-    folderpath = os.environ['CINRAD_PATH']
-except KeyError:
-    folderpath = os.path.join(str(Path.home()), 'PyCINRAD')
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-    os.environ['CINRAD_PATH'] = folderpath
-
-folderpath = os.environ['CINRAD_PATH']
 deg2rad = 3.141592653589793 / 180
 Rm1 = 8500
 con = (180 / 4096) * 0.125
