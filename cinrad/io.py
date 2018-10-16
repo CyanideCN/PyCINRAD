@@ -29,9 +29,7 @@ def _get_radar_info(code):
     return name, lon, lat, radartype, radarheight
 
 def create_dict(dict, index):
-    try:
-        test = dict[index]
-    except Exception:
+    if index not in dict.keys():
         dict[index] = list()
 
 class CinradReader:
@@ -67,9 +65,10 @@ class CinradReader:
             self.radartype = radar_type
         else:
             self.radartype = radartype
+        self.first_gate = 1
 
     def __lt__(self, value):
-        return int(self.timestr) < int(value.timestr)
+        return self.scantime < value.scantime
 
     def _detect_radartype(self, f, filename, type_assert=None):
         r'''Detect radar type from records in file'''
@@ -116,30 +115,31 @@ class CinradReader:
         eleang = list()
         self.boundary = list()
         count = 0
-        deltdays = np.fromstring(copy[32:34], 'u2')[0]
-        deltsecs = np.fromstring(copy[28:32], 'u4')[0]
+        deltdays = np.frombuffer(copy[32:34], 'u2')[0]
+        deltsecs = np.frombuffer(copy[28:32], 'u4')[0]
         start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
-        scantime = start + deltday + deltsec
-        self.Rreso = 1
-        self.Vreso = 0.25
+        self.scantime = start + deltday + deltsec
+        self.vcpmode = np.frombuffer(copy[72:74], 'u2')[0]
+        self.Rreso = np.frombuffer(copy[50:52], 'u2')[0] / 1000
+        self.Vreso = np.frombuffer(copy[52:54], 'u2')[0] / 1000
         f.seek(98)
         self.code = f.read(5).decode()
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
-            azimuth = np.fromstring(a[36:38], 'u2')
-            datacon = np.fromstring(a[40:42], 'u2')
-            elevangle = np.fromstring(a[42:44], 'u2')
-            anglenum = np.fromstring(a[44:46], 'u2')
-            veloreso = np.fromstring(a[70:72], 'u2')
+            azimuth = np.frombuffer(a[36:38], 'u2')
+            datacon = np.frombuffer(a[40:42], 'u2')
+            elevangle = np.frombuffer(a[42:44], 'u2')
+            anglenum = np.frombuffer(a[44:46], 'u2')
+            veloreso = np.frombuffer(a[70:72], 'u2')
             if SAB:
-                R = np.fromstring(a[128:588], 'u1')
-                V = np.fromstring(a[128:1508], 'u1')
+                R = np.frombuffer(a[128:588], 'u1')
+                V = np.frombuffer(a[128:1508], 'u1')
             else:
-                R = np.fromstring(a[128:928], 'u1')
-                V = np.fromstring(a[128:2528], 'u1')
+                R = np.frombuffer(a[128:928], 'u1')
+                V = np.frombuffer(a[128:2528], 'u1')
             azimuthx.append(azimuth[0])
             eleang.append(elevangle[0])
             vraw.append(V.tolist())
@@ -160,7 +160,7 @@ class CinradReader:
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
         self.elevindex = self.elevdeg[self.boundary][:-1]
-        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def _CC_handler(self, f):
         vraw = list()
@@ -172,16 +172,16 @@ class CinradReader:
         f.seek(106)
         self.code = f.read(10).decode().split('\x00')[0]
         f.seek(184)
-        scantime = datetime.datetime(year=np.fromstring(f.read(1), 'u1')[0] * 100 + np.fromstring(f.read(1), 'u1')[0],
-                                        month=np.fromstring(f.read(1), 'u1')[0], day=np.fromstring(f.read(1), 'u1')[0],
-                                        hour=np.fromstring(f.read(1), 'u1')[0], minute=np.fromstring(f.read(1), 'u1')[0],
-                                        second=np.fromstring(f.read(1), 'u1')[0])
+        self.scantime = datetime.datetime(year=np.frombuffer(f.read(1), 'u1')[0] * 100 + np.frombuffer(f.read(1), 'u1')[0],
+                                        month=np.frombuffer(f.read(1), 'u1')[0], day=np.frombuffer(f.read(1), 'u1')[0],
+                                        hour=np.frombuffer(f.read(1), 'u1')[0], minute=np.frombuffer(f.read(1), 'u1')[0],
+                                        second=np.frombuffer(f.read(1), 'u1')[0])
         count = 0
         f.seek(1024)
         while count < num:
             a = f.read(blocklength)
-            r = np.fromstring(a[:1000], np.short).astype(float)
-            v = np.fromstring(a[1000:2000], np.short).astype(float)
+            r = np.frombuffer(a[:1000], np.short).astype(float)
+            v = np.frombuffer(a[1000:2000], np.short).astype(float)
             rraw.append(r)
             vraw.append(v)
             count += 1
@@ -189,7 +189,7 @@ class CinradReader:
         self.vraw = np.array(vraw)
         self.Rreso = 0.3
         self.Vreso = 0.3
-        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.elevdeg = [0.5, 1.5, 2.4, 3.4, 4.3, 6, 9.89, 14.6, 19.5]
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
 
@@ -199,9 +199,9 @@ class CinradReader:
         blocklength = 4000
         utc_offset = datetime.timedelta(hours=8)
         f.seek(853)
-        scantime = datetime.datetime(year=np.fromstring(f.read(2), 'u2')[0], month=np.fromstring(f.read(1), 'u1')[0],
-                                        day=np.fromstring(f.read(1), 'u1')[0], hour=np.fromstring(f.read(1), 'u1')[0],
-                                        minute=np.fromstring(f.read(1), 'u1')[0], second=np.fromstring(f.read(1), 'u1')[0]) - utc_offset
+        self.scantime = datetime.datetime(year=np.frombuffer(f.read(2), 'u2')[0], month=np.frombuffer(f.read(1), 'u1')[0],
+                                        day=np.frombuffer(f.read(1), 'u1')[0], hour=np.frombuffer(f.read(1), 'u1')[0],
+                                        minute=np.frombuffer(f.read(1), 'u1')[0], second=np.frombuffer(f.read(1), 'u1')[0]) - utc_offset
         f.seek(1024)
         self.Rreso = 0.3
         self.Vreso = 0.3
@@ -209,8 +209,8 @@ class CinradReader:
         count = 0
         while count < 3240:
             q = f.read(blocklength)
-            elev.append(np.fromstring(q[2:4], 'u2')[0])
-            x = np.fromstring(q[8:], 'u1').astype(float)
+            elev.append(np.frombuffer(q[2:4], 'u2')[0])
+            x = np.frombuffer(q[8:], 'u1').astype(float)
             rraw.append(x[slice(None, None, 4)])
             vraw.append(x[slice(1, None, 4)])
             count += 1
@@ -219,30 +219,11 @@ class CinradReader:
         self.elevdeg = np.array(elev[slice(359, None, 360)]) * con2
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
         self.azimuth = np.arange(0, 360, 1) * deg2rad
-        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
-
-    def set_station_position(self, stationlon, stationlat):
-        self.stationlon = stationlon
-        self.stationlat = stationlat
-
-    def set_station_name(self, name):
-        self.name = name
-
-    def set_drange(self, drange):
-        self.drange = drange
+        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def set_code(self, code):
         self.code = code
         self._update_radar_info()
-
-    def set_radarheight(self, height):
-        self.radarheight = height
-
-    def set_elevation_angle(self, angle):
-        self.elev = angle
-
-    def set_level(self, level):
-        self.level = level
 
     def _update_radar_info(self):
         r'''Update radar station info automatically.'''
@@ -250,16 +231,54 @@ class CinradReader:
         if info is None:
             warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
         else:
-            self.set_station_position(info[1], info[2])
-            self.set_station_name(info[0])
-            self.set_radarheight(info[4])
+            self.stationlon = info[1]
+            self.stationlat = info[2]
+            self.name = info[0]
+            self.radarheight = info[4]
+
+    def get_nscans(self):
+        return len(self.elevdeg)
+
+    def get_nrays(self, scan):
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            return self.boundary[scan + 1] - self.boundary[scan]
+        elif self.radartype == 'CC':
+            return 512
+        elif self.radartype == 'SC':
+            return 360
+
+    def get_azimuth_angles(self, scans=None):
+        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
+            if scans is None:
+                return self.azimuth
+            else:
+                return self.azimuth[self.boundary[scans]:self.boundary[scans + 1]]
+        elif self.radartype == 'CC':
+            if scans is None:
+                return np.linspace(0, 360, 512).tolist() * self.get_nscans()
+            else:
+                return np.linspace(0, 360, 512).tolist()
+        elif self.radartype == 'SC':
+            if scans is None:
+                return np.linspace(0, 360, 360).tolist() * self.get_nscans()
+            else:
+                return np.linspace(0, 360, 360).tolist()
+
+    def get_elevation_angles(self, scans=None):
+        if scans is None:
+            return self.elevdeg
+        else:
+            return self.elevdeg[scans]
+
+    def get_range(self, drange, reso):
+        return np.arange(reso, drange + reso, reso)
 
     def _find_azimuth_position(self, azimuth):
         r'''Find the relative position of a certain azimuth angle in the data array.'''
         count = 0
-        self.azim = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]] * deg2rad
+        self.azim = self.get_azimuth_angles(self.tilt) * deg2rad
         if azimuth < 0.3:
-            azimuth = 0.5
+            azimuth = 0.5 #TODO: Fix bug occured when azimuth is smaller than 0.3 degree
         azimuth_ = azimuth * deg2rad
         a_sorted = np.sort(self.azim)
         add = False
@@ -269,36 +288,32 @@ class CinradReader:
             elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
                 if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
                     add = True
-                    break
-                else:
-                    break
+                break
             count += 1
         if add:
             count += 1
         pos = np.where(self.azim == a_sorted[count])[0][0]
         return pos
 
-    def reflectivity(self, level, drange):
+    def reflectivity(self, tilt, drange):
         r'''Clip desired range of reflectivity data.'''
-        self.level = level
+        self.tilt = tilt
         self.drange = drange
         length = self.rraw.shape[1] * self.Rreso
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.rraw.shape[1] * self.Rreso)
+        self.elev = self.get_elevation_angles(self.tilt)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            self.elev = self.elevdeg[self.boundary[level]]
-            if level not in self.angleindex_r:
+            if tilt not in self.angleindex_r:
                 warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-            r = self.rraw[self.boundary[level]:self.boundary[level + 1]]
+            r = self.rraw[self.boundary[tilt]:self.boundary[tilt + 1]]
             r = (r - 2) / 2 - 32
             r1 = r.T[:int(drange / self.Rreso)]
         elif self.radartype == 'CC':
-            self.elev = self.elevdeg[level]
-            r1 = self.rraw[level * 512:(level + 1) * 512, :int(drange / self.Rreso)].T / 10
+            r1 = self.rraw[level * 512:(tilt + 1) * 512, :int(drange / self.Rreso)].T / 10
         elif self.radartype == 'SC':
-            self.elev = self.elevdeg[level]
-            r = self.rraw[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
+            r = self.rraw[level * 360:(tilt + 1) * 360, :int(drange / self.Rreso)].T
             r1 = (r - 64) / 2
         radialavr = [np.average(i) for i in r1]
         threshold = 4
@@ -319,19 +334,19 @@ class CinradReader:
         r_obj.a_reso = 512
         return r_obj
 
-    def velocity(self, level, drange):
+    def velocity(self, tilt, drange):
         r'''Clip desired range of velocity data.'''
-        if level not in self.angleindex_v:
+        if tilt not in self.angleindex_v:
             warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-        self.elev = self.elevdeg[self.boundary[level]]
         self.drange = drange
-        self.level = level
+        self.tilt = tilt
+        self.elev = self.get_elevation_angles(self.tilt)
         length = self.vraw.shape[1] * self.Vreso
         if length < drange:
             warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
             self.drange = int(self.vraw.shape[1] * self.Vreso)
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            v = self.vraw[self.boundary[level]:self.boundary[level + 1]]
+            v = self.vraw[self.boundary[tilt]:self.boundary[tilt + 1]]
             v1 = v.T[:int(drange / self.Vreso)].astype(float)
             rf = np.ma.array(v1, mask=(v1 != 1))
             v1[v1 == 0] = np.nan
@@ -342,14 +357,13 @@ class CinradReader:
             v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
                       self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
-            v = self.vraw[level * 512:(level + 1) * 512, :int(drange / self.Vreso)].T
+            v = self.vraw[tilt * 512:(tilt + 1) * 512, :int(drange / self.Vreso)].T
             v[v == -32768] = np.nan
             v1 = v / 10
             v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr
                       ,self.stationlon, self.stationlat, include_rf=False)
         elif self.radartype == 'SC':
-            self.elev = self.elevindex[level]
-            v = self.vraw[level * 360:(level + 1) * 360, :int(drange / self.Vreso)].T
+            v = self.vraw[tilt * 360:(tilt + 1) * 360, :int(drange / self.Vreso)].T
             v[v == -64] = np.nan
             v1 = (v - 128) / 2
             v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name,
@@ -361,25 +375,11 @@ class CinradReader:
 
     def projection(self, datatype, h_offset=False):
         r'''Calculate the geographic coordinates of the requested data range.'''
-        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            length = self.boundary[self.level + 1] - self.boundary[self.level]
-        elif self.radartype == 'CC':
-            length = 512
-        elif self.radartype == 'SC':
-            length = 360
-        if datatype == 'r':
-            r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
-            if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]]
-            elif self.radartype in ['CC', 'SC']:
-                theta = np.linspace(0, 360, length) * deg2rad
-        elif datatype == 'v':
-            r = np.arange(self.Vreso, self.drange + self.Vreso, self.Vreso)
-            if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-                theta = self.azimuth[self.boundary[self.level]:self.boundary[self.level + 1]]
-            elif self.radartype in ['CC', 'SC']:
-                theta = np.linspace(0, 360, length) * deg2rad
-        elif datatype in ['et', 'vil']:
+        length = self.get_nrays(self.tilt)
+        theta = self.get_azimuth_angles(self.tilt)
+        reso = self.Rreso if datatype == 'r' else self.Vreso
+        r = self.get_range(self.drange, reso)
+        if datatype in ['et', 'vil']:
             r = np.arange(self.Rreso, self.drange + self.Rreso, self.Rreso)
             if self.radartype in ['SA', 'SB', 'CA', 'CB']:
                 theta = np.arange(0, 361, 1) * deg2rad
@@ -412,7 +412,6 @@ class CinradReader:
         yc = np.array(ycoor)
         return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
 
-
 class StandardData:
     r'''Class handling new cinrad standard data reading'''
     def __init__(self, filepath):
@@ -421,11 +420,11 @@ class StandardData:
         self.code = f.read(5).decode()
         f.seek(332)
         seconds = np.frombuffer(f.read(4), 'u4')[0]
-        scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
+        self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
         f.seek(460)
         self.Rreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
         self.Vreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
-        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.rd, self.vd, self.wd, self.ad = self._parse(f)
         self.el = [0.50, 0.50, 1.45, 1.45, 2.40, 3.35, 4.30, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
         self._update_radar_info()
@@ -468,9 +467,7 @@ class StandardData:
             elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
                 if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
                     add = True
-                    break
-                else:
-                    break
+                break
             count += 1
         if add:
             count += 1
@@ -492,7 +489,7 @@ class StandardData:
             el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
             for i in [r_, v_, w_, azm]:
                 create_dict(i, el_num)
-            el = np.fromstring(header[24:28], 'f4')[0]#仰角值
+            el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
             az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
             length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
             type_num = np.frombuffer(header[40:44], 'u4')[0]#数据类别数量
