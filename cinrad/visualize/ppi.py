@@ -6,6 +6,7 @@ from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
 from ..constants import *
 
 import os
+from pathlib import Path
 import numpy as np
 
 norm_plot = {'r':norm1, 'v':norm2, 'cr':norm1, 'et':norm5, 'vil':norm1, 'rf':norm3} # Normalize object used to plot
@@ -42,7 +43,7 @@ class PPI:
 
     def __call__(self, *fpath):
         if not fpath:
-            fpath = modpath
+            fpath = os.path.join(str(Path.home()), 'PyCINRAD')
         else:
             fpath = fpath[0]
             if fpath.upper().endswith('.PNG'):
@@ -107,9 +108,10 @@ class PPI:
         if self.data.dtype == 'v':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
         if not self.settings['path_customize']:
-            if not folderpath.endswith(os.path.sep):
-                folderpath += os.path.sep
-            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(folderpath, code, timestr, elev, drange, datatype.upper())
+            if not fpath.endswith(os.path.sep):
+                fpath += os.path.sep
+            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(fpath, self.data.code, self.data.time
+                                                            , self.data.elev, self.data.drange, dtype.upper())
         else:
             path_string = fpath
         save(path_string)
