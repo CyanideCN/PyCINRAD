@@ -4,6 +4,7 @@
 from ..constants import rhi_cmap_smooth, norm1, font2
 
 import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,7 +38,7 @@ class RHI:
 
     def __call__(self, *fpath):
         if not fpath:
-            fpath = modpath
+            fpath = os.path.join(str(Path.home()), 'PyCINRAD')
         else:
             fpath = fpath[0]
             if fpath.upper().endswith('.PNG'):

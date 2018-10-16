@@ -7,7 +7,6 @@ import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
 import os
-from pathlib import Path
 
 deg2rad = 3.141592653589793 / 180
 Rm1 = 8500
