@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1, modpath
-from .datastruct import R, V, Section
+from .datastruct import R, V, W, Section
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 
@@ -14,6 +14,25 @@ from pathlib import Path
 import numpy as np
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
+
+def _get_radar_info(code):
+    r'''Get radar station info from the station database according to the station code.'''
+    try:
+        pos = np.where(radarinfo[0] == code)[0][0]
+    except IndexError:
+        raise RadarDecodeError('Invalid radar code')
+    name = radarinfo[1][pos]
+    lon = radarinfo[2][pos]
+    lat = radarinfo[3][pos]
+    radartype = radarinfo[4][pos]
+    radarheight = radarinfo[5][pos]
+    return name, lon, lat, radartype, radarheight
+
+def create_dict(dict, index):
+    try:
+        test = dict[index]
+    except Exception:
+        dict[index] = list()
 
 class CinradReader:
     r'''Class handling CINRAD radar reading'''
@@ -48,6 +67,9 @@ class CinradReader:
             self.radartype = radar_type
         else:
             self.radartype = radartype
+
+    def __lt__(self, value):
+        return int(self.timestr) < int(value.timestr)
 
     def _detect_radartype(self, f, filename, type_assert=None):
         r'''Detect radar type from records in file'''
@@ -102,6 +124,8 @@ class CinradReader:
         scantime = start + deltday + deltsec
         self.Rreso = 1
         self.Vreso = 0.25
+        f.seek(98)
+        self.code = f.read(5).decode()
         f.seek(0)
         while count < num:
             a = f.read(blocklength)
@@ -167,6 +191,7 @@ class CinradReader:
         self.Vreso = 0.3
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
         self.elevdeg = [0.5, 1.5, 2.4, 3.4, 4.3, 6, 9.89, 14.6, 19.5]
+        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
 
     def _SC_handler(self, f):
         vraw = list()
@@ -192,6 +217,7 @@ class CinradReader:
         self.rraw = np.concatenate(rraw).reshape(3240, 998)
         self.vraw = np.concatenate(vraw).reshape(3240, 998)
         self.elevdeg = np.array(elev[slice(359, None, 360)]) * con2
+        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
         self.azimuth = np.arange(0, 360, 1) * deg2rad
         self.timestr = scantime.strftime('%Y%m%d%H%M%S')
 
@@ -218,25 +244,9 @@ class CinradReader:
     def set_level(self, level):
         self.level = level
 
-    def _get_radar_info(self):
-        r'''Get radar station info from the station database according to the station code.'''
-        if self.code is None:
-            warnings.warn('Radar code undefined', UserWarning)
-            return None
-        try:
-            pos = np.where(radarinfo[0] == self.code)[0][0]
-        except IndexError:
-            raise RadarDecodeError('Invalid radar code')
-        name = radarinfo[1][pos]
-        lon = radarinfo[2][pos]
-        lat = radarinfo[3][pos]
-        radartype = radarinfo[4][pos]
-        radarheight = radarinfo[5][pos]
-        return name, lon, lat, radartype, radarheight
-
     def _update_radar_info(self):
         r'''Update radar station info automatically.'''
-        info = self._get_radar_info()
+        info = _get_radar_info(self.code)
         if info is None:
             warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
         else:
@@ -290,7 +300,6 @@ class CinradReader:
             self.elev = self.elevdeg[level]
             r = self.rraw[level * 360:(level + 1) * 360, :int(drange / self.Rreso)].T
             r1 = (r - 64) / 2
-        r1[r1 < 0] = 0
         radialavr = [np.average(i) for i in r1]
         threshold = 4
         g = np.gradient(radialavr)
@@ -301,7 +310,8 @@ class CinradReader:
             r1 = np.concatenate((rm, nanmatrix))
         except IndexError:
             pass
-        r_obj = R(r1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r2 = np.ma.array(r1, mask=(r1 <= 0))
+        r_obj = R(r2.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
@@ -311,10 +321,9 @@ class CinradReader:
 
     def velocity(self, level, drange):
         r'''Clip desired range of velocity data.'''
-        if self.radartype in ['SA', 'SB', 'CA', 'CB']:
-            if level not in self.angleindex_v:
-                warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
-            self.elev = self.elevdeg[self.boundary[level]]
+        if level not in self.angleindex_v:
+            warnings.warn('Use this elevation angle may yield unexpected result.', UserWarning)
+        self.elev = self.elevdeg[self.boundary[level]]
         self.drange = drange
         self.level = level
         length = self.vraw.shape[1] * self.Vreso
@@ -380,7 +389,7 @@ class CinradReader:
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=9, height=15):
+    def rhi(self, azimuth, drange, startangle=0, stopangle=9):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
         rhi = list()
         xcoor = list()
@@ -399,6 +408,206 @@ class CinradReader:
             ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
         rhi = np.array(rhi)
         rhi[rhi < 0] = 0
+        xc = np.array(xcoor)
+        yc = np.array(ycoor)
+        return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
+
+
+class StandardData:
+    r'''Class handling new cinrad standard data reading'''
+    def __init__(self, filepath):
+        f = open(filepath, 'rb')
+        f.seek(32)
+        self.code = f.read(5).decode()
+        f.seek(332)
+        seconds = np.frombuffer(f.read(4), 'u4')[0]
+        scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
+        f.seek(460)
+        self.Rreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
+        self.Vreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
+        self.timestr = scantime.strftime('%Y%m%d%H%M%S')
+        self.rd, self.vd, self.wd, self.ad = self._parse(f)
+        self.el = [0.50, 0.50, 1.45, 1.45, 2.40, 3.35, 4.30, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
+        self._update_radar_info()
+        angleindex = list(self.rd.keys())
+        self.angleindex_r = np.delete(angleindex, [1, 3])
+        self.angleindex_v = np.delete(angleindex, [0, 2])
+
+    def set_radarheight(self, height):
+        self.radarheight = height
+
+    def set_station_position(self, stationlon, stationlat):
+        self.stationlon = stationlon
+        self.stationlat = stationlat
+
+    def set_station_name(self, name):
+        self.name = name
+
+    def _update_radar_info(self):
+        r'''Update radar station info automatically.'''
+        info = _get_radar_info(self.code)
+        if info is None:
+            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
+        else:
+            self.set_station_position(info[1], info[2])
+            self.set_station_name(info[0])
+            self.set_radarheight(info[4])
+
+    def _find_azimuth_position(self, azimuth):
+        r'''Find the relative position of a certain azimuth angle in the data array.'''
+        count = 0
+        azim = np.array(self.ad[self.level]) * deg2rad
+        if azimuth < 0.3:
+            azimuth = 0.5
+        azimuth_ = azimuth * deg2rad
+        a_sorted = np.sort(azim)
+        add = False
+        while count < len(azim):
+            if azimuth_ == a_sorted[count]:
+                break
+            elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
+                if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
+                    add = True
+                    break
+                else:
+                    break
+            count += 1
+        if add:
+            count += 1
+        pos = np.where(azim == a_sorted[count])[0][0]
+        return pos
+
+    def _parse(self, f):
+        f.seek(3232)
+        r_ = dict()
+        v_ = dict()
+        w_ = dict()
+        azm = dict()
+        while True:
+            r = list()
+            v = list()
+            w = list()
+            header = f.read(64)#径向头块
+            radial_state = np.frombuffer(header[0:4], 'u4')[0]
+            el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
+            for i in [r_, v_, w_, azm]:
+                create_dict(i, el_num)
+            el = np.fromstring(header[24:28], 'f4')[0]#仰角值
+            az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
+            length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
+            type_num = np.frombuffer(header[40:44], 'u4')[0]#数据类别数量
+
+            for i in range(type_num):
+                data_header = f.read(32)#径向数据头
+                data_type = np.frombuffer(data_header[0:4], 'u4')[0]#数据类型
+                scale = np.frombuffer(data_header[4:8], 'u4')[0]
+                offset = np.frombuffer(data_header[8:12], 'u4')[0]
+                bitlength = np.frombuffer(data_header[12:14], 'u2')[0]
+                blocklength = np.frombuffer(data_header[16:20], 'u4')[0]
+
+                body = f.read(blocklength)#径向数据
+                raw = np.frombuffer(body, 'u' + str(bitlength)).astype(float)
+                value = (raw - offset) / scale
+                if data_type == 2:
+                    r.append(value)
+                elif data_type == 3:
+                    v.append(np.ma.array(value, mask=(raw==1)))
+                elif data_type == 4:
+                    w.append(value)
+
+            r_[el_num] += r
+            v_[el_num] += v
+            w_[el_num] += w
+            azm[el_num].append(az_num)
+            if radial_state == 4:
+                break
+        return r_, v_, w_, azm
+
+    def reflectivity(self, level, drange):
+        self.level = level
+        self.drange = drange
+        self.elev = self.el[self.level]
+        data = np.array(self.rd[level])
+        if data.size == 0:
+            raise RadarDecodeError('Current elevation does not contain this data.')
+        length = data.shape[1] * self.Rreso
+        cut = data.T[:int(drange / self.Rreso)]
+        add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
+        r = np.concatenate((cut, add_gate))
+        r1 = np.ma.array(r, mask=(r <= 0))
+        r_obj = R(r1.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr,
+                  self.stationlon, self.stationlat)
+        x, y, z, d, a = self.projection(self.Rreso)
+        r_obj.add_geoc(x, y, z)
+        r_obj.add_polarc(d, a)
+        return r_obj
+
+    def velocity(self, level, drange):
+        self.level = level
+        self.drange = drange
+        self.elev = self.el[self.level]
+        data = np.ma.array(self.vd[level])
+        if data.size == 0:
+            raise RadarDecodeError('Current elevation does not contain this data.')
+        length = data.shape[1] * self.Vreso
+        if length < drange:
+            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
+            self.drange = int(data.shape[1] * self.Vreso)
+        cut = data.T[:int(drange / self.Vreso)]
+        rf = cut.data * cut.mask
+        rf[rf == 0] = None
+        cut[cut <= -64] = np.nan
+        v_obj = V([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr,
+                  self.stationlon, self.stationlat)
+        x, y, z, d, a = self.projection(self.Vreso)
+        v_obj.add_geoc(x, y, z)
+        v_obj.add_polarc(d, a)
+        return v_obj
+
+    def spectrum_width(self, level, drange):
+        self.level = level
+        self.drange = drange
+        self.elev = self.el[self.level]
+        data = np.array(self.wd[level])
+        if data.size == 0:
+            raise RadarDecodeError('Current elevation does not contain this data.')
+        length = data.shape[1] * self.Vreso
+        cut = data.T[:int(drange / self.Vreso)]
+        cut[cut <= -64] = np.nan
+        add_gate = np.zeros((int(drange / self.Vreso - cut.shape[0]), cut.shape[1]))
+        w = np.concatenate((cut, add_gate))
+        w_obj = W(w.T, int(w.shape[0] * self.Vreso), self.elev, self.Vreso, self.code, self.name, self.timestr,
+                  self.stationlon, self.stationlat)
+        x, y, z, d, a = self.projection(self.Vreso)
+        w_obj.add_geoc(x, y, z)
+        w_obj.add_polarc(d, a)
+        return w_obj
+
+    def projection(self, reso):
+        r = np.arange(reso, self.drange + reso, reso)
+        theta = np.array(self.ad[self.level]) * deg2rad
+        lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
+        hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
+        return lonx, latx, hght, r, theta
+
+    def rhi(self, azimuth, drange, startangle=0, stopangle=10):
+        r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
+        rhi = list()
+        xcoor = list()
+        ycoor = list()
+        dist = np.arange(1, drange + 1, 1)
+        for i in self.angleindex_r[startangle:stopangle]:
+            cac = self.reflectivity(i, drange).data
+            pos = self._find_azimuth_position(azimuth)
+            if pos is None:
+                nanarray = np.zeros((drange))
+                rhi.append(nanarray.tolist())
+            else:
+                rhi.append(cac[pos])
+            theta = self.elev * deg2rad
+            xcoor.append((dist * np.cos(theta)).tolist())
+            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
+        rhi = np.array(rhi)
         xc = np.array(xcoor)
         yc = np.array(ycoor)
         return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')

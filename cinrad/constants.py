@@ -9,15 +9,6 @@ from matplotlib.font_manager import FontProperties
 import os
 from pathlib import Path
 
-try:
-    folderpath = os.environ['CINRAD_PATH']
-except KeyError:
-    folderpath = os.path.join(str(Path.home()), 'PyCINRAD')
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-    os.environ['CINRAD_PATH'] = folderpath
-
-folderpath = os.environ['CINRAD_PATH']
 deg2rad = 3.141592653589793 / 180
 Rm1 = 8500
 con = (180 / 4096) * 0.125
@@ -28,7 +19,7 @@ CMAP_DIR = os.path.join(modpath, 'colormap')
 r_cmap = form_colormap(os.path.join(CMAP_DIR, 'r_main.txt'), sep=True)
 v_cmap = form_colormap(os.path.join(CMAP_DIR, 'v_main.txt'), sep=False)
 v_cbar = form_colormap(os.path.join(CMAP_DIR, 'v_cbar.txt'), sep=True)
-rhi_cmap_smooth = form_colormap(os.path.join(CMAP_DIR, 'r_main.txt'), sep=False, spacing='v')
+rhi_cmap_smooth = form_colormap(os.path.join(CMAP_DIR, 'r_smooth.txt'), sep=False, spacing='v')
 r_cmap_smooth = form_colormap(os.path.join(CMAP_DIR, 'r_smooth.txt'), sep=False, spacing='v')
 zdr_cmap = form_colormap(os.path.join(CMAP_DIR, 'zdr_main.txt'), sep=False)
 zdr_cbar = form_colormap(os.path.join(CMAP_DIR, 'zdr_cbar.txt'), sep=True)

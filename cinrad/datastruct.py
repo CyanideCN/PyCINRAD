@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 class Raw:
     r'''Basic radar data struct'''
@@ -53,6 +53,10 @@ class V(Raw):
         if include_rf:
             if not isinstance(data, (tuple, list)):
                 raise TypeError('Expect tuple or list, get {}'.format(type(data)))
+
+class W(Raw):
+    def __init__(self, data, drange, elev, reso, code, name, time, stlon, stlat):
+        Raw.__init__(self, data, drange, elev, reso, code, name, time, 'w', stlon, stlat)
 
 class L2(Raw):
     def __init__(self, data, drange, elev, reso, code, name, time, dtype, stlon, stlat):

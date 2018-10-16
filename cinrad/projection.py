@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
 from .constants import deg2rad, Rm1
 
@@ -11,8 +11,8 @@ def height(distance, elevation, radarheight):
 def get_coordinate(distance, azimuth, elevation, centerlon, centerlat, h_offset=True):
     r'''Convert polar coordinates to geographic coordinates with the given radar station position.'''
     elev = elevation if h_offset else 0
-    deltav = np.cos(azimuth[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
-    deltah = np.sin(azimuth[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
+    deltav = np.cos(azimuth[:, np.newaxis]) * distance * np.cos(elev * deg2rad)
+    deltah = np.sin(azimuth[:, np.newaxis]) * distance * np.cos(elev * deg2rad)
     deltalat = deltav / 111
     actuallat = deltalat + centerlat
     deltalon = deltah / 111

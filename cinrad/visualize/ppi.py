@@ -1,156 +1,115 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+# Author: Du puyuan
 
-from .basicfunc import (add_shp, save, setup_axes, setup_plot, setup_basemap,
-                        text, change_cbar_text, draw_highlight_area, set_geoaxes
-                        , USE_BASEMAP)
-from ..constants import font2, norm4, folderpath
+from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
+                        , change_cbar_text, draw_highlight_area, set_geoaxes)
+from ..constants import *
 
+import os
 import numpy as np
 
-def base_reflectivity(data, fname=None, smooth=False, draw_author=True, highlight=None):
-    from ..constants import norm1, r_cmap
+norm_plot = {'r':norm1, 'v':norm2, 'cr':norm1, 'et':norm5, 'vil':norm1, 'rf':norm3} # Normalize object used to plot
+norm_cbar = {'r':norm1, 'v':norm4, 'cr':norm1, 'et':norm4, 'vil':norm4} # Normalize object used for colorbar
+cmap_plot = {'r':r_cmap, 'v':v_cmap, 'cr':r_cmap, 'et':et_cmap, 'vil':vil_cmap, 'rf':rf_cmap}
+cmap_cbar = {'r':r_cmap, 'v':v_cbar, 'cr':r_cmap, 'et':et_cbar, 'vil':vil_cbar}
+prodname = {'r':'Base Reflectivity', 'v':'Base Velocity', 'cr':'Composite Ref.',
+            'et':'Echo Tops', 'vil':'V Integrated Liquid'}
+unit = {'r':'dBz', 'v':'m/s', 'cr':'dBz', 'et':'km', 'vil':'kg/m**2'}
+cbar_text = {'r':None, 'v':['RF', '', '27', '20', '15', '10', '5', '1', '0'
+                            , '-1', '-5', '-10', '-15', '-20', '-27', '-35'],
+             'cr':None, 'et':['', '21', '20', '18', '17', '15', '14', '12'
+                              , '11', '9', '8', '6', '5', '3', '2', '0'],
+             'vil':['', '70', '65', '60', '55', '50', '45', '40', '35', '30'
+                    , '25', '20', '15', '10', '5', '0']}
+
+def _prepare(data, datatype):
     if not data.geoflag:
         raise ValueError('Geographic information should be contained in data')
     else:
         lon, lat = data.lon, data.lat
         r = data.data
-    if data.dtype is not 'r':
-        raise ValueError('Expected datatype is "r", received "{}"'.format(data.dtype))
-    fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
-    dmax = r[np.logical_not(np.isnan(r))]
-    if smooth:
-        renderer.contourf(lons.flatten(), lats.flatten(), r.flatten(), 256, cmap=r_cmap_smooth
-                   , norm=norm1, tri=True)
-    else:
-        r[r <= 2] = None
-        renderer.pcolormesh(lon, lat, r, norm=norm1, cmap=r_cmap)
-    add_shp(renderer)
-    if highlight:
-        draw_highlight_area(highlight)
-    ax, cbar = setup_axes(fig, r_cmap, norm1)
-    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
-    ax.text(0, 2.13, 'Base Reflectivity', fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
-    ax.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(dmax)), fontproperties=font2)
-    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+    if data.dtype is not datatype:
+        raise ValueError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
+    return lon, lat, data.data
 
-def base_velocity(data, draw_author=True, highlight=None):
-    from ..constants import norm2, norm3, rf_cmap, v_cmap, v_cbar
-    if not data.geoflag:
-        raise ValueError('Geographic information should be contained in data')
-    else:
-        lon, lat = data.lon, data.lat
-        if data.include_rf:
-            v = data.data[0]
-            rf = data.data[1]
+class PPI:
+    r'''Create a figure plotting plan position indicator'''
+    def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None
+                 , dpi=350, highlight=None, coastline=False):
+        self.data = data
+        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi
+                         , 'highlight':highlight, 'coastline':coastline, 'path_customize':False}
+
+    def __call__(self, *fpath):
+        if not fpath:
+            fpath = modpath
         else:
-            v = data.data
-    if data.dtype is not 'v':
-        raise ValueError('Expected datatype is "v", received "{}"'.format(data.dtype))
-    fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
-    renderer.pcolormesh(lon, lat, v, cmap=v_cmap, norm=norm2)
-    if data.include_rf:
-        renderer.pcolormesh(lon, lat, rf, cmap=rf_cmap, norm=norm3)
-    add_shp(renderer)
-    if highlight:
-        draw_highlight_area(highlight)
-    ax, cbar = setup_axes(fig, v_cbar, norm4)
-    change_cbar_text(cbar, np.linspace(0, 1, 16), ['RF', '', '27', '20', '15', '10', '5', '1', '0'
-                                                   , '-1', '-5', '-10', '-15', '-20', '-27', '-35'])
-    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
-    ax.text(0, 2.13, 'Base Velocity', fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
-    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+            fpath = fpath[0]
+            if fpath.upper().endswith('.PNG'):
+                self.settings['path_customize'] = True
+            else:
+                if not fpath.endswith(os.path.sep):
+                    fpath += os.path.sep
+        return self._plot(fpath)
 
-def echo_tops(data, draw_author=True, highlight=None):
-    from ..constants import norm5, et_cmap, et_cbar
-    if not data.geoflag:
-        raise ValueError('Geographic information should be contained in data')
-    else:
-        lon, lat = data.lon, data.lat
-        et = data.data
-    if data.dtype is not 'et':
-        raise ValueError('Expected datatype is "et", received "{}"'.format(data.dtype))
-    fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
-    dmax = et[np.logical_not(np.isnan(et))]
-    renderer.pcolormesh(lon, lat, et, norm=norm5, cmap=et_cmap)
-    add_shp(renderer)
-    if highlight:
-        draw_highlight_area(highlight)
-    ax, cbar = setup_axes(fig, et_cbar, norm4)
-    change_cbar_text(cbar, np.linspace(0, 1, 16), ['', '21', '20', '18', '17', '15', '14', '12'
-                                                   , '11', '9', '8', '6', '5', '3', '2', '0'])
-    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
-    ax.text(0, 2.13, 'Echo Tops', fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
-    ax.text(0, 1.81, 'Max: {:.1f}km'.format(np.max(dmax)), fontproperties=font2)
-    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+    def _norm(self):
+        if self.settings['norm']:
+            n = self.settings['norm']
+            if self.settings['label']:
+                clabel = self.settings['label']
+            else:
+                nlabel = self.settings['nlabel']
+                if nlabel:
+                    clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
+                else:
+                    clabel = np.linspace(n.vmin, n.vmax, 10).astype(str)
+            return n, n, clabel
+        else:
+            n = norm_plot[self.data.dtype]
+            n2 = norm_cbar[self.data.dtype]
+            return n, n2, cbar_text[self.data.dtype]
 
-def vert_integrated_liquid(data, draw_author=True, highlight=None):
-    from ..constants import norm1, vil_cmap, vil_cbar
-    if not data.geoflag:
-        raise ValueError('Geographic information should be contained in data')
-    else:
-        lon, lat = data.lon, data.lat
-        vil = data.data
-    if data.dtype is not 'vil':
-        raise ValueError('Expected datatype is "vil", received "{}"'.format(data.dtype))
-    fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
-    dmax = vil[np.logical_not(np.isnan(vil))]
-    vil[vil <= 0] = None
-    renderer.pcolormesh(lon, lat, vil, norm=norm1, cmap=vil_cmap)
-    add_shp(renderer)
-    if highlight:
-        draw_highlight_area(highlight)
-    ax, cbar = setup_axes(fig, vil_cbar, norm4)
-    change_cbar_text(cbar, np.linspace(0, 1, 16), ['', '70', '65', '60', '55', '50', '45', '40'
-                                                   , '35', '30' , '25', '20', '15', '10', '5', '0'])
-    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
-    ax.text(0, 2.13, 'V Integrated Liquid', fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
-    ax.text(0, 1.81, 'Max: {:.1f}kg/m**2'.format(np.max(dmax)), fontproperties=font2)
-    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+    def _cmap(self):
+        if self.settings['cmap']:
+            c = self.settings['cmap']
+            return c, c
+        else:
+            c = cmap_plot[self.data.dtype]
+            c2 = cmap_cbar[self.data.dtype]
+            return c, c2
 
-def composite_reflectivity(data, draw_author=True, highlight=None):
-    from ..constants import norm1, r_cmap
-    if not data.geoflag:
-        raise ValueError('Geographic information should be contained in data')
-    else:
-        lon, lat = data.lon, data.lat
-        r = data.data
-    if data.dtype is not 'cr':
-        raise ValueError('Expected datatype is "cr", received "{}"'.format(data.dtype))
-    fig = setup_plot(350)
-    if USE_BASEMAP:
-        renderer = setup_basemap(lon, lat)
-    else:
-        renderer = set_geoaxes(lon, lat)
-    dmax = r[np.logical_not(np.isnan(r))]
-    r[r <= 2] = None
-    renderer.contourf(lon, lat, r, 128, norm=norm1, cmap=r_cmap)
-    add_shp(renderer)
-    if highlight:
-        draw_highlight_area(highlight)
-    ax, cbar = setup_axes(fig, r_cmap, norm1)
-    text(ax, data.drange, data.time, data.name, data.elev, draw_author=draw_author)
-    ax.text(0, 2.13, 'Composite Ref.', fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(data.reso) , fontproperties=font2)
-    ax.text(0, 1.81, 'Max: {:.1f}dBz'.format(np.max(dmax)), fontproperties=font2)
-    save(folderpath, data.code, data.time, data.elev, data.drange, data.dtype)
+    def _plot(self, fpath):
+        dtype = self.data.dtype
+        lon, lat, var = _prepare(self.data, dtype)
+        if self.data.dtype == 'v':
+            rf = var[1]
+            var = var[0]
+        fig = setup_plot(self.settings['dpi'])
+        geoax = set_geoaxes(lon, lat)
+        popnan = var[np.logical_not(np.isnan(var))]
+        pnorm, cnorm, clabel = self._norm()
+        pcmap, ccmap = self._cmap()
+        if self.data.dtype == 'cr':
+            geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap)
+        else:
+            geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap)
+            if self.data.dtype == 'v':
+                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['rf'], cmap=cmap_plot['rf'])
+        add_shp(geoax, coastline=self.settings['coastline'])
+        if self.settings['highlight']:
+            draw_highlight_area(self.settings['highlight'])
+        ax, cbar = setup_axes(fig, ccmap, cnorm)
+        if not isinstance(clabel, type(None)):
+            change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
+        text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
+        ax.text(0, 2.13, prodname[dtype], fontproperties=font2)
+        ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
+        if self.data.dtype == 'v':
+            ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+        if not self.settings['path_customize']:
+            if not folderpath.endswith(os.path.sep):
+                folderpath += os.path.sep
+            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(folderpath, code, timestr, elev, drange, datatype.upper())
+        else:
+            path_string = fpath
+        save(path_string)

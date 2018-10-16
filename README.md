@@ -13,7 +13,7 @@ A python package which handles CINRAD radar data reading and plotting.
 
 Python 3.5 及以上
 
-Basemap 或者 Cartopy
+Cartopy
 
 Metpy
 
@@ -23,17 +23,6 @@ Shapefile
 
 ```
 python setup.py install
-```
-
-### 设置图片保存路径
-
-程序默认将图片保存在用户目录（Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹，如要设置到其他路径，请使用`cinrad.set_savepath`函数。
-
-例子：
-
-```python
-import cinrad
-cinrad.set_savepath('D:\\1\\')
 ```
 
 ## 模块介绍
@@ -59,8 +48,9 @@ cinrad.set_savepath('D:\\1\\')
 例子：
 
 ```python
-from cinrad.io import CinradReader
-f = CinradReader(your_radar_file)
+from cinrad.io import CinradReader, StandardData
+f = CinradReader(your_radar_file) #老版本数据
+f = StandardData(your_radar_file) #新版本标准数据
 f.reflectivity(elevation_angle_level, data_range) #获取反射率数据（为cinrad.datastruct.R类型）
 f.velocity(elevation_angle_level, data_range) #获取速度数据（为cinrad.datastruct.V类型）
 f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
@@ -77,7 +67,7 @@ f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
 ### cinrad.easycalc
 
 提供雷达衍生产品的计算（接受`list(cinrad.datastruct.Raw)`）
-使用cinrad.io读取的数据可直接带入该模块下的函数来计算。
+使用`cinrad.io`读取的数据可直接带入该模块下的函数来计算。
 
 函数名：
 `quick_cr`, `quick_et`, `quick_vil`
@@ -86,37 +76,32 @@ f.rhi(azimuth, drange) #获取RHI数据（为cinrad.datastruct.Section类型）
 
 列表生成示例：
 ```python
-r_list = [f.reflectivity(i, drange) for i in f.angleindex_r] #SA/SB/CA/CB雷达
-r_list = [f.reflectivity(i, drange) for i in range(len(f.elevdeg))] #SC/CC雷达
+r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 ```
 
 ### cinrad.visualize
 
 雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct.Raw`类型。
 
-在`ppi`下的函数：`base_reflectivity`, `base_velocity`, `echo_tops`, `vert_integrated_liquid`, 
-`composite_reflectivity`
-
-在`rhi`下的函数：`rhi`
-
 例子：
 
 ```python
-from cinrad.visualize.ppi import base_reflectivity
-base_reflectivity(R) #绘制基本反射率图片
-from cinrad.visualize.rhi import rhi
-rhi(Section) #绘制RHI
+from cinrad.visualize.ppi import PPI
+fig = PPI(R, highlight='成都市') #绘制基本反射率图片
+fig('D:\\') #传入文件夹路径保存图片
+from cinrad.visualize.rhi import RHI
+fig = RHI(Section) #绘制RHI
+fig('D:\\')
 ```
 
-#### highlight参数
+如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
+传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png	`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
+（Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
+#### 自定义绘图
 
-`ppi`中的每一个函数都有`highlight`参数，这个参数的作用是高亮地区边界。
+`PPI`支持传入自定义`colormap`和`norm`。（分别是`cmap`和`norm`参数）。同时，`nlabel`参数控制色阶条标注的个数
+，如果不传入将会设置成10个。如果传入`label`参数的话，程序将会优先使用来标注色阶条。
 
-示例：
-```python
-from cinrad.visualize.ppi import base_reflectivity
-base_reflectivity(R, highlight='成都市')
-```
 
 ## 其他
 
