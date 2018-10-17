@@ -153,13 +153,12 @@ class CinradReader:
             count = count + 1
         self.rraw = np.array(rraw)
         self.vraw = np.array(vraw)
-        self.elevdeg = np.array(eleang) * con
+        self.elevdeg = np.array(eleang)[self.boundary][:-1] * con
         self.azimuth = np.array(azimuthx) * con * deg2rad
         self.dv = veloreso[0]
         angleindex = np.arange(0, anglenum[0], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
-        self.elevindex = self.elevdeg[self.boundary][:-1]
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def _CC_handler(self, f):
@@ -331,7 +330,8 @@ class CinradReader:
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
-        r_obj.a_reso = 512
+        if self.radartype == 'CC':
+            r_obj.a_reso = 512
         return r_obj
 
     def velocity(self, tilt, drange):

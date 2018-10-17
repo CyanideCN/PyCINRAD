@@ -16,7 +16,7 @@ def _extract(Rlist):
         x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
         r_data.append(x)
         elev.append(i.elev)
-    return r_data, elev
+    return r_data, d, a, elev
 
 def quick_cr(Rlist):
     r_data = list()
@@ -31,8 +31,9 @@ def quick_cr(Rlist):
     return l2_obj
 
 def quick_et(Rlist):
-    r_data, elev = _extract(Rlist)
-    data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])
+    r_data, d, a, elev = _extract(Rlist)
+    i = Rlist[0]
+    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
     et = echo_top(data, d, elev, 0, 18)
     l2_obj = L2(et, i.drange, 0, 1, i.code, i.name, i.time, 'et',
                 i.stp['lon'], i.stp['lat'])
@@ -41,8 +42,9 @@ def quick_et(Rlist):
     return l2_obj
 
 def quick_vil(Rlist):
-    r_data, elev = _extract(Rlist)
-    data = np.concatenate(r_data).reshape(len(Rlist), x.shape[0], x.shape[1])
+    r_data, d, a, elev = _extract(Rlist)
+    i = Rlist[0]
+    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
     vil = vert_integrated_liquid(data, d, elev)
     l2_obj = L2(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time
                 , 'vil', i.stp['lon'], i.stp['lat'])
