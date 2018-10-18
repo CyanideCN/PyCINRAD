@@ -25,7 +25,7 @@ python setup.py install
 
 ### cinrad.datastruct
 
-This module contains data structure used in this program.
+This submodule contains data structure used in this program.
 
 Radial type data: `cinrad.datastruct.Radial`
 
