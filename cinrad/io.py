@@ -354,20 +354,20 @@ class CinradReader:
                 v1 = (v1 - 2) / 2 - 63.5
             elif self.dv == 4:
                 v1 = (v1 - 2) - 127
-            v_obj = Radial([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+            v_obj = Radial([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'v',
                       self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
             v = self.vraw[tilt * 512:(tilt + 1) * 512, :int(drange / self.Vreso)].T
             v[v == -32768] = np.nan
             v1 = v / 10
             v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'v'
-                      ,self.stationlon, self.stationlat, include_rf=False)
+                      ,self.stationlon, self.stationlat)
         elif self.radartype == 'SC':
             v = self.vraw[tilt * 360:(tilt + 1) * 360, :int(drange / self.Vreso)].T
             v[v == -64] = np.nan
             v1 = (v - 128) / 2
-            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name,
-                      self.timestr, self.stationlon, self.stationlat, include_rf=False)
+            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, 'v',
+                      self.timestr, self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('v')
         v_obj.add_geoc(x, y, z)
         v_obj.add_polarc(d, a)
