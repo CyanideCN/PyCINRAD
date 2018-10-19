@@ -58,7 +58,7 @@ class Section:
         self.code = code
         self.name = name
         self.dtype = dtype
-        
+
 class Grid:
     r'''Structure for processed grid data'''
     def __init__(self, data, drange, reso, code, name
