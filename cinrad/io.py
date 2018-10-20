@@ -2,7 +2,7 @@
 # Author: Du puyuan
 
 from .constants import deg2rad, con, con2, Rm1, modpath
-from .datastruct import R, V, W, Section
+from .datastruct import Radial, Section
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 
@@ -153,13 +153,12 @@ class CinradReader:
             count = count + 1
         self.rraw = np.array(rraw)
         self.vraw = np.array(vraw)
-        self.elevdeg = np.array(eleang) * con
+        self.elevdeg = np.array(eleang)[self.boundary][:-1] * con
         self.azimuth = np.array(azimuthx) * con * deg2rad
         self.dv = veloreso[0]
         angleindex = np.arange(0, anglenum[0], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
-        self.elevindex = self.elevdeg[self.boundary][:-1]
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def _CC_handler(self, f):
@@ -326,12 +325,13 @@ class CinradReader:
         except IndexError:
             pass
         r2 = np.ma.array(r1, mask=(r1 <= 0))
-        r_obj = R(r2.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r_obj = Radial(r2.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'r',
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('r')
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
-        r_obj.a_reso = 512
+        if self.radartype == 'CC':
+            r_obj.a_reso = 512
         return r_obj
 
     def velocity(self, tilt, drange):
@@ -354,20 +354,20 @@ class CinradReader:
                 v1 = (v1 - 2) / 2 - 63.5
             elif self.dv == 4:
                 v1 = (v1 - 2) - 127
-            v_obj = V([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr,
+            v_obj = Radial([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'v',
                       self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
             v = self.vraw[tilt * 512:(tilt + 1) * 512, :int(drange / self.Vreso)].T
             v[v == -32768] = np.nan
             v1 = v / 10
-            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr
-                      ,self.stationlon, self.stationlat, include_rf=False)
+            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'v'
+                      ,self.stationlon, self.stationlat)
         elif self.radartype == 'SC':
             v = self.vraw[tilt * 360:(tilt + 1) * 360, :int(drange / self.Vreso)].T
             v[v == -64] = np.nan
             v1 = (v - 128) / 2
-            v_obj = V(v1.T, drange, self.elev, self.Rreso, self.code, self.name,
-                      self.timestr, self.stationlon, self.stationlat, include_rf=False)
+            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, 'v',
+                      self.timestr, self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('v')
         v_obj.add_geoc(x, y, z)
         v_obj.add_polarc(d, a)
@@ -532,7 +532,7 @@ class StandardData:
         add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
         r = np.concatenate((cut, add_gate))
         r1 = np.ma.array(r, mask=(r <= 0))
-        r_obj = R(r1.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr,
+        r_obj = R(r1.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr, 'r',
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Rreso)
         r_obj.add_geoc(x, y, z)
@@ -573,7 +573,7 @@ class StandardData:
         cut[cut <= -64] = np.nan
         add_gate = np.zeros((int(drange / self.Vreso - cut.shape[0]), cut.shape[1]))
         w = np.concatenate((cut, add_gate))
-        w_obj = W(w.T, int(w.shape[0] * self.Vreso), self.elev, self.Vreso, self.code, self.name, self.timestr,
+        w_obj = W(w.T, int(w.shape[0] * self.Vreso), self.elev, self.Vreso, self.code, self.name, self.timestr, 'v',
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Vreso)
         w_obj.add_geoc(x, y, z)
