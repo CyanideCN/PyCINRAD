@@ -11,7 +11,7 @@ import numpy as np
 
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
              'ZDR':norm6, 'PHI':norm7, 'RHO':norm8} # Normalize object used to plot
-norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4
+norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4,
              'ZDR':norm4, 'PHI':norm4, 'RHO':norm4} # Normalize object used for colorbar
 cmap_plot = {'REF':r_cmap, 'VEL':v_cmap, 'CR':r_cmap, 'ET':et_cmap, 'VIL':vil_cmap, 'RF':rf_cmap,
              'ZDR':zdr_cmap, 'PHI':kdp_cmap, 'RHO':cc_cmap}

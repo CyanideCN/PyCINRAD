@@ -554,7 +554,7 @@ class StandardData:
         rf = cut.data * cut.mask
         rf[rf == 0] = None
         cut[cut <= -64] = np.nan
-        v_obj = Radial([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr, 'VEL'
+        v_obj = Radial([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr, 'VEL',
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Vreso)
         v_obj.add_geoc(x, y, z)
