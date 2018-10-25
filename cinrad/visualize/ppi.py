@@ -9,19 +9,30 @@ import os
 from pathlib import Path
 import numpy as np
 
-norm_plot = {'r':norm1, 'v':norm2, 'cr':norm1, 'et':norm5, 'vil':norm1, 'rf':norm3} # Normalize object used to plot
-norm_cbar = {'r':norm1, 'v':norm4, 'cr':norm1, 'et':norm4, 'vil':norm4} # Normalize object used for colorbar
-cmap_plot = {'r':r_cmap, 'v':v_cmap, 'cr':r_cmap, 'et':et_cmap, 'vil':vil_cmap, 'rf':rf_cmap}
-cmap_cbar = {'r':r_cmap, 'v':v_cbar, 'cr':r_cmap, 'et':et_cbar, 'vil':vil_cbar}
-prodname = {'r':'Base Reflectivity', 'v':'Base Velocity', 'cr':'Composite Ref.',
-            'et':'Echo Tops', 'vil':'V Integrated Liquid'}
-unit = {'r':'dBz', 'v':'m/s', 'cr':'dBz', 'et':'km', 'vil':'kg/m**2'}
-cbar_text = {'r':None, 'v':['RF', '', '27', '20', '15', '10', '5', '1', '0'
-                            , '-1', '-5', '-10', '-15', '-20', '-27', '-35'],
-             'cr':None, 'et':['', '21', '20', '18', '17', '15', '14', '12'
-                              , '11', '9', '8', '6', '5', '3', '2', '0'],
-             'vil':['', '70', '65', '60', '55', '50', '45', '40', '35', '30'
-                    , '25', '20', '15', '10', '5', '0']}
+norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
+             'ZDR':norm6, 'PHI':norm7, 'RHO':norm8} # Normalize object used to plot
+norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4,
+             'ZDR':norm4, 'PHI':norm4, 'RHO':norm4} # Normalize object used for colorbar
+cmap_plot = {'REF':r_cmap, 'VEL':v_cmap, 'CR':r_cmap, 'ET':et_cmap, 'VIL':vil_cmap, 'RF':rf_cmap,
+             'ZDR':zdr_cmap, 'PHI':kdp_cmap, 'RHO':cc_cmap}
+cmap_cbar = {'REF':r_cmap, 'VEL':v_cbar, 'CR':r_cmap, 'ET':et_cbar, 'VIL':vil_cbar,
+             'ZDR':zdr_cbar, 'PHI':kdp_cmap, 'RHO':cc_cbar}
+prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Ref.',
+            'ET':'Echo Tops', 'VIL':'V Integrated Liquid', 'ZDR':'Differential Ref.',
+            'PHI':'Difference Phase', 'RHO':'Correlation Coe.'}
+unit = {'REF':'dBz', 'VEL':'m/s', 'CR':'dBz', 'ET':'km', 'VIL':'kg/m**2', 'ZDR':'dB', 'RHI':'deg',
+        'RHO':''}
+cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
+                                '-1', '-5', '-10', '-15', '-20', '-27', '-35'],
+             'CR':None, 'ET':['', '21', '20', '18', '17', '15', '14', '12',
+                              '11', '9', '8', '6', '5', '3', '2', '0'],
+             'VIL':['', '70', '65', '60', '55', '50', '45', '40', '35', '30',
+                    '25', '20', '15', '10', '5', '0'],
+             'ZDR':['', '5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0.8', '0.5',
+                    '0.2', '0', '-1', '-2', '-3', '-4'],
+             'PHI':np.linspace(360, 260, 17).astype(str),
+             'RHO':['', '0.99', '0.98', '0.97', '0.96', '0.95', '0.94', '0.92', '0.9',
+                    '0.85', '0.8', '0.7', '0.6', '0.5', '0.3', '0.1', '0']}
 
 def _prepare(data, datatype):
     if not data.geoflag:
@@ -82,7 +93,7 @@ class PPI:
     def _plot(self, fpath):
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
-        if self.data.dtype == 'v':
+        if self.data.dtype == 'VEL' and self.data.include_rf:
             rf = var[1]
             var = var[0]
         fig = setup_plot(self.settings['dpi'])
@@ -90,12 +101,12 @@ class PPI:
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
-        if self.data.dtype == 'cr':
+        if self.data.dtype == 'CR':
             geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap)
         else:
             geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap)
-            if self.data.dtype == 'v':
-                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['rf'], cmap=cmap_plot['rf'])
+            if self.data.dtype == 'VEL' and self.data.include_rf:
+                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'])
         add_shp(geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
@@ -105,7 +116,7 @@ class PPI:
         text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
         ax.text(0, 2.13, prodname[dtype], fontproperties=font2)
         ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
-        if self.data.dtype == 'v':
+        if self.data.dtype == 'VEL':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
         if not self.settings['path_customize']:
             if not fpath.endswith(os.path.sep):

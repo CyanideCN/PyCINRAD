@@ -14,7 +14,7 @@ class Radial:
         self.name = name
         self.time = time
         self.dtype = dtype
-        if dtype == 'v':
+        if dtype == 'VEL':
             if len(data) == 2:
                 self.include_rf = True
             else:
