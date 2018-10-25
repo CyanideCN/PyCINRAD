@@ -51,6 +51,7 @@ class PPI:
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi
                          , 'highlight':highlight, 'coastline':coastline, 'path_customize':False}
+        self.ax = self._plot()
 
     def __call__(self, *fpath):
         if not fpath:
@@ -62,7 +63,7 @@ class PPI:
             else:
                 if not fpath.endswith(os.path.sep):
                     fpath += os.path.sep
-        return self._plot(fpath)
+        return self._save(fpath)
 
     def _norm(self):
         if self.settings['norm']:
@@ -90,7 +91,7 @@ class PPI:
             c2 = cmap_cbar[self.data.dtype]
             return c, c2
 
-    def _plot(self, fpath):
+    def _plot(self):
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
         if self.data.dtype == 'VEL' and self.data.include_rf:
@@ -118,11 +119,24 @@ class PPI:
         ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'VEL':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+        return geoax
+
+    def _save(self, fpath):
         if not self.settings['path_customize']:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
-            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(fpath, self.data.code, self.data.time
-                                                            , self.data.elev, self.data.drange, dtype.upper())
+            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(fpath, self.data.code, self.data.time,
+                                                            self.data.elev, self.data.drange,
+                                                            self.data.dtype.upper())
         else:
             path_string = fpath
         save(path_string)
+
+    def plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs):
+        if isinstance(_range, int):
+            _range = [_range]
+        theta = np.linspace(0, 2 * np.pi, 800)
+        for d in _range:
+            radius = d / 111
+            x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
+            self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
