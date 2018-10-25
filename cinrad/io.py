@@ -609,7 +609,13 @@ class StandardData:
         yc = np.array(ycoor)
         return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
 
-class DPRadar:
+    def get_data(self, dtype, tilt, drange):
+        if dtype.upper() == 'REF':
+            return self.reflectivity(tilt, drange)
+        elif dtype.upper() == 'VEL':
+            return self.velocity(tilt, drange)
+
+class DualPolRadar:
     r'''Class handling dual-polarized radar reading and plotting'''
     def __init__(self, filepath):
         from metpy.io.nexrad import Level2File
@@ -621,7 +627,7 @@ class DPRadar:
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
 
-    def get_data(self, tilt, drange, dtype):
+    def get_data(self, dtype, tilt, drange):
         if dtype.__class__ is str:
             self.dtype = dtype.upper().encode()
         elif dtype.__class__ is bytes:
