@@ -247,6 +247,7 @@ class CinradReader:
             return 360
 
     def get_azimuth_angles(self, scans=None):
+        r'''Radian'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             if scans is None:
                 return self.azimuth
@@ -254,14 +255,14 @@ class CinradReader:
                 return self.azimuth[self.boundary[scans]:self.boundary[scans + 1]]
         elif self.radartype == 'CC':
             if scans is None:
-                return np.linspace(0, 360, 512).tolist() * self.get_nscans()
+                return np.array(np.linspace(0, 360, 512).tolist() * self.get_nscans()) * deg2rad
             else:
-                return np.linspace(0, 360, 512).tolist()
+                return np.array(np.linspace(0, 360, 512).tolist()) * deg2rad
         elif self.radartype == 'SC':
             if scans is None:
-                return np.linspace(0, 360, 360).tolist() * self.get_nscans()
+                return np.array(np.linspace(0, 360, 360).tolist() * self.get_nscans()) * deg2rad
             else:
-                return np.linspace(0, 360, 360).tolist()
+                return np.array(np.linspace(0, 360, 360).tolist()) * deg2rad
 
     def get_elevation_angles(self, scans=None):
         if scans is None:
@@ -310,9 +311,9 @@ class CinradReader:
             r = (r - 2) / 2 - 32
             r1 = r.T[:int(drange / self.Rreso)]
         elif self.radartype == 'CC':
-            r1 = self.rraw[level * 512:(tilt + 1) * 512, :int(drange / self.Rreso)].T / 10
+            r1 = self.rraw[tilt * 512:(tilt + 1) * 512, :int(drange / self.Rreso)].T / 10
         elif self.radartype == 'SC':
-            r = self.rraw[level * 360:(tilt + 1) * 360, :int(drange / self.Rreso)].T
+            r = self.rraw[tilt * 360:(tilt + 1) * 360, :int(drange / self.Rreso)].T
             r1 = (r - 64) / 2
         radialavr = [np.average(i) for i in r1]
         threshold = 4
@@ -364,10 +365,10 @@ class CinradReader:
                       ,self.stationlon, self.stationlat)
         elif self.radartype == 'SC':
             v = self.vraw[tilt * 360:(tilt + 1) * 360, :int(drange / self.Vreso)].T
-            v[v == -64] = np.nan
+            v = np.ma.array(v, mask=(v == 0))
             v1 = (v - 128) / 2
-            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, 'VEL',
-                      self.timestr, self.stationlon, self.stationlat)
+            v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'VEL',
+                           self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection('VEL')
         v_obj.add_geoc(x, y, z)
         v_obj.add_polarc(d, a)
