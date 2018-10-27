@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 class Radial:
     r'''Structure for data arranged by radials'''
@@ -24,7 +24,8 @@ class Radial:
         self.height = height
         self.a_reso = a_reso
         self.stp = {'lon':stlon, 'lat':stlat}
-        if lon == lat == None:
+        nonetype = type(None)
+        if isinstance(lon, nonetype) and isinstance(lat, nonetype):
             self.geoflag = False
         else:
             self.geoflag = True

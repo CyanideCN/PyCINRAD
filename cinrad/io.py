@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import Radial, Section
@@ -350,17 +350,16 @@ class CinradReader:
             v = self.vraw[self.boundary[tilt]:self.boundary[tilt + 1]]
             v1 = v.T[:int(drange / self.Vreso)].astype(float)
             rf = np.ma.array(v1, mask=(v1 != 1))
-            v1[v1 == 0] = np.nan
+            v2 = np.ma.array(v1, mask=(v1 == 0))
             if self.dv == 2:
-                v1 = (v1 - 2) / 2 - 63.5
+                v2 = (v2 - 2) / 2 - 63.5
             elif self.dv == 4:
-                v1 = (v1 - 2) - 127
-            v_obj = Radial([v1.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'VEL',
+                v2 = (v2 - 2) - 127
+            v_obj = Radial([v2.T, rf.T], drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'VEL',
                       self.stationlon, self.stationlat)
         elif self.radartype == 'CC':
             v = self.vraw[tilt * 512:(tilt + 1) * 512, :int(drange / self.Vreso)].T
-            v[v == -32768] = np.nan
-            v1 = v / 10
+            v1 = np.ma.array(v1, mask=(v == -32768)) / 10
             v_obj = Radial(v1.T, drange, self.elev, self.Rreso, self.code, self.name, self.timestr, 'VEL'
                       ,self.stationlon, self.stationlat)
         elif self.radartype == 'SC':
@@ -407,7 +406,7 @@ class CinradReader:
         yc = np.array(ycoor)
         return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
 
-    def get_data(self, dtype, tilt, drange):
+    def get_data(self, tilt, drange, dtype):
         if dtype.upper() == 'REF':
             return self.reflectivity(tilt, drange)
         elif dtype.upper() == 'VEL':
@@ -554,7 +553,7 @@ class StandardData:
         cut = data.T[:int(drange / self.Vreso)]
         rf = cut.data * cut.mask
         rf[rf == 0] = None
-        cut[cut <= -64] = np.nan
+        cut[cut <= -64] = np.ma.masked
         v_obj = Radial([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr, 'VEL',
                   self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(self.Vreso)
@@ -610,7 +609,7 @@ class StandardData:
         yc = np.array(ycoor)
         return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
 
-    def get_data(self, dtype, tilt, drange):
+    def get_data(self, tilt, drange, dtype):
         if dtype.upper() == 'REF':
             return self.reflectivity(tilt, drange)
         elif dtype.upper() == 'VEL':
@@ -628,36 +627,41 @@ class DualPolRadar:
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
 
-    def get_data(self, dtype, tilt, drange):
-        if dtype.__class__ is str:
+    def get_data(self, tilt, drange, dtype):
+        if isinstance(dtype, str):
             self.dtype = dtype.upper().encode()
-        elif dtype.__class__ is bytes:
+        elif isinstance(dtype, bytes):
             self.dtype = dtype.upper()
         if self.dtype in [b'REF', b'VEL', b'ZDR', b'PHI', b'RHO']:
             if self.dtype in [b'ZDR', b'PHI', b'RHO'] and tilt in [1, 3]:
                 tilt -= 1
                 warnings.warn('Elevation angle {} does not contain {} data, automatically switch to tilt {}'.format(
                     tilt + 1, self.dtype.decode(), tilt))
-            hdr = self.f.sweeps[level][0][4][self.dtype][0]
+            elif self.dtype in [b'VEL', b'SW'] and tilt in [0, 2]:
+                tilt += 1
+                warnings.warn('Elevation angle {} does not contain {} data, automatically switch to tilt {}'.format(
+                    tilt - 1, self.dtype.decode(), tilt))
+            hdr = self.f.sweeps[tilt][0][4][self.dtype][0]
             self.reso = hdr.gate_width
             raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[tilt]])
         else:
             raise RadarError('Unsupported data type {}'.format(self.dtype.decode()))
         cut = raw.T[:int(drange / self.reso)]
-        self.level = level
+        masked = np.ma.array(cut, mask=np.isnan(cut))
+        self.tilt = tilt
         self.drange = drange
         self.elev = self.el[tilt]
         x, y, z, d, a = self.projection(self.reso)
-        radial = Radial(cut.T, drange, elev, self.reso, self.name, self.name, self.timestr, self.dtype, 
+        radial = Radial(masked.T, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(), 
                         self.stationlon, self.stationlat, x, y, a_reso=720)
         return radial
 
     def projection(self, reso, h_offset=False):
-        header = self.f.sweeps[self.level][0][4][dt][0]
+        header = self.f.sweeps[self.tilt][0][4][self.dtype][0]
         gatenum = header.num_gates
         firstgate = header.first_gate
         data_range = np.arange(gatenum) * reso + firstgate
-        azi = np.array([ray[0].az_angle for ray in self.f.sweeps[self.level]]) * deg2rad
+        azi = np.array([ray[0].az_angle for ray in self.f.sweeps[self.tilt]]) * deg2rad
         datalength = int(self.drange / reso)
         lonx, latx = get_coordinate(data_range[:datalength], azi, self.elev, self.stationlon, self.stationlat, 
                                     h_offset=h_offset)
