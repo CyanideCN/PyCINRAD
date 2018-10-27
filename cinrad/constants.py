@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 from .form_colormap import form_colormap
 
