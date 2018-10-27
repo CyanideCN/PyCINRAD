@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 from .utils import composite_reflectivity, echo_top, vert_integrated_liquid
 from .datastruct import Radial, Grid
