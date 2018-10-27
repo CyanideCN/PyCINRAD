@@ -37,6 +37,7 @@ def text(ax, drange, reso, timestr, name, elev):
 
 def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches = 0)
+    plt.close('all')
 
 def add_shp(renderer, coastline=False):
     root = os.path.join(modpath, 'shapefile')
