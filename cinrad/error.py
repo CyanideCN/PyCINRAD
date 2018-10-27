@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 class RadarDecodeError(Exception):
     r'''Unable to decode radar files correctly'''
