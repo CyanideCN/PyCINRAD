@@ -8,3 +8,4 @@
 *.npy
 .idea/*
 /shapefile/*
+.DS_Store

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Du puyuan
 
-from ..constants import rhi_cmap_smooth, norm1, font2
+from ..constants import rhi_cmap_smooth, norm1
 
 import os
 from pathlib import Path
@@ -27,7 +27,7 @@ class RHI:
         plt.ylim(0, self.hlim)
         plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {}.{}.{} {}:{} Max: {}dbz'.format(
                     data.name, data.az, data.tstr[:4], data.tstr[4:6], data.tstr[6:8], data.tstr[8:10]
-                    , data.tstr[10:12], rmax), fontproperties=font2)
+                    , data.tstr[10:12], rmax))
         plt.ylabel('Altitude (km)')
         plt.xlabel('Range (km)')
         if self.path_customize:

@@ -115,10 +115,10 @@ class PPI:
         if not isinstance(clabel, type(None)):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
         text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
-        ax.text(0, 2.13, prodname[dtype], fontproperties=font2)
-        ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
+        ax.text(0, 2.13, prodname[dtype])
+        ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]))
         if self.data.dtype == 'VEL':
-            ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+            ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]))
         return geoax
 
     def _save(self, fpath):
