@@ -47,10 +47,11 @@ def _prepare(data, datatype):
 class PPI:
     r'''Create a figure plotting plan position indicator'''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None
-                 , dpi=350, highlight=None, coastline=False):
+                 , dpi=350, highlight=None, coastline=False, extent=None):
         self.data = data
-        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi
-                         , 'highlight':highlight, 'coastline':coastline, 'path_customize':False}
+        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
+                         'highlight':highlight, 'coastline':coastline, 'path_customize':False,
+                         'extent':extent}
         self.ax = self._plot()
 
     def __call__(self, *fpath):
@@ -98,7 +99,7 @@ class PPI:
             rf = var[1]
             var = var[0]
         fig = setup_plot(self.settings['dpi'])
-        geoax = set_geoaxes(lon, lat)
+        geoax = set_geoaxes(lon, lat, extent=self.settings['extent'])
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
