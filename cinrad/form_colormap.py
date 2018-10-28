@@ -27,6 +27,10 @@ def form_colormap(filepath, proportion=True, sep=False, spacing='c'):
         A ListedColormap will be returned.
         When spacing is 'v', the length of color blocks will be based
         on the input values. A LinearSegmentedColormap will be returned.
+
+    Returns
+    -------
+    One of colormaps in matplotlib.colors depending on the given parameters.
     '''
     inidict = {'red':None, 'green':None, 'blue':None}
     file_object = codecs.open(filepath, mode='r', encoding='GBK')

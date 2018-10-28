@@ -7,29 +7,54 @@ from .projection import height
 import numpy as np
 
 def mask_outside(data, drange):
+    r'''
+    Mask data outside obervation range
+    '''
     xdim = data.shape[0]
     xcoor = np.linspace(-1 * drange, drange, xdim)
     x, y = np.meshgrid(xcoor, xcoor)
     dist = np.sqrt(np.abs(x ** 2 + y ** 2))
-    return np.ma.array(r_max, mask=(dist > drange))
+    return np.ma.array(data, mask=(dist > drange))
 
 def composite_reflectivity(ref, drange=230):
-    r'''Find max ref value in single coordinate and mask data outside obervation range
-    Parameters:
-    ref: reflectivity data  numpy.ndarray dim=3 (elevation angle, distance, azimuth)
+    r'''
+    Find max ref value in single coordinate
+
+    Parameters
+    ----------
+    ref: numpy.ndarray dim=3 (elevation angle, distance, azimuth)
+        reflectivity data
     drange: float or int
+        data range
+
+    Returns
+    -------
+    data: numpy.ndarray
+        composite reflectivity data
     '''
     r_max = np.max(ref, axis=0)
     data = mask_outside(r_max, drange)
     return data
 
 def vert_integrated_liquid(ref, distance, elev, threshold=18.):
-    r'''Calculate vertically integrated liquid (VIL) in one full scan
-    Parameters:
-    ref: reflectivity data  numpy.ndarray dim=3 (elevation angle, distance, azimuth)
-    distance: distance from radar site  numpy.ndarray dim=2 (distance, azimuth)
-    elev: elevation angles in degree  numpy.ndarray or list dim=1
+    r'''
+    Calculate vertically integrated liquid (VIL) in one full scan
+
+    Parameters
+    ----------
+    ref: numpy.ndarray dim=3 (elevation angle, distance, azimuth)
+        reflectivity data
+    distance: numpy.ndarray dim=2 (distance, azimuth)
+        distance from radar site
+    elev: numpy.ndarray or list dim=1
+        elevation angles in degree
     threshold: float
+        minimum reflectivity value to take into calculation
+
+    Returns
+    -------
+    data: numpy.ndarray
+        vertically integrated liquid data
     '''
     const = 3.44e-6
     v_beam_width = 0.99 * deg2rad
@@ -64,14 +89,29 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
             VIL.append(m1 + mb + mt)
     return np.array(VIL).reshape(xshape, yshape)
 
-def echo_top(ref, distance, elev, radarheight, threshold):
-    r'''Calculate height of echo tops (ET) in one full scan
-    ref: reflectivity data  numpy.ndarray dim=3 (elevation angle, distance, azimuth)
-    distance: distance from radar site  numpy.ndarray dim=2 (distance, azimuth)
-    elev: elevation angles in degree  numpy.ndarray or list dim=1
-    radarheight: height of radar  float
-    drange: range of data to be calculated  float or int
+def echo_top(ref, distance, elev, radarheight, threshold=18.):
+    r'''
+    Calculate height of echo tops (ET) in one full scan
+
+    Parameters
+    ----------
+    ref: numpy.ndarray dim=3 (elevation angle, distance, azimuth)
+        reflectivity data
+    distance: numpy.ndarray dim=2 (distance, azimuth)
+        distance from radar site
+    elev: numpy.ndarray or list dim=1
+        elevation angles in degree
+    radarheight: int or float
+        height of radar
+    drange: float or int
+        range of data to be calculated
     threshold: float
+        minimum value of reflectivity to be taken into calculation
+
+    Returns
+    -------
+    data: numpy.ndarray
+        echo tops data
     '''
     et = list()
     r = np.ma.array(ref, mask=(ref > threshold))
