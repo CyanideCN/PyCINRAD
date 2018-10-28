@@ -81,7 +81,17 @@ The path passed into the class can either be the folder path or the file path. A
 
 #### Customize plot settings
 
-Class `PPI` can accept additional args. You can customize the colormap and the corresponding norm used in plotting by passing `cmap` and `norm` args. Also, `nlabel` controlls number of labels on the colorbar, if this argument is not given, the default number of labels is 10. If `label` is given, the colorbar will use this list to label the colorbar in prior to the default one.
+The summary of args that can be passed into `PPI` are listed as follows.
+
+|arg|function|
+|:-:|:-:|
+|`cmap`|colormaps used for plotting|
+|`norm`|norm used for plotting|
+|`nlabel`|number of labels on the colorbar|
+|`label`|labels on the colorbar|
+|`highlight`|highlight area of input name|
+|`dpi`|dpi of figure|
+|`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
 
 ## Notes
 
