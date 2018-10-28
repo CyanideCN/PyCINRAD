@@ -19,6 +19,18 @@ def _extract(Rlist):
     return r_data, d, a, elev
 
 def quick_cr(Rlist):
+    r'''
+    Calculate composite reflectivity
+
+    Paramters
+    ---------
+    Rlist: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        composite reflectivity
+    '''
     r_data = list()
     for i in Rlist:
         r, x, y = grid_2d(i.data, i.lon, i.lat)
@@ -30,10 +42,22 @@ def quick_cr(Rlist):
     return l2_obj
 
 def quick_et(Rlist):
+    r'''
+    Calculate echo tops
+
+    Paramters
+    ---------
+    Rlist: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        echo tops
+    '''
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
     data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
-    et = echo_top(data, d, elev, 0, 18)
+    et = echo_top(data, d, elev, 0)
     l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.time, 'ET',
                 i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
@@ -41,6 +65,18 @@ def quick_et(Rlist):
     return l2_obj
 
 def quick_vil(Rlist):
+    r'''
+    Calculate vertically integrated liquid
+
+    Paramters
+    ---------
+    Rlist: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        vertically integrated liquid
+    '''
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
     data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
