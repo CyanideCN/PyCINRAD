@@ -33,7 +33,16 @@ def create_dict(_dict, index):
         _dict[index] = list()
 
 class CinradReader:
-    r'''Class handling CINRAD radar reading'''
+    r'''
+    Class handling CINRAD radar reading
+    
+    Parameters
+    ----------
+    filepath: str
+        path directed to the file to read
+    radar_type: str, optional
+        type of radar
+    '''
     def __init__(self, filepath, radar_type=None):
         path = Path(filepath)
         filename = path.name
@@ -413,7 +422,14 @@ class CinradReader:
             return self.velocity(tilt, drange)
 
 class StandardData:
-    r'''Class handling new cinrad standard data reading'''
+    r'''
+    Class handling new cinrad standard data reading
+    
+    Parameters
+    ----------
+    filepath: str
+        path directed to the file to read
+    '''
     def __init__(self, filepath):
         f = open(filepath, 'rb')
         f.seek(32)
@@ -616,7 +632,14 @@ class StandardData:
             return self.velocity(tilt, drange)
 
 class DualPolRadar:
-    r'''Class handling dual-polarized radar reading and plotting'''
+    r'''
+    Class handling dual-polarized radar reading and plotting
+    
+    Parameters
+    ----------
+    filepath: str
+        path directed to the file to read
+    '''
     def __init__(self, filepath):
         from metpy.io.nexrad import Level2File
         self.f = Level2File(filepath)
