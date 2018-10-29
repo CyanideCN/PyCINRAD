@@ -2,11 +2,14 @@
 # Author: Puyuan Du
 
 from .utils import composite_reflectivity, echo_top, vert_integrated_liquid, mask_outside
-from .datastruct import Radial, Grid
+from .datastruct import Radial, Grid, _Slice
 from .grid import grid_2d, resample
 from .projection import height, get_coordinate
+from .constants import deg2rad
+from .error import RadarCalculationError
 
 import numpy as np
+from xarray import DataArray
 
 def _extract(Rlist):
     r_data = list()
@@ -90,7 +93,6 @@ def quick_vil(Rlist):
 class VCS:
     r'''Class performing vertical cross-section calculation'''
     def __init__(self, r_list):
-        from xarray import DataArray
         self.rl = r_list
         self.el = [i.elev for i in r_list]
         self.x, self.y, self.h, self.r = self._geocoor()
@@ -102,7 +104,7 @@ class VCS:
         h_data = list()
         for i in self.rl:
             r, x, y = grid_2d(i.data, i.lon, i.lat)
-            r_data.append(mask_outside(r, 230 * np.cos(el[0] * deg2rad)))
+            r_data.append(mask_outside(r, 230 * np.cos(self.el[0] * deg2rad)))
             x_data.append(x)
             y_data.append(y)
         for radial, elev in zip(self.rl, self.el):
@@ -128,9 +130,13 @@ class VCS:
         r = np.asarray(r_sec)
         h = np.asarray(h_sec)
         r[np.isnan(r)] = 0
-        return x, h, r
+        stp_s = '{}N, {}E'.format(stp[1], stp[0])
+        enp_s = '{}N, {}E'.format(enp[1], enp[0])
+        sl = _Slice(r, x, h, self.rl[0].time, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
+                    enp_s=enp_s, stp=stp, enp=enp)
+        return sl
 
-    def get_section(start_polar=None, end_polar=None, start_cart=None, end_cart=None,
+    def get_section(self, start_polar=None, end_polar=None, start_cart=None, end_cart=None,
                     spacing=50):
         r'''
         Get cross-section data from input points
@@ -149,11 +155,11 @@ class VCS:
         if start_polar and end_polar:
             stlat = self.rl[0].stp['lat']
             stlon = self.rl[0].stp['lon']
-            stp = get_coordinate(start_polar[0], start_polar[1], 0, stlon, stlat)
-            enp = get_coordinate(end_polar[0], end_polar[1], 0, stlon, stlat)
+            stp = np.round_(get_coordinate(start_polar[0], start_polar[1], 0, stlon, stlat), 2)
+            enp = np.round_(get_coordinate(end_polar[0], end_polar[1], 0, stlon, stlat), 2)
         elif start_cart and end_cart:
             stp = start_cart
             enp = end_cart
         else:
-            raise ValueError('Invalid input')
-        return _get_section(stp, enp, spacing)
+            raise RadarCalculationError('Invalid input')
+        return self._get_section(stp, enp, spacing)

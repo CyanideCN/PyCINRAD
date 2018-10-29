@@ -3,9 +3,9 @@
 
 class Radial:
     r'''Structure for data arranged by radials'''
-    def __init__(self, data, drange, elev, reso, code, name
-                 , time, dtype, stlon, stlat, lon=None, lat=None
-                 , height=None, a_reso=None):
+    def __init__(self, data, drange, elev, reso, code, name,
+                 time, dtype, stlon, stlat, lon=None, lat=None,
+                 height=None, a_reso=None):
         self.data = data
         self.drange = drange
         self.elev = elev
@@ -48,13 +48,13 @@ class Radial:
         self.dist = distance
         self.az = azimuth
 
-class Section:
-    def __init__(self, data, xcor, ycor, azimuth, drange, tstr, code, name, dtype):
+class _Slice:
+    r'''Structure for slice data'''
+    def __init__(self, data, xcor, ycor, tstr, code, name, dtype, **geoinfo):
         self.data = data
         self.xcor = xcor
         self.ycor = ycor
-        self.az = azimuth
-        self.drange = drange
+        self.geoinfo = geoinfo
         self.tstr = tstr
         self.code = code
         self.name = name

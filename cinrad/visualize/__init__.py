@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-#Author: Du puyuan
+#Author: Puyuan Du
 
 import matplotlib
 matplotlib.rc('font', family='Arial')
 from . import ppi
+from . import rhi

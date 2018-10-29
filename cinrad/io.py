@@ -2,7 +2,7 @@
 # Author: Puyuan Du
 
 from .constants import deg2rad, con, con2, Rm1, modpath
-from .datastruct import Radial, Section
+from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 
@@ -413,7 +413,8 @@ class CinradReader:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
+        return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
+                       drange=drange)
 
     def get_data(self, tilt, drange, dtype):
         if dtype.upper() == 'REF':
@@ -623,7 +624,8 @@ class StandardData:
         rhi = np.array(rhi)
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return Section(rhi, xc, yc, azimuth, drange, self.timestr, self.code, self.name, 'rhi')
+        return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
+                      drange=drange)
 
     def get_data(self, tilt, drange, dtype):
         if dtype.upper() == 'REF':
