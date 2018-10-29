@@ -115,15 +115,15 @@ The summary of args that can be passed into `PPI` are listed as follows.
 
 #### PPI reflectivity
 
-![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304125031_0.6_230_REF.png]
+![PPI reflectivity](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304125031_0.6_230_REF.png)
 
 #### PPI reflectivity combined with cross-section
 
-![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304120845_0.6_230_REF.png]
+![PPI reflectivity combined with cross-section](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304120845_0.6_230_REF.png)
 
 #### Cross-section
 
-![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304004209_VCS_25.5N111E_26.5N112E.png]
+![Cross-section](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304004209_VCS_25.5N111E_26.5N112E.png)
 
 ## Notes
 
