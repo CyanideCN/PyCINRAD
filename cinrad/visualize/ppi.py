@@ -47,12 +47,12 @@ def _prepare(data, datatype):
 
 class PPI:
     r'''Create a figure plotting plan position indicator'''
-    def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None
-                 , dpi=350, highlight=None, coastline=False, extent=None):
+    def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
+                 dpi=350, highlight=None, coastline=False, extent=None, slice=None):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent}
+                         'extent':extent, 'slice':slice}
         self.ax = self._plot()
 
     def __call__(self, *fpath):
@@ -121,6 +121,21 @@ class PPI:
         ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'VEL':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+        if self.settings['slice']:
+            ax2 = fig.add_axes([0.13, -0.12, 0.77, 0.2])
+            ax2.yaxis.set_ticks_position('right')
+            ax2.spines['bottom'].set_color('none')
+            ax2.set_xticks([])
+            data = self.settings['slice']
+            sl = data.data
+            xcor = data.xcor
+            ycor = data.ycor
+            stp = data.geoinfo['stp']
+            enp = data.geoinfo['enp']
+            ax2.contourf(xcor, ycor, sl, 128, cmap=rhi_cmap_smooth, norm=norm1)
+            ax2.set_ylim(0, 15)
+            ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
+            geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
         return geoax
 
     def _save(self, fpath):

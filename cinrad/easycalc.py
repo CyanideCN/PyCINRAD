@@ -126,10 +126,10 @@ class VCS:
             h_section = d_h.interp(lon=x_new, lat=y_new)
             r_sec.append(r_section)
             h_sec.append(h_section)
-        x = np.linspace(0, 1, spacing) * np.ones(9)[:, np.newaxis]
         r = np.asarray(r_sec)
         h = np.asarray(h_sec)
         r[np.isnan(r)] = 0
+        x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
         sl = _Slice(r, x, h, self.rl[0].time, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
@@ -155,8 +155,8 @@ class VCS:
         if start_polar and end_polar:
             stlat = self.rl[0].stp['lat']
             stlon = self.rl[0].stp['lon']
-            stp = np.round_(get_coordinate(start_polar[0], start_polar[1], 0, stlon, stlat), 2)
-            enp = np.round_(get_coordinate(end_polar[0], end_polar[1], 0, stlon, stlat), 2)
+            stp = np.round_(get_coordinate(start_polar[0], start_polar[1] * deg2rad, 0, stlon, stlat), 2)
+            enp = np.round_(get_coordinate(end_polar[0], end_polar[1] * deg2rad, 0, stlon, stlat), 2)
         elif start_cart and end_cart:
             stp = start_cart
             enp = end_cart

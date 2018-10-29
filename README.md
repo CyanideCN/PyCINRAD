@@ -29,7 +29,7 @@ This submodule contains data structure used in this program.
 
 Radial type data: `cinrad.datastruct.Radial`
 
-Cross-section type data: `cinrad.datastruct.Section`
+Cross-section type data: `cinrad.datastruct._Slice`
 
 Grid type data: `cinrad.datastruct.Grid`
 
@@ -62,6 +62,23 @@ Code to generate the required list:
 r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 ```
 
+#### VCS
+
+`cinrad.easycalc.VCS` provides calculation of vertical cross-section.
+
+Sample code
+```python
+import cinrad
+from cinrad.visualize.rhi import _Slice
+f = cinrad.io.CinradReader(your_radar_file)
+rl = [f.reflectivity(i, 230) for i in f.angleindex_r]
+vcs = cinrad.easycalc.VCS(rl)
+sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (latitude, longitude)
+sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # pass polar coordinates (distance, azimuth)
+fig = _Slice(sec)
+fig('D:\\')
+```
+
 ### cinrad.visualize
 
 Visualize the data stored in acceptable format (`cinrad.datastruct`). It also means that you can using customized data to construct a object belongs to one of the class in `cinrad.datastruct` and then perform visualization. For further information about this method, please see the examples contained in `example` folder.
@@ -72,8 +89,8 @@ Simple demonstration:
 from cinrad.visualize.ppi import PPI
 fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
-from cinrad.visualize.rhi import RHI
-fig = RHI(Section) #Plot RHI
+from cinrad.visualize.rhi import Section
+fig = Section(_Slice) #Plot RHI
 fig('D:\\')
 ```
 
@@ -92,6 +109,21 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`highlight`|highlight area of input name|
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
+|`sec`|add cross-section data to ppi plot|
+
+## Gallery
+
+#### PPI reflectivity
+
+![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304125031_0.6_230_REF.png]
+
+#### PPI reflectivity combined with cross-section
+
+![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304120845_0.6_230_REF.png]
+
+#### Cross-section
+
+![avatar][https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304004209_VCS_25.5N111E_26.5N112E.png]
 
 ## Notes
 
