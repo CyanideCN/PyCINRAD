@@ -4,6 +4,7 @@
 from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
                         , change_cbar_text, draw_highlight_area, set_geoaxes)
 from ..constants import *
+from ..error import RadarPlotError
 
 import os
 from pathlib import Path
@@ -36,12 +37,12 @@ cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
 
 def _prepare(data, datatype):
     if not data.geoflag:
-        raise ValueError('Geographic information should be contained in data')
+        raise RadarPlotError('Geographic information should be contained in data')
     else:
         lon, lat = data.lon, data.lat
         r = data.data
     if data.dtype is not datatype:
-        raise ValueError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
+        raise RadarPlotError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
     return lon, lat, data.data
 
 class PPI:
