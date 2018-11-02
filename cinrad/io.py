@@ -13,6 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
+__all__ = ['CinradReader', 'StandardData', 'DualPolRadar']
+
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
 def _get_radar_info(code):
@@ -198,7 +200,7 @@ class CinradReader:
         self.Rreso = 0.3
         self.Vreso = 0.3
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
-        self.elevdeg = [0.5, 1.5, 2.4, 3.4, 4.3, 6, 9.89, 14.6, 19.5]
+        self.elevdeg = [0.5, 1.45, 2.4, 3.4, 4.3, 6, 9.9, 14.6, 19.5]
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.elevdeg))]
 
     def _SC_handler(self, f):
@@ -443,7 +445,8 @@ class StandardData:
         self.Vreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.rd, self.vd, self.wd, self.ad = self._parse(f)
-        self.el = [0.50, 0.50, 1.45, 1.45, 2.40, 3.35, 4.30, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
+        self.el = [0.50, 0.50, 1.45, 1.45, 2.4, 3.35, 4.3, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
+        # TODO: Auto detect el angles
         self._update_radar_info()
         angleindex = list(self.rd.keys())
         self.angleindex_r = np.delete(angleindex, [1, 3])

@@ -109,7 +109,7 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`highlight`|highlight area of input name|
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
-|`sec`|add cross-section data to ppi plot|
+|`slice`|add cross-section data to ppi plot|
 
 ## Gallery
 

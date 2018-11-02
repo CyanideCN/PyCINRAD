@@ -142,9 +142,18 @@ class PPI:
         if not self.settings['path_customize']:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
-            path_string = '{}{}_{}_{:.1f}_{}_{}.png'.format(fpath, self.data.code, self.data.time,
+            if self.settings['slice']:
+                data = self.settings['slice']
+                stps = data.geoinfo['stp_s']
+                enps = data.geoinfo['enp_s']
+                stp = data.geoinfo['stp']
+                enp = data.geoinfo['enp']
+                sec = '_{}N{}E_{}N{}E.png'.format(stp[1], stp[0], enp[1], enp[0])
+            else:
+                sec = ''
+            path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code, self.data.time,
                                                             self.data.elev, self.data.drange,
-                                                            self.data.dtype.upper())
+                                                            self.data.dtype.upper(), sec)
         else:
             path_string = fpath
         save(path_string)

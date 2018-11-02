@@ -11,6 +11,8 @@ from .error import RadarCalculationError
 import numpy as np
 from xarray import DataArray
 
+__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS']
+
 def _extract(Rlist):
     r_data = list()
     elev = list()
@@ -40,8 +42,8 @@ def quick_cr(Rlist):
         r_data.append(r)
     cr = composite_reflectivity(r_data)
     x, y = np.meshgrid(x, y)
-    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.time
-                , 'CR', x, y)
+    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.time,
+                  'CR', x, y)
     return l2_obj
 
 def quick_et(Rlist):
@@ -62,7 +64,7 @@ def quick_et(Rlist):
     data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
     et = echo_top(data, d, elev, 0)
     l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.time, 'ET',
-                i.stp['lon'], i.stp['lat'])
+                    i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -84,8 +86,8 @@ def quick_vil(Rlist):
     i = Rlist[0]
     data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
     vil = vert_integrated_liquid(data, d, elev)
-    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time
-                , 'VIL', i.stp['lon'], i.stp['lat'])
+    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time,
+                    'VIL', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -137,7 +139,7 @@ class VCS:
         return sl
 
     def get_section(self, start_polar=None, end_polar=None, start_cart=None, end_cart=None,
-                    spacing=50):
+                    spacing=100):
         r'''
         Get cross-section data from input points
 
