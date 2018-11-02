@@ -69,13 +69,13 @@ r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 Sample code
 ```python
 import cinrad
-from cinrad.visualize.rhi import _Slice
+from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
 rl = [f.reflectivity(i, 230) for i in f.angleindex_r]
 vcs = cinrad.easycalc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (latitude, longitude)
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # pass polar coordinates (distance, azimuth)
-fig = _Slice(sec)
+fig = Section(sec)
 fig('D:\\')
 ```
 
@@ -86,10 +86,10 @@ Visualize the data stored in acceptable format (`cinrad.datastruct`). It also me
 Simple demonstration:
 
 ```python
-from cinrad.visualize.ppi import PPI
+from cinrad.visualize import PPI
 fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
-from cinrad.visualize.rhi import Section
+from cinrad.visualize import Section
 fig = Section(_Slice) #Plot RHI
 fig('D:\\')
 ```
@@ -109,7 +109,7 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`highlight`|highlight area of input name|
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
-|`slice`|add cross-section data to ppi plot|
+|`add_slice`|add cross-section data to ppi plot|
 
 ## Gallery
 

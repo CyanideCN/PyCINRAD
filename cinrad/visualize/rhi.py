@@ -9,6 +9,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+__all__ = ['Section']
+
 class Section:
     def __init__(self, data, hlim=15):
         self.data = data

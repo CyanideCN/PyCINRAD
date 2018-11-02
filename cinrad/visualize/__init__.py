@@ -3,5 +3,5 @@
 
 import matplotlib
 matplotlib.rc('font', family='Arial')
-from . import ppi
-from . import rhi
+from .ppi import *
+from .rhi import *

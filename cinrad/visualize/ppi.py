@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import numpy as np
 
+__all__ = ['PPI']
+
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
              'ZDR':norm6, 'PHI':norm7, 'RHO':norm8} # Normalize object used to plot
 norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4,
@@ -48,11 +50,11 @@ def _prepare(data, datatype):
 class PPI:
     r'''Create a figure plotting plan position indicator'''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
-                 dpi=350, highlight=None, coastline=False, extent=None, slice=None):
+                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':slice}
+                         'extent':extent, 'slice':add_slice}
         self.ax = self._plot()
 
     def __call__(self, *fpath):
@@ -144,16 +146,14 @@ class PPI:
                 fpath += os.path.sep
             if self.settings['slice']:
                 data = self.settings['slice']
-                stps = data.geoinfo['stp_s']
-                enps = data.geoinfo['enp_s']
                 stp = data.geoinfo['stp']
                 enp = data.geoinfo['enp']
                 sec = '_{}N{}E_{}N{}E.png'.format(stp[1], stp[0], enp[1], enp[0])
             else:
                 sec = ''
             path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code, self.data.time,
-                                                            self.data.elev, self.data.drange,
-                                                            self.data.dtype.upper(), sec)
+                                                              self.data.elev, self.data.drange,
+                                                              self.data.dtype.upper(), sec)
         else:
             path_string = fpath
         save(path_string)
