@@ -30,10 +30,6 @@ def _get_radar_info(code):
     radarheight = radarinfo[5][pos]
     return name, lon, lat, radartype, radarheight
 
-def create_dict(_dict, index):
-    if index not in _dict.keys():
-        _dict[index] = list()
-
 class CinradReader:
     r'''
     Class handling CINRAD radar reading
@@ -433,24 +429,27 @@ class StandardData:
     filepath: str
         path directed to the file to read
     '''
+    dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
+                  9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
+                  17:'SNRV', 18:'Reserved', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
+
     def __init__(self, filepath):
-        f = open(filepath, 'rb')
+        if filepath.endswith('bz2'):
+            import bz2
+            f = bz2.open(filepath, 'rb')
+        else:
+            f = open(filepath, 'rb')
         f.seek(32)
         self.code = f.read(5).decode()
         f.seek(332)
         seconds = np.frombuffer(f.read(4), 'u4')[0]
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
-        f.seek(460)
-        self.Rreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
-        self.Vreso = np.frombuffer(f.read(4), 'u4')[0] / 1000
+        self.scanconfig = self._parse_configuration(f)
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
-        self.rd, self.vd, self.wd, self.ad = self._parse(f)
+        self.data = self._parse_datablock(f)
         self.el = [0.50, 0.50, 1.45, 1.45, 2.4, 3.35, 4.3, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
         # TODO: Auto detect el angles
         self._update_radar_info()
-        angleindex = list(self.rd.keys())
-        self.angleindex_r = np.delete(angleindex, [1, 3])
-        self.angleindex_v = np.delete(angleindex, [0, 2])
 
     def set_radarheight(self, height):
         self.radarheight = height
@@ -494,26 +493,34 @@ class StandardData:
         pos = np.where(azim == a_sorted[count])[0][0]
         return pos
 
-    def _parse(self, f):
+    def _parse_configuration(self, f):
+        f.seek(336)
+        scan_num = np.frombuffer(f.read(4), 'u4')[0]
+        f.seek(416)
+        config = dict()
+        for i in range(scan_num):
+            f.seek(36, 1)
+            config[i] = dict()
+            config[i]['angular_reso'] = np.frombuffer(f.read(4), 'f4')[0]
+            f.seek(8, 1)
+            config[i]['radial_reso'] = np.frombuffer(f.read(4), 'u4')[0] / 1000
+            config[i]['max_distance'] = np.frombuffer(f.read(4), 'u4')[0] / 1000
+            f.seek(200, 1)
+        return config
+
+    def _parse_datablock(self, f):
         f.seek(3232)
-        r_ = dict()
-        v_ = dict()
-        w_ = dict()
-        azm = dict()
+        data = dict()
         while True:
-            r = list()
-            v = list()
-            w = list()
             header = f.read(64)#径向头块
             radial_state = np.frombuffer(header[0:4], 'u4')[0]
             el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
-            for i in [r_, v_, w_, azm]:
-                create_dict(i, el_num)
+            if el_num not in data.keys():
+                data[el_num] = dict()
             el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
             az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
             length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
             type_num = np.frombuffer(header[40:44], 'u4')[0]#数据类别数量
-
             for i in range(type_num):
                 data_header = f.read(32)#径向数据头
                 data_type = np.frombuffer(data_header[0:4], 'u4')[0]#数据类型
@@ -521,88 +528,45 @@ class StandardData:
                 offset = np.frombuffer(data_header[8:12], 'u4')[0]
                 bitlength = np.frombuffer(data_header[12:14], 'u2')[0]
                 blocklength = np.frombuffer(data_header[16:20], 'u4')[0]
-
                 body = f.read(blocklength)#径向数据
                 raw = np.frombuffer(body, 'u' + str(bitlength)).astype(float)
+                raw[raw == 0] = np.nan
                 value = (raw - offset) / scale
-                if data_type == 2:
-                    r.append(value)
-                elif data_type == 3:
-                    v.append(np.ma.array(value, mask=(raw==1)))
-                elif data_type == 4:
-                    w.append(value)
-
-            r_[el_num] += r
-            v_[el_num] += v
-            w_[el_num] += w
-            azm[el_num].append(az_num)
+                if self.dtype_corr[data_type] not in data[el_num].keys():
+                    data[el_num][self.dtype_corr[data_type]] = list()
+                data[el_num][self.dtype_corr[data_type]].append(value)
+            data[el_num]['azimuth'] = list()
+            data[el_num]['azimuth'].append(az_num)
             if radial_state == 4:
                 break
-        return r_, v_, w_, azm
+        return data
 
-    def reflectivity(self, level, drange):
-        self.level = level
+    def get_data(self, tilt, drange, dtype):
+        self.tilt = tilt
         self.drange = drange
-        self.elev = self.el[self.level]
-        data = np.array(self.rd[level])
+        self.elev = self.el[tilt]
+        try:
+            data = np.ma.array(self.data[tilt][dtype])
+        except KeyError:
+            raise RadarDecodeError('Invalid product name')
         if data.size == 0:
             raise RadarDecodeError('Current elevation does not contain this data.')
-        length = data.shape[1] * self.Rreso
-        cut = data.T[:int(drange / self.Rreso)]
-        add_gate = np.zeros((int(drange / self.Rreso - cut.shape[0]), cut.shape[1]))
+        reso = self.scanconfig[tilt]['radial_reso']
+        length = data.shape[1] * reso
+        cut = data.T[:int(drange / reso)]
+        add_gate = np.zeros((int(drange / reso - cut.shape[0]), cut.shape[1]))
         r = np.concatenate((cut, add_gate))
-        r1 = np.ma.array(r, mask=(r <= 0))
-        r_obj = Radial(r1.T, int(r.shape[0] * self.Rreso), self.elev, self.Rreso, self.code, self.name, self.timestr, 'REF',
+        r = np.ma.array(r, mask=np.isnan(r))
+        r_obj = Radial(r.T, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.timestr, dtype,
                   self.stationlon, self.stationlat)
-        x, y, z, d, a = self.projection(self.Rreso)
+        x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
         return r_obj
 
-    def velocity(self, level, drange):
-        self.level = level
-        self.drange = drange
-        self.elev = self.el[self.level]
-        data = np.ma.array(self.vd[level])
-        if data.size == 0:
-            raise RadarDecodeError('Current elevation does not contain this data.')
-        length = data.shape[1] * self.Vreso
-        if length < drange:
-            warnings.warn('The input range exceeds maximum range, reset to the maximum range.', UserWarning)
-            self.drange = int(data.shape[1] * self.Vreso)
-        cut = data.T[:int(drange / self.Vreso)]
-        rf = cut.data * cut.mask
-        rf[rf == 0] = None
-        cut[cut <= -64] = np.ma.masked
-        v_obj = Radial([cut.T.data, rf.T], drange, self.elev, self.Vreso, self.code, self.name, self.timestr, 'VEL',
-                  self.stationlon, self.stationlat)
-        x, y, z, d, a = self.projection(self.Vreso)
-        v_obj.add_geoc(x, y, z)
-        v_obj.add_polarc(d, a)
-        return v_obj
-
-    def spectrum_width(self, level, drange):
-        self.level = level
-        self.drange = drange
-        self.elev = self.el[self.level]
-        data = np.array(self.wd[level])
-        if data.size == 0:
-            raise RadarDecodeError('Current elevation does not contain this data.')
-        length = data.shape[1] * self.Vreso
-        cut = data.T[:int(drange / self.Vreso)]
-        cut[cut <= -64] = np.nan
-        add_gate = np.zeros((int(drange / self.Vreso - cut.shape[0]), cut.shape[1]))
-        w = np.concatenate((cut, add_gate))
-        w_obj = Radial(w.T, int(w.shape[0] * self.Vreso), self.elev, self.Vreso, self.code, self.name, self.timestr, 'w',
-                  self.stationlon, self.stationlat)
-        x, y, z, d, a = self.projection(self.Vreso)
-        w_obj.add_geoc(x, y, z)
-        w_obj.add_polarc(d, a)
-        return w_obj
-
     def projection(self, reso):
         r = np.arange(reso, self.drange + reso, reso)
-        theta = np.array(self.ad[self.level]) * deg2rad
+        theta = np.array(self.data[self.tilt]['azimuth']) * deg2rad
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
@@ -630,11 +594,8 @@ class StandardData:
         return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
 
-    def get_data(self, tilt, drange, dtype):
-        if dtype.upper() == 'REF':
-            return self.reflectivity(tilt, drange)
-        elif dtype.upper() == 'VEL':
-            return self.velocity(tilt, drange)
+    def avaliable_product(self, tilt):
+        return list(self.data[tilt].keys())
 
 class DualPolRadar:
     r'''

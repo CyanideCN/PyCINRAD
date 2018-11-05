@@ -43,8 +43,7 @@ Simple demonstration:
 from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #Old version data
 f = StandardData(your_radar_file) #New standard data
-f.reflectivity(elevation_angle_level, data_range) # Get reflectivity data
-f.velocity(elevation_angle_level, data_range) #Get velocity data
+f.get_data(tilt, drange, dtype) #Get data
 f.rhi(azimuth, drange) #Get range-height indicator data
 ```
 
