@@ -517,6 +517,7 @@ class StandardData:
             el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
             if el_num not in data.keys():
                 data[el_num] = dict()
+                data[el_num]['azimuth'] = list()
             el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
             az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
             length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
@@ -535,7 +536,6 @@ class StandardData:
                 if self.dtype_corr[data_type] not in data[el_num].keys():
                     data[el_num][self.dtype_corr[data_type]] = list()
                 data[el_num][self.dtype_corr[data_type]].append(value)
-            data[el_num]['azimuth'] = list()
             data[el_num]['azimuth'].append(az_num)
             if radial_state == 4:
                 break
