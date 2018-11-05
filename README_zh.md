@@ -33,7 +33,7 @@ python setup.py install
 
 径向数据类型：`cinrad.datastruct.Radial`
 
-剖面数据类型: `cinrad.datastruct.Section`
+剖面数据类型: `cinrad.datastruct._Slice`
 
 格点数据类型：`cinrad.datastruct.Grid`
 
@@ -47,10 +47,11 @@ python setup.py install
 from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #老版本数据
 f = StandardData(your_radar_file) #新版本标准数据
-f.reflectivity(elevation_angle_level, data_range) #获取反射率数据
-f.velocity(elevation_angle_level, data_range) #获取速度数据
+f.get_data(tilt, drange, dtype) #获取数据
 f.rhi(azimuth, drange) #获取RHI数据
 ```
+
+#### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
 
 ### cinrad.utils
 
@@ -74,6 +75,22 @@ f.rhi(azimuth, drange) #获取RHI数据
 ```python
 r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 ```
+#### VCS
+
+`cinrad.easycalc.VCS`用于计算任意两点剖面。
+
+示例代码：
+```python
+import cinrad
+from cinrad.visualize import Section
+f = cinrad.io.CinradReader(your_radar_file)
+rl = [f.reflectivity(i, 230) for i in f.angleindex_r]
+vcs = cinrad.easycalc.VCS(rl)
+sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # 传入经纬度坐标
+sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # 传入极坐标
+fig = Section(sec)
+fig('D:\\')
+```
 
 ### cinrad.visualize
 
@@ -82,22 +99,32 @@ r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 例子：
 
 ```python
-from cinrad.visualize.ppi import PPI
+from cinrad.visualize import PPI
 fig = PPI(R, highlight='成都市') #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
-from cinrad.visualize.rhi import RHI
-fig = RHI(Section) #绘制RHI
+from cinrad.visualize import Section
+fig = Section(_Slice) #绘制RHI
 fig('D:\\')
 ```
 
 如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
 传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png	`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
 （Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
+
 #### 自定义绘图
 
-`PPI`支持传入自定义`colormap`和`norm`。（分别是`cmap`和`norm`参数）。同时，`nlabel`参数控制色阶条标注的个数
-，如果不传入将会设置成10个。如果传入`label`参数的话，程序将会优先使用来标注色阶条。
+`PPI`支持传入其他参数，总结如下。
 
+|参数|功能|
+|:-:|:-:|
+|`cmap`|色阶|
+|`norm`|色阶范围|
+|`nlabel`|色阶条标注个数|
+|`label`|色阶条标注|
+|`highlight`|地区边界高亮|
+|`dpi`|分辨率|
+|`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
+|`add_slice`|在`ppi`图中加上`vcs`的数据|
 
 ## 其他
 
