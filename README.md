@@ -17,6 +17,14 @@ Metpy
 
 Shapefile
 
+You can directly install this module via
+
+```
+pip install cinrad
+```
+
+Alternatively, you can download from github page and then excecute
+
 ```
 python setup.py install
 ```
@@ -58,7 +66,7 @@ For directly computation of decoded data, `cinrad.easycalc` provides functions t
 Code to generate the required list:
 
 ```python
-r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
+r_list = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
 ```
 
 #### VCS
@@ -70,7 +78,7 @@ Sample code
 import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
-rl = [f.reflectivity(i, 230) for i in f.angleindex_r]
+rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
 vcs = cinrad.easycalc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (latitude, longitude)
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # pass polar coordinates (distance, azimuth)
