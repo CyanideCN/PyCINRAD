@@ -22,6 +22,11 @@ Shapefile
 ### 安装方法
 
 ```
+pip install cinrad
+```
+
+或者在此页面下载并执行
+```
 python setup.py install
 ```
 
@@ -73,7 +78,7 @@ f.rhi(azimuth, drange) #获取RHI数据
 
 列表生成示例：
 ```python
-r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
+r_list = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
 ```
 #### VCS
 
@@ -84,7 +89,7 @@ r_list = [f.reflectivity(i, drange) for i in f.angleindex_r]
 import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
-rl = [f.reflectivity(i, 230) for i in f.angleindex_r]
+rl = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
 vcs = cinrad.easycalc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # 传入经纬度坐标
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # 传入极坐标
