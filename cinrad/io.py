@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-__all__ = ['CinradReader', 'StandardData', 'DualPolRadar']
+__all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
@@ -446,8 +446,7 @@ class StandardData:
         self.scanconfig = self._parse_configuration(f)
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.data = self._parse_datablock(f)
-        self.el = [0.50, 0.50, 1.45, 1.45, 2.4, 3.35, 4.3, 5.25, 6.2, 7.5, 8.7, 10, 12, 14, 16.7, 19.5]
-        # TODO: Auto detect el angles
+        self.el = [self.scanconfig[i]['elevation_angle'] for i in self.scanconfig.keys()]
         self._update_radar_info()
         self.angleindex_r = self.avaliable_tilt('REF')
 
@@ -499,8 +498,10 @@ class StandardData:
         f.seek(416)
         config = dict()
         for i in range(scan_num):
-            f.seek(36, 1)
+            f.seek(24, 1)
             config[i] = dict()
+            config[i]['elevation_angle'] = np.frombuffer(f.read(4), 'f4')[0]
+            f.seek(8, 1)
             config[i]['angular_reso'] = np.frombuffer(f.read(4), 'f4')[0]
             f.seek(8, 1)
             config[i]['radial_reso'] = np.frombuffer(f.read(4), 'u4')[0] / 1000
@@ -552,9 +553,9 @@ class StandardData:
             raise RadarDecodeError('Current elevation does not contain this data.')
         reso = self.scanconfig[tilt]['radial_reso']
         length = data.shape[1] * reso
-        cut = data.T[:int(drange / reso)]
+        cut = data[:, :int(drange / reso)]
         r = np.ma.array(cut, mask=np.isnan(cut))
-        r_obj = Radial(r.T, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.timestr, dtype,
+        r_obj = Radial(r, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.timestr, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
@@ -601,7 +602,7 @@ class StandardData:
                 tilt.append(i)
         return tilt
 
-class DualPolRadar:
+class NexradL2Data:
     r'''
     Class handling dual-polarized radar reading and plotting
     
@@ -639,13 +640,13 @@ class DualPolRadar:
             raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[tilt]])
         else:
             raise RadarError('Unsupported data type {}'.format(self.dtype.decode()))
-        cut = raw.T[:int(drange / self.reso)]
+        cut = raw[:, :int(drange / self.reso)]
         masked = np.ma.array(cut, mask=np.isnan(cut))
         self.tilt = tilt
         self.drange = drange
         self.elev = self.el[tilt]
         x, y, z, d, a = self.projection(self.reso)
-        radial = Radial(masked.T, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(), 
+        radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(), 
                         self.stationlon, self.stationlat, x, y, a_reso=720)
         return radial
 
