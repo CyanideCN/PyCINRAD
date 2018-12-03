@@ -3,6 +3,7 @@ sudo: true
 python:
   - 3.6
 install:
+    - pip install cython
     - pip install metpy
     - pip install pyshp
 script: 
