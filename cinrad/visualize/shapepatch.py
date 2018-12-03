@@ -11,7 +11,7 @@ import shapefile
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
-def highlight_area(area):
+def highlight_area(area, facecolor='None', edgecolor='red', **kwargs):
     r'''Return pathpatch for given area name'''
     fpath = os.path.join(modpath, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)
@@ -30,5 +30,5 @@ def highlight_area(area):
         codes += [Path.CLOSEPOLY]
         vertices += [j.shape.points[0]]
         path = Path(vertices, codes)
-    patch = PathPatch(path, facecolor='None', edgecolor='red')
+    patch = PathPatch(path, facecolor=facecolor, edgecolor=edgecolor, **kwargs)
     return patch

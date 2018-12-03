@@ -604,7 +604,7 @@ class StandardData:
 
 class NexradL2Data:
     r'''
-    Class handling dual-polarized radar reading and plotting
+    Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
     
     Parameters
     ----------
