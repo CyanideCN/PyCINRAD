@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # Author: Du puyuan
 
-from .basicfunc import (add_shp, save, setup_axes, setup_plot, text
-                        , change_cbar_text, draw_highlight_area, set_geoaxes)
+from .basicfunc import (add_shp, save, setup_axes, setup_plot, text,
+                        change_cbar_text, draw_highlight_area, set_geoaxes)
 from ..constants import *
 from ..error import RadarPlotError
 
@@ -50,12 +50,12 @@ def _prepare(data, datatype):
 class PPI:
     r'''Create a figure plotting plan position indicator'''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
-                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None):
+                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
                          'extent':extent, 'slice':add_slice}
-        self.ax = self._plot()
+        self.ax = self._plot(**kwargs)
 
     def __call__(self, *fpath):
         if not fpath:
@@ -95,7 +95,7 @@ class PPI:
             c2 = cmap_cbar[self.data.dtype]
             return c, c2
 
-    def _plot(self):
+    def _plot(self, **kwargs):
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
         if self.data.dtype == 'VEL' and self.data.include_rf:
@@ -107,11 +107,11 @@ class PPI:
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap)
+            geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
         else:
-            geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap)
+            geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
-                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'])
+                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         add_shp(geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
@@ -126,7 +126,7 @@ class PPI:
         if self.settings['slice']:
             ax2 = fig.add_axes([0.13, -0.12, 0.77, 0.2])
             ax2.yaxis.set_ticks_position('right')
-            ax2.spines['bottom'].set_color('none')
+            #ax2.spines['bottom'].set_color('none')
             ax2.set_xticks([])
             data = self.settings['slice']
             sl = data.data
