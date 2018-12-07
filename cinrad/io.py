@@ -5,6 +5,7 @@ from .constants import deg2rad, con, con2, Rm1, modpath
 from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
+from ._io import NetCDFWriter
 
 import os
 import warnings
@@ -418,6 +419,15 @@ class CinradReader:
         yc = np.array(ycoor)
         return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
+    
+    def to_nc(self, filepath, tilt='all', distance=230):
+        ds = NetCDFWriter(filepath)
+        for i in range(self.get_nscans()):
+            ds.create_radial(self.get_data(i, distance, 'REF'))
+        ds._create_attribute('Time', self.timestr)
+        ds._create_attribute('Station Code', self.code)
+        ds._create_attribute('Station Name', self.name)
+        ds._create_attribute('Radar Type', self.radartype)
 
 class StandardData:
     r'''
