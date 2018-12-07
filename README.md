@@ -55,6 +55,11 @@ f.get_data(tilt, drange, dtype) #Get data
 f.rhi(azimuth, drange) #Get range-height indicator data
 ```
 
+#### Saving data in NetCDF format
+```python
+f.to_nc(path_to_nc_file)
+```
+
 ### cinrad.utils
 
 This submodule provides some useful algorithms in radar meteorology. All functions contained only accept `numpy.ndarray`. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.
