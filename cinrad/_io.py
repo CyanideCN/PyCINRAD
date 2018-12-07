@@ -2,11 +2,8 @@
 # Author: Puyuan Du
 
 from netCDF4 import Dataset
-from .datastruct import Radial # Coding convenience
+from .datastruct import Radial, Grid # Coding convenience
 import warnings
-
-def _get_data(radial):
-    return radial.data
 
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Reflectivity',
             'ET':'Echo Tops', 'VIL':'Vertically Integrated Liquid', 'ZDR':'Differential Reflectivity',
@@ -16,10 +13,6 @@ class NetCDFWriter:
     def __init__(self, filepath):
         self.da = Dataset(filepath, 'w', format='NETCDF4')
         self.group = dict()
-
-    def _reset(self):
-        self.dimension = list()
-        self.variable = list()
 
     def _create_group(self, groupname):
         if groupname in self.da.groups.keys():
@@ -70,3 +63,12 @@ class NetCDFWriter:
             # self._create_variable(gpname, 'Range Fold', radial.data[1], ('Azimuth', 'Distance'))
         else:
             self._create_variable(gpname, prodname[radial.dtype], radial.data, ('Azimuth', 'Distance'))
+
+    def create_grid(self, grid:Grid):
+        gpname = 'Derived field'
+        self._create_group(gpname)
+        self._create_dimension(gpname, 'Longitude', grid.lon.shape[0])
+        self._create_dimension(gpname, 'Latitude', grid.lat.shape[1])
+        self._create_variable(gpname, 'Longitude', grid.lon[0], 'Longitude')
+        self._create_variable(gpname, 'Latitude', grid.lat[:, 0], 'Latitude')
+        self._create_Variable(gpname, prodname[grid.dtype], grid.data, ('Longitude', 'Latitude'))

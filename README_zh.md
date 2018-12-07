@@ -56,6 +56,11 @@ f.get_data(tilt, drange, dtype) #获取数据
 f.rhi(azimuth, drange) #获取RHI数据
 ```
 
+#### 将数据保存为NetCDF格式
+```python
+f.to_nc(path_to_nc_file)
+```
+
 #### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
 
 ### cinrad.utils
