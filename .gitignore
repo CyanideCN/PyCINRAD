@@ -8,3 +8,4 @@
 *.npy
 .idea/*
 /shapefile/*
+*.ui

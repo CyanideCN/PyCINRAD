@@ -101,21 +101,21 @@ class PPI:
         if self.data.dtype == 'VEL' and self.data.include_rf:
             rf = var[1]
             var = var[0]
-        fig = setup_plot(self.settings['dpi'])
-        geoax = set_geoaxes(lon, lat, extent=self.settings['extent'])
+        self.fig = setup_plot(self.settings['dpi'])
+        self.geoax = set_geoaxes(lon, lat, extent=self.settings['extent'])
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
         else:
-            geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
-                geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        add_shp(geoax, coastline=self.settings['coastline'])
+                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
+        add_shp(self.geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
-        ax, cbar = setup_axes(fig, ccmap, cnorm)
+        ax, cbar = setup_axes(self.fig, ccmap, cnorm)
         if not isinstance(clabel, type(None)):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
         text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
@@ -124,21 +124,8 @@ class PPI:
         if self.data.dtype == 'VEL':
             ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
         if self.settings['slice']:
-            ax2 = fig.add_axes([0.13, -0.12, 0.77, 0.2])
-            ax2.yaxis.set_ticks_position('right')
-            #ax2.spines['bottom'].set_color('none')
-            ax2.set_xticks([])
-            data = self.settings['slice']
-            sl = data.data
-            xcor = data.xcor
-            ycor = data.ycor
-            stp = data.geoinfo['stp']
-            enp = data.geoinfo['enp']
-            ax2.contourf(xcor, ycor, sl, 128, cmap=rhi_cmap_smooth, norm=norm1)
-            ax2.set_ylim(0, 15)
-            ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-            geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
-        return geoax
+            self.plot_cross_section(self.settings['slice'])
+        return self.geoax
 
     def _save(self, fpath):
         if not self.settings['path_customize']:
@@ -159,6 +146,7 @@ class PPI:
         save(path_string)
 
     def plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs):
+        r'''Plot range rings on PPI plot.'''
         if isinstance(_range, int):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
@@ -166,3 +154,22 @@ class PPI:
             radius = d / 111
             x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
             self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+
+    def plot_cross_section(self, data, ymax=None):
+        r'''Plot cross section data below the PPI plot.'''
+        ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
+        ax2.yaxis.set_ticks_position('right')
+        #ax2.spines['bottom'].set_color('none')
+        ax2.set_xticks([])
+        sl = data.data
+        xcor = data.xcor
+        ycor = data.ycor
+        stp = data.geoinfo['stp']
+        enp = data.geoinfo['enp']
+        ax2.contourf(xcor, ycor, sl, 128, cmap=rhi_cmap_smooth, norm=norm1)
+        if ymax:
+            ax2.set_ylim(0, ymax)
+        else:
+            ax2.set_ylim(0, 15)
+        ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
