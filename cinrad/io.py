@@ -261,7 +261,7 @@ class CinradReader:
             data[i]['VEL'] = v1[i * 360: (i + 1) * 360]
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
-        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
+        self.angleindex_r = self.angleindex_v = list(self.data.keys())
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def set_code(self, code):

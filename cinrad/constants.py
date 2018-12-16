@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .form_colormap import form_colormap
+#from .form_colormap import form_colormap
+from .gpf import _cmap
 
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
@@ -15,21 +16,21 @@ con2 = 0.001824  # calculated manually
 
 modpath = os.path.dirname(__file__)
 CMAP_DIR = os.path.join(modpath, 'colormap')
-r_cmap = form_colormap(os.path.join(CMAP_DIR, 'r_main.txt'), sep=True)
-v_cmap = form_colormap(os.path.join(CMAP_DIR, 'v_main.txt'), sep=False)
-v_cbar = form_colormap(os.path.join(CMAP_DIR, 'v_cbar.txt'), sep=True)
-rhi_cmap_smooth = form_colormap(os.path.join(CMAP_DIR, 'r_smooth.txt'), sep=False, spacing='v')
-r_cmap_smooth = form_colormap(os.path.join(CMAP_DIR, 'r_smooth.txt'), sep=False, spacing='v')
-zdr_cmap = form_colormap(os.path.join(CMAP_DIR, 'zdr_main.txt'), sep=False)
-zdr_cbar = form_colormap(os.path.join(CMAP_DIR, 'zdr_cbar.txt'), sep=True)
-kdp_cmap = form_colormap(os.path.join(CMAP_DIR, 'kdp_main.txt'), sep=False)
-kdp_cbar = form_colormap(os.path.join(CMAP_DIR, 'kdp_cbar.txt'), sep=True)
-cc_cmap = form_colormap(os.path.join(CMAP_DIR, 'cc_main.txt'), sep=False)
-cc_cbar = form_colormap(os.path.join(CMAP_DIR, 'cc_cbar.txt'), sep=True)
-et_cmap = form_colormap(os.path.join(CMAP_DIR, 'et_main.txt'), sep=False)
-et_cbar = form_colormap(os.path.join(CMAP_DIR, 'et_cbar.txt'), sep=True)
-vil_cmap = form_colormap(os.path.join(CMAP_DIR, 'vil_main.txt'), sep=True)
-vil_cbar = form_colormap(os.path.join(CMAP_DIR, 'vil_cbar.txt'), sep=True)
+r_cmap = _cmap('REF')['cmap']
+v_cmap = _cmap('VEL')['cmap']
+v_cbar = _cmap('VEL_reverse')['cmap']
+rhi_cmap_smooth = _cmap('REF_s')['cmap']
+r_cmap_smooth = _cmap('REF_s')['cmap']
+zdr_cmap = _cmap('ZDR')['cmap']
+zdr_cbar = _cmap('ZDR_reverse')['cmap']
+kdp_cmap = _cmap('KDP')['cmap']
+kdp_cbar = _cmap('KDP_reverse')['cmap']
+cc_cmap = _cmap('CC')['cmap']
+cc_cbar = _cmap('CC_reverse')['cmap']
+et_cmap = _cmap('ET')['cmap']
+et_cbar = _cmap('ET_reverse')['cmap']
+vil_cmap = _cmap('VIL')['cmap']
+vil_cbar = _cmap('VIL_reverse')['cmap']
 rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
 norm1 = cmx.Normalize(0, 75)
