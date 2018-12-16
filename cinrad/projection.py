@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad, Rm1
+from .constants import deg2rad, rm
 
 import numpy as np
 
@@ -22,7 +22,7 @@ def height(distance, elevation, radarheight):
     -------
     height
     '''
-    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * Rm1) + radarheight / 1000
+    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
 
 def get_coordinate(distance, azimuth, elevation, centerlon, centerlat, h_offset=True):
     r'''

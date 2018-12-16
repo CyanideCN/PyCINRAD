@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad, con, con2, Rm1, modpath
+from .constants import deg2rad, con, con2, , modpath
 from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
@@ -261,7 +261,7 @@ class CinradReader:
             data[i]['VEL'] = v1[i * 360: (i + 1) * 360]
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
-        self.angleindex_r = self.angleindex_v = list(self.data.keys())
+        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def set_code(self, code):
@@ -375,6 +375,7 @@ class CinradReader:
         #r = np.ma.array(cut, mask=np.isnan(cut))
         r = cut
         if rf_flag:
+            r.mask = np.logical_or(r.mask, ~rf.mask)
             ret = (r.T, rf.T)
         else:
             ret = r.T
@@ -412,7 +413,7 @@ class CinradReader:
                 rhi.append(cac[pos])
             theta = self.elev * deg2rad
             xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
+            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * rm ** 2)).tolist())
         rhi = np.array(rhi)
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
@@ -595,7 +596,7 @@ class StandardData:
                 rhi.append(cac[pos])
             theta = self.elev * deg2rad
             xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * Rm1 ** 2)).tolist())
+            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * rm ** 2)).tolist())
         rhi = np.array(rhi)
         xc = np.array(xcoor)
         yc = np.array(ycoor)

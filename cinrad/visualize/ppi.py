@@ -9,6 +9,7 @@ from ..error import RadarPlotError
 import os
 from pathlib import Path
 import numpy as np
+from matplotlib._pylab_helpers import Gcf
 
 __all__ = ['PPI']
 
@@ -68,6 +69,9 @@ class PPI:
                 if not fpath.endswith(os.path.sep):
                     fpath += os.path.sep
         return self._save(fpath)
+
+    def close(self):
+        Gcf.destroy_all()
 
     def _norm(self):
         if self.settings['norm']:
@@ -147,7 +151,7 @@ class PPI:
 
     def plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs):
         r'''Plot range rings on PPI plot.'''
-        if isinstance(_range, int):
+        if isinstance(_range, (int, float)):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
         for d in _range:
