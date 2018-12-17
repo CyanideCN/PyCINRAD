@@ -59,35 +59,32 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     const = 3.44e-6
     v_beam_width = 0.99 * deg2rad
     elev = np.array(elev) * deg2rad
-    VIL = list()
     xshape, yshape = ref[0].shape
+    distance *= 1000
+    hi_arr = distance * np.sin(v_beam_width / 2)
+    VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
-            vert_r = list()
-            dist = distance[i][j] * 1000
-            for k in range(0, 9):
-                #index from lowest angle
-                r_pt = ref[k][i][j]
-                vert_r.append(r_pt)
+            vert_r = ref[:, i, j]
+            dist = distance[i][j]
             r_ = np.clip(vert_r, None, 55) #reduce the influence of hails
             vertical = 10 ** (r_ / 10)
             position = np.where(r_ > threshold)[0]
-            try:
-                pos_s = position[0]
-                pos_e = position[-1]
-            except IndexError:
-                VIL.append(0)
+            if position.shape[0] == 0:
+                VIL[i][j] = 0
                 continue
+            pos_s = position[0]
+            pos_e = position[-1]
             m1 = 0
-            hi = dist * np.sin(v_beam_width / 2)
+            hi = hi_arr[i][j]
             for l in position[:-1].astype(int):
                 ht = dist * (np.sin(elev[l + 1]) - np.sin(elev[l]))
                 factor = ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7)
                 m1 += const * factor * ht
             mb = const * vertical[pos_s] ** (4 / 7) * hi
             mt = const * vertical[pos_e] ** (4 / 7) * hi
-            VIL.append(m1 + mb + mt)
-    return np.array(VIL).reshape(xshape, yshape)
+            VIL[i][j] = m1 + mb + mt
+    return VIL
 
 def echo_top(ref, distance, elev, radarheight, threshold=18.):
     r'''
@@ -113,49 +110,36 @@ def echo_top(ref, distance, elev, radarheight, threshold=18.):
     data: numpy.ndarray
         echo tops data
     '''
-    et = list()
     r = np.ma.array(ref, mask=(ref > threshold))
     xshape, yshape = r[0].shape
+    et = np.zeros((xshape, yshape))
     h_ = list()
     for i in elev:
         h = height(distance, i, radarheight)
         h_.append(h)
     hght = np.concatenate(h_).reshape(r.shape)
-    h_mask = hght * r.mask
     for i in range(xshape):
         for j in range(yshape):
-            vert_h = list()
-            vert_r = list()
-            vert_h_ = list()
-            for k in range(1, 10):
-                #index from highest angle
-                h_pt = h_mask[-1 * k][i][j]
-                r_pt = ref[-1 * k][i][j]
-                h_pt_ = hght[-1 * k][i][j]
-                vert_h.append(h_pt)
-                vert_r.append(r_pt)
-                vert_h_.append(h_pt_)
-            vertical = np.array(vert_h)
-            position = np.where(vertical > 0)[0]
-            try:
-                pos = position[0]
-            except IndexError:#empty array
-                et.append(0)
+            vert_h = hght[:, i, j]
+            vert_r = ref[:, i, j]
+            if vert_r.max() < threshold: # Vertical points don't satisfy threshold
+                et[i][j] = 0
                 continue
-            if pos == 0:
-                height_ = vertical[pos]
-                et.append(height_)
+            elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold 
+                et[i][j] = vert_h[-1]
+                continue
             else:
-                try:
-                    elev[pos - 1]
-                except IndexError:
-                    et.append(vertical[pos])
+                position = np.where(vert_r >= threshold)[0]
+                if position[-1] == 0:
+                    et[i][j] = vert_h[0]
                     continue
-                z1 = vert_r[pos]
-                z2 = vert_r[pos - 1]
-                h1 = vertical[pos]
-                h2 = vert_h_[pos - 1]
-                w1 = (z1 - threshold) / (z1 - z2)
-                w2 = 1 - w1
-                et.append(w1 * h2 + w2 * h1)
-    return np.array(et).reshape(xshape, yshape)
+                else:
+                    pos = position[-1]
+                    z1 = vert_r[pos]
+                    z2 = vert_r[pos + 1]
+                    h1 = vert_h[pos]
+                    h2 = vert_h[pos + 1]
+                    w1 = (z1 - threshold) / (z1 - z2)
+                    w2 = 1 - w1
+                    et[i][j] = w1 * h2 + w2 * h1
+    return et
