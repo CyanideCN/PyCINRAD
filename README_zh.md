@@ -1,6 +1,5 @@
 # PyCINRAD
 
-[![Build Status](https://travis-ci.com/CyanideCN/PyCINRAD.svg?branch=master)](https://travis-ci.com/CyanideCN/PyCINRAD)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
 
 A python package which handles CINRAD radar data reading and plotting.
@@ -135,6 +134,15 @@ fig('D:\\')
 |`dpi`|分辨率|
 |`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
 |`add_slice`|在`ppi`图中加上`vcs`的数据|
+
+同时`PPI`类中定义有其他绘图函数：
+##### PPI.plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs)
+
+在PPI图上绘制圆圈。
+
+##### PPI.plot_cross_section(self, data, ymax=None)
+
+在PPI图下方加入VCS剖面图，和`vcs`参数相似，用此函数还可以自定义y轴的范围。
 
 ## 其他
 

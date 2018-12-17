@@ -125,7 +125,7 @@ def echo_top(ref, distance, elev, radarheight, threshold=18.):
             if vert_r.max() < threshold: # Vertical points don't satisfy threshold
                 et[i][j] = 0
                 continue
-            elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold 
+            elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold
                 et[i][j] = vert_h[-1]
                 continue
             else:
