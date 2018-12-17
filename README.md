@@ -1,6 +1,5 @@
 # PyCINRAD
 
-[![Build Status](https://travis-ci.com/CyanideCN/PyCINRAD.svg?branch=master)](https://travis-ci.com/CyanideCN/PyCINRAD)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
 
 A python package which can read CINRAD radar data, perform calculations and visualize the data.
@@ -122,6 +121,18 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
 |`add_slice`|add cross-section data to ppi plot|
+
+Besides args, class `PPI` has some other auxiliary plotting functions.
+
+##### PPI.plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs)
+
+Plot range rings on the PPI plot.
+
+##### PPI.plot_cross_section(self, data, ymax=None)
+
+Plot VCS section under the PPI plot.
+
+This function is very similar to `vcs` argument of `PPI`, but the range of y-axis can be adjusted only by this function.
 
 ## Gallery
 
