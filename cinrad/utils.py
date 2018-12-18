@@ -3,39 +3,12 @@
 
 from .constants import deg2rad
 from .projection import height
+from .grid import grid_2d
 
 import numpy as np
+from numba import jit
 
-def mask_outside(data, drange):
-    r'''
-    Mask data outside obervation range
-    '''
-    xdim = data.shape[0]
-    xcoor = np.linspace(-1 * drange, drange, xdim)
-    x, y = np.meshgrid(xcoor, xcoor)
-    dist = np.sqrt(np.abs(x ** 2 + y ** 2))
-    return np.ma.array(data, mask=(dist > drange))
-
-def composite_reflectivity(ref, drange=230):
-    r'''
-    Find max ref value in single coordinate
-
-    Parameters
-    ----------
-    ref: numpy.ndarray dim=3 (elevation angle, distance, azimuth)
-        reflectivity data
-    drange: float or int
-        data range
-
-    Returns
-    -------
-    data: numpy.ndarray
-        composite reflectivity data
-    '''
-    r_max = np.max(ref, axis=0)
-    data = mask_outside(r_max, drange)
-    return data
-
+@jit(nogil=True)
 def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     r'''
     Calculate vertically integrated liquid (VIL) in one full scan
@@ -86,6 +59,7 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
             VIL[i][j] = m1 + mb + mt
     return VIL
 
+@jit(nogil=True)
 def echo_top(ref, distance, elev, radarheight, threshold=18.):
     r'''
     Calculate height of echo tops (ET) in one full scan

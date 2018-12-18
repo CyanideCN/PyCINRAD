@@ -6,6 +6,10 @@ from .constants import deg2rad
 import numpy as np
 from scipy.interpolate import griddata
 
+from pyresample import SwathDefinition
+from pyresample.geometry import GridDefinition
+from pyresample.kd_tree import resample_nearest
+
 def resample(data, distance, azimuth, d_reso, a_reso):
     r'''
     Resample radar radial data which have different number of radials
@@ -38,7 +42,7 @@ def resample(data, distance, azimuth, d_reso, a_reso):
     r = griddata((d.flatten(), t.flatten()), data.flatten(), (dist, theta), method='nearest')
     return r, dist, theta
 
-def grid_2d(data, x, y, resolution=(500, 500)):
+def grid_2d(data, x, y, resolution=(1000, 1000)):
     r'''
     Interpolate data in polar coordinates into geographic coordinates
 
@@ -61,9 +65,11 @@ def grid_2d(data, x, y, resolution=(500, 500)):
     y_cor: numpy.ndarray
         interpolated latitude in grid
     '''
+    odf = GridDefinition(x, y)
     r_x, r_y = resolution
     x_cor = np.linspace(x.min(), x.max(), r_x)
     y_cor = np.linspace(y.min(), y.max(), r_y)
     t_x, t_y = np.meshgrid(x_cor, y_cor)
-    r = griddata((x.flatten(), y.flatten()), data.flatten(), (t_x, t_y), method='nearest')
-    return r, x_cor, y_cor
+    tdf = GridDefinition(t_x, t_y)
+    result = resample_nearest(odf, data, tdf, 2000)
+    return result, x_cor, y_cor
