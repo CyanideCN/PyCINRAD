@@ -16,6 +16,10 @@ Metpy
 
 Shapefile
 
+Numba
+
+Pyresample
+
 You can directly install this module via
 
 ```

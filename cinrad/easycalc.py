@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .utils import composite_reflectivity, echo_top, vert_integrated_liquid, mask_outside
+from .utils import echo_top, vert_integrated_liquid
 from .datastruct import Radial, Grid, _Slice
 from .grid import grid_2d, resample
 from .projection import height, get_coordinate
@@ -21,7 +21,8 @@ def _extract(Rlist):
         x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
         r_data.append(x)
         elev.append(i.elev)
-    return r_data, d, a, elev
+    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
+    return data, d, a, elev
 
 def quick_cr(Rlist):
     r'''
@@ -40,7 +41,7 @@ def quick_cr(Rlist):
     for i in Rlist:
         r, x, y = grid_2d(i.data, i.lon, i.lat)
         r_data.append(r)
-    cr = composite_reflectivity(r_data)
+    cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.time,
                   'CR', x, y)
@@ -61,8 +62,7 @@ def quick_et(Rlist):
     '''
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
-    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
-    et = echo_top(data, d, elev, 0)
+    et = echo_top(r_data, d, elev, 0)
     l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.time, 'ET',
                     i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
@@ -84,8 +84,7 @@ def quick_vil(Rlist):
     '''
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
-    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
-    vil = vert_integrated_liquid(data, d, elev)
+    vil = vert_integrated_liquid(r_data, d, elev)
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time,
                     'VIL', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
@@ -106,7 +105,7 @@ class VCS:
         h_data = list()
         for i in self.rl:
             r, x, y = grid_2d(i.data, i.lon, i.lat)
-            r_data.append(mask_outside(r, 230 * np.cos(self.el[0] * deg2rad)))
+            r_data.append(r)
             x_data.append(x)
             y_data.append(y)
         for radial, elev in zip(self.rl, self.el):

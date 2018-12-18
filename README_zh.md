@@ -18,6 +18,10 @@ Metpy
 
 Shapefile
 
+Numba
+
+Pyresample
+
 ### 安装方法
 
 ```
