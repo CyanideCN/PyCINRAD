@@ -6,6 +6,38 @@ class Radial:
     def __init__(self, data, drange, elev, reso, code, name,
                  time, dtype, stlon, stlat, lon=None, lat=None,
                  height=None, a_reso=None):
+        r'''
+        Parameters
+        ----------
+        data: np.ndarray
+            wrapped data
+        drange: float
+            radius of this data
+        elev: float
+            elevation angle of this data
+        reso: float
+            radial resolution of this data
+        code: str
+            code for this radar
+        name: str
+            name for this radar
+        time: str
+            scan time for this radar
+        dtype: str
+            product type
+        stlon: float
+            radar longitude
+        stlat: float
+            radar latitude
+        lon: np.ndarray / bool
+            longitude array for wrapped data
+        lat: np.ndarray / bool
+            latitude array for wrapped data
+        height: np.ndarray / bool
+            height array for wrapped data
+        a_reso: int
+            radial resolution of this data
+        '''
         self.data = data
         self.drange = drange
         self.elev = elev

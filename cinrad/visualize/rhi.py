@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from ..constants import rhi_cmap_smooth, norm1, font2
-
 import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from ..constants import rhi_cmap_smooth, norm1, font2
 
 __all__ = ['Section']
 

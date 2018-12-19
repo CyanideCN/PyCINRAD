@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 # Author: Du puyuan
 
-from ..constants import modpath
-from ..error import RadarPlotError
-
 import os
 
 import numpy as np
 import shapefile
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
+
+from ..constants import modpath
+from ..error import RadarPlotError
 
 def highlight_area(area, facecolor='None', edgecolor='red', **kwargs):
     r'''Return pathpatch for given area name'''

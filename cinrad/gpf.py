@@ -1,7 +1,9 @@
 # https://github.com/crazyapril/mpkit/blob/master/gpf.py
 
+import os
+import sys
+
 import matplotlib.colors as mclr
-import os, sys
 import numpy as np
 
 _cmapdir_ = os.path.join(os.path.split(__file__)[0], 'colormap')

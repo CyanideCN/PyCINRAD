@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad
-
 import numpy as np
 from scipy.interpolate import griddata
-
-from pyresample import SwathDefinition
 from pyresample.geometry import GridDefinition
 from pyresample.kd_tree import resample_nearest
+
+from .constants import deg2rad
 
 def resample(data, distance, azimuth, d_reso, a_reso):
     r'''

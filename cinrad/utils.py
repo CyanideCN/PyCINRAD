@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad
-from .projection import height
-from .grid import grid_2d
-
 import numpy as np
 from numba import jit
+
+from .constants import deg2rad
+from .projection import height
 
 @jit(nogil=True)
 def vert_integrated_liquid(ref, distance, elev, threshold=18.):

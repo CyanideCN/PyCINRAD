@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 # Author: Du puyuan
 
-from ..constants import font2, modpath
-from ..error import RadarPlotError
-from .shapepatch import highlight_area
-
 import os
 
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
+
+from ..constants import font2, modpath
+from ..error import RadarPlotError
+from .shapepatch import highlight_area
 
 def setup_plot(dpi, figsize=(10, 10)):
     fig = plt.figure(figsize=figsize, dpi=dpi)
