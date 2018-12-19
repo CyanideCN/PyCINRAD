@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad, con, con2, rm, modpath
-from .datastruct import Radial, _Slice
-from .projection import get_coordinate, height
-from .error import RadarDecodeError
-from ._io import NetCDFWriter
-
 import os
 import warnings
 import datetime
 from pathlib import Path
 
 import numpy as np
+
+from .constants import deg2rad, con, con2, rm, modpath
+from .datastruct import Radial, _Slice
+from .projection import get_coordinate, height
+from .error import RadarDecodeError
+from ._io import NetCDFWriter
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
@@ -34,15 +34,53 @@ def _get_radar_info(code):
 class CinradReader:
     r'''
     Class handling CINRAD radar reading
-    
-    Parameters
+
+    Attributes
     ----------
-    filepath: str
-        path directed to the file to read
-    radar_type: str, optional
-        type of radar
+    radartype: str
+        type of radar (SA, SB, etc.)
+    scantime: datetime.datetime
+        time of scan for this data 
+    timestr: str
+        time of scan for this data
+    code: str
+        code for this radar
+    angleindex_r: list
+        indices of tilts which have reflectivity data
+    angleindex_v: list
+        indices of tilts which have velocity data
+    stationlon: float
+        logitude of this radar
+    stationlat: float
+        latitude of this radar
+    radarheight: float
+        height of this radar
+    name: str
+        name of this radar
+    Rreso: float
+        radial resolution of reflectivity data
+    Vreso: float
+        radial resolution of velocity data
+    a_reso: int
+        number of radials in one scan
+    el: np.ndarray
+        elevation angles for tilts
+    drange: float
+        current selected radius of data
+    elev: float
+        elevation angle of current selected tilt
+    tilt: int
+        current selected tilt
     '''
     def __init__(self, filepath, radar_type=None):
+        r'''
+        Parameters
+        ----------
+        filepath: str
+            path directed to the file to read
+        radar_type: str, optional
+            type of radar
+        '''
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
@@ -129,7 +167,6 @@ class CinradReader:
         deltday = datetime.timedelta(days=int(deltdays))
         deltsec = datetime.timedelta(milliseconds=int(deltsecs))
         self.scantime = start + deltday + deltsec
-        self.vcpmode = np.frombuffer(copy[72:74], 'u2')[0]
         self.Rreso = np.frombuffer(copy[50:52], 'u2')[0] / 1000
         self.Vreso = np.frombuffer(copy[52:54], 'u2')[0] / 1000
         f.seek(98)
@@ -283,6 +320,7 @@ class CinradReader:
         return len(self.el)
 
     def get_nrays(self, scan):
+        r'''Get number of radials in certain scan'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             return len(self.data[scan]['azimuth'])
         elif self.radartype == 'CC':
@@ -291,7 +329,7 @@ class CinradReader:
             return 360
 
     def get_azimuth_angles(self, scans=None):
-        r'''Radian'''
+        r'''Get index of input azimuth angle'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             if scans is None:
                 return self.azimuth
@@ -340,6 +378,22 @@ class CinradReader:
         return pos
 
     def get_data(self, tilt, drange, dtype):
+        r'''
+        Get radar raw data
+
+        Parameters
+        ----------
+        tilt: int
+            index of elevation angle
+        drange: float
+            radius of data
+        dtype: str
+            type of product (REF, VEL, etc.)
+
+        Returns
+        -------
+        r_obj: cinrad.datastruct.Radial
+        '''
         rf_flag = False
         self.tilt = tilt
         self.drange = drange
@@ -422,6 +476,7 @@ class CinradReader:
                       drange=drange)
     
     def to_nc(self, filepath, tilt='all', distance=230):
+        r'''Store data in NetCDF format'''
         ds = NetCDFWriter(filepath)
         for i in range(self.get_nscans()):
             ds.create_radial(self.get_data(i, distance, 'REF'))
@@ -433,17 +488,53 @@ class CinradReader:
 class StandardData:
     r'''
     Class handling new cinrad standard data reading
-    
-    Parameters
+
+    Attributes
     ----------
-    filepath: str
-        path directed to the file to read
+    scantime: datetime.datetime
+        time of scan for this data 
+    timestr: str
+        time of scan for this data
+    code: str
+        code for this radar
+    angleindex_r: list
+        indices of tilts which have reflectivity data
+    angleindex_v: list
+        indices of tilts which have velocity data
+    stationlon: float
+        logitude of this radar
+    stationlat: float
+        latitude of this radar
+    radarheight: float
+        height of this radar
+    name: str
+        name of this radar
+    Rreso: float
+        radial resolution of reflectivity data
+    Vreso: float
+        radial resolution of velocity data
+    a_reso: int
+        number of radials in one scan
+    el: np.ndarray
+        elevation angles for tilts
+    drange: float
+        current selected radius of data
+    elev: float
+        elevation angle of current selected tilt
+    tilt: int
+        current selected tilt
     '''
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
 
     def __init__(self, filepath):
+        r'''
+        Parameters
+        ----------
+        filepath: str
+        path directed to the file to read
+        '''
         if filepath.endswith('bz2'):
             import bz2
             f = bz2.open(filepath, 'rb')
@@ -553,6 +644,22 @@ class StandardData:
         return data
 
     def get_data(self, tilt, drange, dtype):
+        r'''
+        Get radar raw data
+
+        Parameters
+        ----------
+        tilt: int
+            index of elevation angle
+        drange: float
+            radius of data
+        dtype: str
+            type of product (REF, VEL, etc.)
+
+        Returns
+        -------
+        r_obj: cinrad.datastruct.Radial
+        '''
         self.tilt = tilt
         self.drange = drange
         self.elev = self.el[tilt]
@@ -604,9 +711,11 @@ class StandardData:
                       drange=drange)
 
     def avaliable_product(self, tilt):
+        r'''Get all avaliable products in given tilt'''
         return list(self.data[tilt].keys())
 
     def avaliable_tilt(self, product):
+        r'''Get all avaliable tilts for given product'''
         tilt = list()
         for i in list(self.data.keys()):
             if product in self.data[i].keys():
@@ -616,13 +725,14 @@ class StandardData:
 class NexradL2Data:
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
-    
-    Parameters
-    ----------
-    filepath: str
-        path directed to the file to read
     '''
     def __init__(self, filepath):
+        r'''
+        Parameters
+        ----------
+        filepath: str
+        path directed to the file to read
+        '''
         from metpy.io.nexrad import Level2File
         self.f = Level2File(filepath)
         self.dtime = self.f.dt

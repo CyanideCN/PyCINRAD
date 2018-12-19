@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 # Author: Du puyuan
 
+import os
+from pathlib import Path
+
+import numpy as np
+from matplotlib._pylab_helpers import Gcf
+
 from .basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from ..constants import *
 from ..error import RadarPlotError
-
-import os
-from pathlib import Path
-import numpy as np
-from matplotlib._pylab_helpers import Gcf
 
 __all__ = ['PPI']
 
@@ -49,7 +50,18 @@ def _prepare(data, datatype):
     return lon, lat, data.data
 
 class PPI:
-    r'''Create a figure plotting plan position indicator'''
+    r'''
+    Create a figure plotting plan position indicator
+
+    Attributes
+    ----------
+    data: cinrad.datastruct.Radial / cinrad.datastruct.Grid
+    settings: dict
+        settings extracted from __init__ function
+    ax: cartopy.mpl.geoaxes.GeoAxes
+        cartopy axes plotting georeferenced data
+    fig: matplotlib.figure.Figure
+    '''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
                  dpi=350, highlight=None, coastline=False, extent=None, add_slice=None, **kwargs):
         self.data = data

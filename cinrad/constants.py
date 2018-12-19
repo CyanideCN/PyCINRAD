@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-#from .form_colormap import form_colormap
-from .gpf import _cmap
+import os
 
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
-import os
+from .gpf import _cmap
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500

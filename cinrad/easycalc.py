@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
+import datetime
+
+import numpy as np
+from xarray import DataArray
+
 from .utils import echo_top, vert_integrated_liquid
 from .datastruct import Radial, Grid, _Slice
 from .grid import grid_2d, resample
 from .projection import height, get_coordinate
 from .constants import deg2rad
 from .error import RadarCalculationError
-
-import numpy as np
-from xarray import DataArray
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS']
 
@@ -23,6 +25,10 @@ def _extract(Rlist):
         elev.append(i.elev)
     data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
     return data, d, a, elev
+
+def _nearest_ten_minute(date:datetime.datetime):
+    minute = (date.minute // 10) * 10
+    return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
 
 def quick_cr(Rlist):
     r'''
@@ -152,6 +158,10 @@ class VCS:
             geographic coordinates of start point i.e.(longitude, latitude)
         end_cart: list or tuple
             geographic coordinates of end point i.e.(longitude, latitude)
+
+        Returns
+        -------
+        sl: cinrad.datastruct._Slice
         '''
         if start_polar and end_polar:
             stlat = self.rl[0].stp['lat']

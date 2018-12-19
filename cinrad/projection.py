@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from .constants import deg2rad, rm
-
 import numpy as np
+
+from .constants import deg2rad, rm
 
 def height(distance, elevation, radarheight):
     r'''
