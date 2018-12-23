@@ -13,6 +13,7 @@ from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 from ._io import NetCDFWriter
+from ._dtype import SAB_dtype
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
@@ -147,80 +148,40 @@ class CinradReader:
         return radartype
 
     def _SAB_handler(self, f, SAB=True):
-        vraw = list()
-        rraw = list()
-        if SAB:
-            blocklength = 2432
-        else:
-            blocklength = 4132
-        copy = f.read(blocklength)
-        f.seek(0)
-        datalength = len(f.read())
-        num = int(datalength / blocklength)
-        azimuthx = list()
-        eleang = list()
-        boundary = list()
-        count = 0
-        deltdays = np.frombuffer(copy[32:34], 'u2')[0]
-        deltsecs = np.frombuffer(copy[28:32], 'u4')[0]
+        data = np.frombuffer(f.read(), dtype=SAB_dtype)
         start = datetime.datetime(1969, 12, 31)
-        deltday = datetime.timedelta(days=int(deltdays))
-        deltsec = datetime.timedelta(milliseconds=int(deltsecs))
+        deltday = datetime.timedelta(days=int(data['day'][0]))
+        deltsec = datetime.timedelta(milliseconds=int(data['time'][0]))
         self.scantime = start + deltday + deltsec
-        self.Rreso = np.frombuffer(copy[50:52], 'u2')[0] / 1000
-        self.Vreso = np.frombuffer(copy[52:54], 'u2')[0] / 1000
-        f.seek(98)
-        self.code = f.read(5).decode()
-        f.seek(0)
-        while count < num:
-            a = f.read(blocklength)
-            azimuth = np.frombuffer(a[36:38], 'u2')
-            datacon = np.frombuffer(a[40:42], 'u2')
-            elevangle = np.frombuffer(a[42:44], 'u2')
-            anglenum = np.frombuffer(a[44:46], 'u2')
-            veloreso = np.frombuffer(a[70:72], 'u2')
-            if SAB:
-                R = np.frombuffer(a[128:588], 'u1')
-                V = np.frombuffer(a[128:1508], 'u1')
-            else:
-                R = np.frombuffer(a[128:928], 'u1')
-                V = np.frombuffer(a[128:2528], 'u1')
-            azimuthx.append(azimuth[0])
-            eleang.append(elevangle[0])
-            vraw.append(V.tolist())
-            rraw.append(R.tolist())
-            if datacon[0] == 3:
-                boundary.append(0)
-            elif datacon[0] == 0:
-                boundary.append(count)
-            elif datacon[0] == 4:
-                boundary.append(num - 1)
-            count = count + 1
-        rraw = np.array(rraw)
-        vraw = np.array(vraw)
-        self.el = np.array(eleang)[boundary][:-1] * con
-        self.azimuth = np.array(azimuthx) * con * deg2rad
-        dv = veloreso[0]
-        r = np.ma.array(rraw, mask=(rraw == 0))
+        self.Rreso = data['gate_length_r'][0] / 1000
+        self.Vreso = data['gate_length_v'][0] / 1000
+        boundary = np.where(data['radial_num']==1)[0]
+        #f.seek(98)
+        #self.code = f.read(5).decode()
+        #f.seek(0)
+        self.el = data['elevation'][boundary][1:] * con
+        self.azimuth = data['azimuth'] * con * deg2rad
+        dv = data['v_reso'][0]
+        r = np.ma.array(data['r'], mask=(data['r'] == 0))
         r1 = (r - 2) / 2 - 32
-        rf = np.ma.array(vraw, mask=(vraw != 1))
-        v2 = np.ma.array(vraw, mask=(vraw == 0))
+        rf = np.ma.array(data['v'], mask=(data['v'] != 1))
+        v2 = np.ma.array(data['v'], mask=(data['v'] == 0))
         if dv == 2:
             v2 = (v2 - 2) / 2 - 63.5
         elif dv == 4:
             v2 = (v2 - 2) - 127
-        angleindex = np.arange(0, anglenum[0], 1)
+        angleindex = np.arange(0, data['el_num'][-1], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
-        data = dict()
+        data_out = dict()
         for i in range(len(boundary) - 1):
-            data[i] = dict()
-            data[i]['REF'] = r1[boundary[i]:boundary[i + 1]]
-            data[i]['VEL'] = v2[boundary[i]:boundary[i + 1]]
-            data[i]['RF'] = rf[boundary[i]:boundary[i + 1]]
-            data[i]['azimuth'] = self.azimuth[boundary[i]:boundary[i + 1]]
-        self.data = data
+            data_out[i] = dict()
+            data_out[i]['REF'] = r1[boundary[i]:boundary[i + 1]]
+            data_out[i]['VEL'] = v2[boundary[i]:boundary[i + 1]]
+            data_out[i]['RF'] = rf[boundary[i]:boundary[i + 1]]
+            data_out[i]['azimuth'] = self.azimuth[boundary[i]:boundary[i + 1]]
+        self.data = data_out
 
     def _CC_handler(self, f):
         vraw = list()
@@ -474,7 +435,7 @@ class CinradReader:
         yc = np.array(ycoor)
         return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
-    
+
     def to_nc(self, filepath, tilt='all', distance=230):
         r'''Store data in NetCDF format'''
         ds = NetCDFWriter(filepath)
@@ -767,7 +728,7 @@ class NexradL2Data:
         self.drange = drange
         self.elev = self.el[tilt]
         x, y, z, d, a = self.projection(self.reso)
-        radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(), 
+        radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(),
                         self.stationlon, self.stationlat, x, y, a_reso=720)
         return radial
 
@@ -778,7 +739,7 @@ class NexradL2Data:
         data_range = np.arange(gatenum) * reso + firstgate
         azi = np.array([ray[0].az_angle for ray in self.f.sweeps[self.tilt]]) * deg2rad
         datalength = int(self.drange / reso)
-        lonx, latx = get_coordinate(data_range[:datalength], azi, self.elev, self.stationlon, self.stationlat, 
+        lonx, latx = get_coordinate(data_range[:datalength], azi, self.elev, self.stationlon, self.stationlat,
                                     h_offset=h_offset)
         hght = height(data_range[:datalength], self.elev, 0) * np.ones(azi.shape[0])[:, np.newaxis]
         return lonx, latx, hght, data_range, azi

@@ -266,7 +266,7 @@ class Colormap:
                     lastblue = blue
                 line = f.readline()
         return dict(cmap=mclr.LinearSegmentedColormap('gpf', cmap))
-            
+        
 if __name__ == '__main__':
     from matplotlib.colorbar import ColorbarBase
     import matplotlib.pyplot as plt

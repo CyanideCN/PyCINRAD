@@ -9,7 +9,6 @@ from cartopy.io import shapereader
 import cartopy.crs as ccrs
 
 from ..constants import font2, modpath
-from ..error import RadarPlotError
 from .shapepatch import highlight_area
 
 def setup_plot(dpi, figsize=(10, 10)):

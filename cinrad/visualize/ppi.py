@@ -47,7 +47,7 @@ def _prepare(data, datatype):
         r = data.data
     if data.dtype is not datatype:
         raise RadarPlotError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
-    return lon, lat, data.data
+    return lon, lat, r
 
 class PPI:
     r'''
@@ -151,7 +151,7 @@ class PPI:
                 data = self.settings['slice']
                 stp = data.geoinfo['stp']
                 enp = data.geoinfo['enp']
-                sec = '_{}N{}E_{}N{}E.png'.format(stp[1], stp[0], enp[1], enp[0])
+                sec = '_{}N{}E_{}N{}E'.format(stp[1], stp[0], enp[1], enp[0])
             else:
                 sec = ''
             path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code, self.data.time,
@@ -178,6 +178,7 @@ class PPI:
         #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
         sl = data.data
+        sl[sl == 0] = -1
         xcor = data.xcor
         ycor = data.ycor
         stp = data.geoinfo['stp']

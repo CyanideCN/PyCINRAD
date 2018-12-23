@@ -174,3 +174,47 @@ class VCS:
         else:
             raise RadarCalculationError('Invalid input')
         return self._get_section(stp, enp, spacing)
+
+class RadarMosaic:
+    r'''Untested'''
+    def __init__(self, data=None):
+        self.data_list = list()
+        self.add_data(data)
+
+    def _check_time(self):
+        d_list = [_nearest_ten_minute(datetime.datetime.strptime('%Y%m%d%H%M%S', i.time)) for i in self.data_list]
+        if np.average(d_list) != d_list[0]:
+            raise RadarCalculationError('Input radar data have inconsistent time')
+
+    def add_data(self, data):
+        if isinstance(data, Radial):
+            self.data_list.append(data)
+        elif isinstance(data, (list, tuple)):
+            for i in data:
+                self.data_list.append(i)
+        self._check_time()
+
+    def gen_longitude(self, extent=[], points=1000):
+        if extent:
+            return np.linspace(extent[0], extent[1], points)
+        else:
+            left_coor = np.min([np.min(i.lon) for i in self.data_list]) - 2
+            right_coor = np.max([np.max(i.lon) for i in self.data_list]) + 2
+            return np.linspace(left_coor, right_coor, points)
+
+    def gen_latitude(self, extent=[], points=1000):
+        if extent:
+            return np.linspace(extent[0], extent[1], points)
+        else:
+            bottom_coor = np.min([np.min(i.lat) for i in self.data_list]) - 2
+            top_coor = np.max([np.max(i.lat) for i in self.data_list]) + 2
+            return np.linspace(bottom_coor, top_coor, points)
+
+    def merge(self):
+        lon = self.gen_longitude()
+        lat = self.gen_latitude()
+        data_tmp = list()
+        for i in self.data_list:
+            data, x, y = grid_2d(i.data, i.lon, i.lat, x_out=lon, y_out=lat)
+            data_tmp.append(data)
+        return np.average(data_tmp, axis=0), x, y
