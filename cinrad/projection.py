@@ -27,7 +27,7 @@ def height(distance, elevation, radarheight):
 def get_coordinate(distance, azimuth, elevation, centerlon, centerlat, h_offset=True):
     r'''
     Convert polar coordinates to geographic coordinates with the given radar station position.
-    
+
     Parameters
     ----------
     distance: int or float or numpy.ndarray
