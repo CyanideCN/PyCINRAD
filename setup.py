@@ -16,7 +16,7 @@ setup(
     python_requires='>=3.5',
     install_requires = ['metpy>=0.8', 'cartopy>=0.15', 'pyshp>=1.2', 'numba', 'pyresample'],
     data_files=[('cinrad', ['RadarStation.npy']),
-                    ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.txt')),
+                    ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.cmap')),
                     ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
     scripts = [],
     entry_points = {
