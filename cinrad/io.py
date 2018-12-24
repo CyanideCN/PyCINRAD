@@ -7,13 +7,14 @@ import datetime
 from pathlib import Path
 
 import numpy as np
+from numba import jit
 
 from .constants import deg2rad, con, con2, rm, modpath
 from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
 from ._io import NetCDFWriter
-from ._dtype import SAB_dtype
+from ._dtype import SAB_dtype, CAB_dtype
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
@@ -148,7 +149,12 @@ class CinradReader:
         return radartype
 
     def _SAB_handler(self, f, SAB=True):
-        data = np.frombuffer(f.read(), dtype=SAB_dtype)
+        # parse configuration
+        if SAB:
+            radar_dtype = SAB_dtype
+        else:
+            radar_dtype = CAB_dtype
+        data = np.frombuffer(f.read(), dtype=radar_dtype)
         start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(data['day'][0]))
         deltsec = datetime.timedelta(milliseconds=int(data['time'][0]))
@@ -156,32 +162,37 @@ class CinradReader:
         self.Rreso = data['gate_length_r'][0] / 1000
         self.Vreso = data['gate_length_v'][0] / 1000
         boundary = np.where(data['radial_num']==1)[0]
-        #f.seek(98)
-        #self.code = f.read(5).decode()
-        #f.seek(0)
         self.el = data['elevation'][boundary][1:] * con
         self.azimuth = data['azimuth'] * con * deg2rad
         dv = data['v_reso'][0]
-        r = np.ma.array(data['r'], mask=(data['r'] == 0))
-        r1 = (r - 2) / 2 - 32
-        rf = np.ma.array(data['v'], mask=(data['v'] != 1))
-        v2 = np.ma.array(data['v'], mask=(data['v'] == 0))
-        if dv == 2:
-            v2 = (v2 - 2) / 2 - 63.5
-        elif dv == 4:
-            v2 = (v2 - 2) - 127
+        f.seek(0)
+        size = radar_dtype.itemsize
+        b = np.append(boundary, data.shape[0] - 1)
+        gnr = data['gate_num_r'][boundary]
+        gnv = data['gate_num_v'][boundary]
+        out_data = dict()
+        for bidx, rnum, vnum, idx in zip(np.diff(b), gnr, gnv, range(len(b))):
+            temp_dtype = [('header', 'u1', 128),
+                          ('ref', 'u1', rnum),
+                          ('vel', 'u1', vnum),
+                          ('sw', 'u1', vnum),
+                          ('res', 'u1', size - 128 - rnum - vnum * 2)]
+            da = np.frombuffer(f.read(bidx * size), dtype=np.dtype(temp_dtype))
+            out_data[idx] = dict()
+            out_data[idx]['REF'] = (np.ma.array(da['ref'], mask=(da['ref'] == 0)) - 2) / 2 - 32
+            v = np.ma.array(da['vel'], mask=(da['vel'] < 2))
+            if dv == 2:
+                out_data[idx]['VEL'] = (v - 2) / 2 - 63.5
+            elif dv == 4:
+                out_data[idx]['VEL'] = v - 2 - 127
+            out_data[idx]['SW'] = da['sw']
+            out_data[idx]['azimuth'] = self.azimuth[b[idx]:b[idx + 1]]
+            out_data[idx]['RF'] = np.ma.array(da['vel'], mask=(da['vel'] != 1))
         angleindex = np.arange(0, data['el_num'][-1], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
-        data_out = dict()
-        for i in range(len(boundary) - 1):
-            data_out[i] = dict()
-            data_out[i]['REF'] = r1[boundary[i]:boundary[i + 1]]
-            data_out[i]['VEL'] = v2[boundary[i]:boundary[i + 1]]
-            data_out[i]['RF'] = rf[boundary[i]:boundary[i + 1]]
-            data_out[i]['azimuth'] = self.azimuth[boundary[i]:boundary[i + 1]]
-        self.data = data_out
+        self.data = out_data
 
     def _CC_handler(self, f):
         vraw = list()
@@ -357,28 +368,19 @@ class CinradReader:
         '''
         rf_flag = False
         self.tilt = tilt
+        reso = self.Rreso if dtype == 'REF' else self.Vreso
+        dmax = int(self.data[tilt][dtype][0].shape[0] * reso)
+        if dmax < drange:
+            drange = dmax
+            warnings.warn('Requested data range exceed max range in this tilt, switch to the max range')
         self.drange = drange
         self.elev = self.el[tilt]
         try:
             data = np.ma.array(self.data[tilt][dtype])
         except KeyError:
             raise RadarDecodeError('Invalid product name')
-        reso = self.Rreso if dtype == 'REF' else self.Vreso
         length = data.shape[1] * reso
         cut = data.T[:int(drange / reso)]
-        if dtype == 'REF': # Mask invalid reflectivity data
-            c = np.copy(cut)
-            c[c == np.ma.masked] = 0
-            radialavr = [np.average(i) for i in c]
-            threshold = 4
-            g = np.gradient(radialavr)
-            try:
-                num = np.where(g[50:] > threshold)[0][0] + 50
-                rm = cut[:num]
-                nanmatrix = np.zeros((int(drange / self.Rreso) - num, cut.shape[1])) * np.ma.masked
-                cut = np.ma.concatenate((rm, nanmatrix))
-            except IndexError:
-                pass
         if dtype == 'VEL':
             try:
                 rf = self.data[tilt]['RF']
