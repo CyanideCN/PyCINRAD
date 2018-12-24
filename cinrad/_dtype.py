@@ -40,4 +40,10 @@ _SAB_DATA = [('r', 'u1', 460),
              ('w', 'u1', 920),
              ('res4', 'u2', 2)]
 
+_CAB_DATA = [('r', 'u1', 800),
+             ('v', 'u1', 1600),
+             ('w', 'u1', 1600),
+             ('res4', 'u2', 2)]
+
 SAB_dtype = np.dtype(_S_HEADER + _S_INFO + _SAB_DATA)
+CAB_dtype = np.dtype(_S_HEADER + _S_INFO + _CAB_DATA)
