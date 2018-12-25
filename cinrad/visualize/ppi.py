@@ -131,14 +131,18 @@ class PPI:
         add_shp(self.geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
+        ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as 
+                                                          # the colorbar axes (for matplotlib 3 compatibility)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
         if not isinstance(clabel, type(None)):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
-        text(ax, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
-        ax.text(0, 2.13, prodname[dtype], fontproperties=font2)
-        ax.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
+        ax2.yaxis.set_visible(False)
+        ax2.xaxis.set_visible(False)
+        text(ax2, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
+        ax2.text(0, 2.13, prodname[dtype], fontproperties=font2)
+        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'VEL':
-            ax.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
         return self.geoax
