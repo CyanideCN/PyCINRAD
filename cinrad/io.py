@@ -7,12 +7,12 @@ import datetime
 from pathlib import Path
 
 import numpy as np
-from numba import jit
 
 from .constants import deg2rad, con, con2, rm, modpath
 from .datastruct import Radial, _Slice
 from .projection import get_coordinate, height
 from .error import RadarDecodeError
+from .utils import _find_azimuth_position
 from ._io import NetCDFWriter
 from ._dtype import SAB_dtype, CAB_dtype
 
@@ -301,7 +301,7 @@ class CinradReader:
             return 360
 
     def get_azimuth_angles(self, scans=None):
-        r'''Get index of input azimuth angle'''
+        r'''Get index of input azimuth angle (radian)'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             if scans is None:
                 return self.azimuth
@@ -326,28 +326,6 @@ class CinradReader:
 
     def get_range(self, drange, reso):
         return np.arange(reso, drange + reso, reso)
-
-    def _find_azimuth_position(self, azimuth):
-        r'''Find the relative position of a certain azimuth angle in the data array.'''
-        count = 0
-        self.azim = self.get_azimuth_angles(self.tilt) * deg2rad
-        if azimuth < 0.3:
-            azimuth = 0.5 #TODO: Fix bug occured when azimuth is smaller than 0.3 degree
-        azimuth_ = azimuth * deg2rad
-        a_sorted = np.sort(self.azim)
-        add = False
-        while count < len(self.azim):
-            if azimuth_ == a_sorted[count]:
-                break
-            elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
-                if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
-                    add = True
-                break
-            count += 1
-        if add:
-            count += 1
-        pos = np.where(self.azim == a_sorted[count])[0][0]
-        return pos
 
     def get_data(self, tilt, drange, dtype):
         r'''
@@ -416,15 +394,16 @@ class CinradReader:
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=9):
+    def rhi(self, azimuth, drange):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
+        azimuth *= deg2rad
         rhi = list()
         xcoor = list()
         ycoor = list()
         dist = np.arange(1, drange + 1, 1)
-        for i in self.angleindex_r[startangle:stopangle]:
+        for i in self.angleindex_r:
             cac = self.get_data(i, drange, 'REF').data
-            pos = self._find_azimuth_position(azimuth)
+            pos = _find_azimuth_position(self.data[i]['azimuth'], azimuth)
             if pos is None:
                 nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
@@ -537,28 +516,6 @@ class StandardData:
             self.set_station_name(info[0])
             self.set_radarheight(info[4])
 
-    def _find_azimuth_position(self, azimuth):
-        r'''Find the relative position of a certain azimuth angle in the data array.'''
-        count = 0
-        azim = np.array(self.ad[self.level]) * deg2rad
-        if azimuth < 0.3:
-            azimuth = 0.5
-        azimuth_ = azimuth * deg2rad
-        a_sorted = np.sort(azim)
-        add = False
-        while count < len(azim):
-            if azimuth_ == a_sorted[count]:
-                break
-            elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
-                if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
-                    add = True
-                break
-            count += 1
-        if add:
-            count += 1
-        pos = np.where(azim == a_sorted[count])[0][0]
-        return pos
-
     def _parse_configuration(self, f):
         f.seek(336)
         scan_num = np.frombuffer(f.read(4), 'u4')[0]
@@ -652,15 +609,16 @@ class StandardData:
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def rhi(self, azimuth, drange, startangle=0, stopangle=10):
+    def rhi(self, azimuth, drange):
         r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
+        azimuth *= deg2rad
         rhi = list()
         xcoor = list()
         ycoor = list()
         dist = np.arange(1, drange + 1, 1)
-        for i in self.angleindex_r[startangle:stopangle]:
-            cac = self.reflectivity(i, drange).data
-            pos = self._find_azimuth_position(azimuth)
+        for i in self.angleindex_r:
+            cac = self.get_data(i, drange, 'REF').data
+            pos = _find_azimuth_position(self.data[i]['azimuth'] * deg2rad, azimuth)
             if pos is None:
                 nanarray = np.zeros((drange))
                 rhi.append(nanarray.tolist())
@@ -670,6 +628,7 @@ class StandardData:
             xcoor.append((dist * np.cos(theta)).tolist())
             ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * rm ** 2)).tolist())
         rhi = np.array(rhi)
+        rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
         return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
