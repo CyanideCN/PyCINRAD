@@ -162,7 +162,7 @@ class CinradReader:
         self.Rreso = data['gate_length_r'][0] / 1000
         self.Vreso = data['gate_length_v'][0] / 1000
         boundary = np.where(data['radial_num']==1)[0]
-        self.el = data['elevation'][boundary][1:] * con
+        self.el = data['elevation'][boundary] * con
         self.azimuth = data['azimuth'] * con * deg2rad
         dv = data['v_reso'][0]
         f.seek(0)
@@ -371,8 +371,7 @@ class CinradReader:
         reso = self.Rreso if dtype == 'REF' else self.Vreso
         dmax = int(self.data[tilt][dtype][0].shape[0] * reso)
         if dmax < drange:
-            drange = dmax
-            warnings.warn('Requested data range exceed max range in this tilt, switch to the max range')
+            warnings.warn('Requested data range exceed max range in this tilt')
         self.drange = drange
         self.elev = self.el[tilt]
         try:
@@ -381,6 +380,8 @@ class CinradReader:
             raise RadarDecodeError('Invalid product name')
         length = data.shape[1] * reso
         cut = data.T[:int(drange / reso)]
+        shape_diff = int(drange / reso) - cut.shape[0]
+        append = np.zeros((int(shape_diff), cut.shape[1])) * np.ma.masked
         if dtype == 'VEL':
             try:
                 rf = self.data[tilt]['RF']
@@ -389,8 +390,9 @@ class CinradReader:
             else:
                 rf_flag = True
                 rf = rf.T[:int(drange / reso)]
+                rf = np.ma.vstack([rf, append])
         #r = np.ma.array(cut, mask=np.isnan(cut))
-        r = cut
+        r = np.ma.vstack([cut, append])
         if rf_flag:
             r.mask = np.logical_or(r.mask, ~rf.mask)
             ret = (r.T, rf.T)
