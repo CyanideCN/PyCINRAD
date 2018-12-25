@@ -131,7 +131,7 @@ class PPI:
         add_shp(self.geoax, coastline=self.settings['coastline'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
-        ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as 
+        ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
                                                           # the colorbar axes (for matplotlib 3 compatibility)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
         if not isinstance(clabel, type(None)):
