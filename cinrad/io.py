@@ -5,6 +5,7 @@ import os
 import warnings
 import datetime
 from pathlib import Path
+import bz2
 
 import numpy as np
 
@@ -14,7 +15,7 @@ from .projection import get_coordinate, height
 from .error import RadarDecodeError
 from .utils import _find_azimuth_position
 from ._io import NetCDFWriter
-from ._dtype import SAB_dtype, CAB_dtype
+from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
@@ -87,7 +88,6 @@ class CinradReader:
         filename = path.name
         filetype = path.suffix
         if filetype.endswith('bz2'):
-            import bz2
             f = bz2.open(filepath, 'rb')
         else:
             f = open(filepath, 'rb')
@@ -195,12 +195,9 @@ class CinradReader:
         self.data = out_data
 
     def _CC_handler(self, f):
+        # TODO: restructure header decoding
         vraw = list()
         rraw = list()
-        blocklength = 3000
-        f.seek(0)
-        datalength = len(f.read())
-        num = int(datalength / blocklength)
         f.seek(106)
         self.code = f.read(10).decode().split('\x00')[0]
         f.seek(184)
@@ -209,26 +206,23 @@ class CinradReader:
                                           hour=np.frombuffer(f.read(1), 'u1')[0], minute=np.frombuffer(f.read(1), 'u1')[0],
                                           second=np.frombuffer(f.read(1), 'u1')[0])
         count = 0
+        f.seek(218)
+        param = np.frombuffer(f.read(660), CC_param)
+        stop_angle = np.where(param['elevation_angle'] < param['elevation_angle'][0])[0][0]
+        self.el = param['elevation_angle'][:stop_angle] / 100
         f.seek(1024)
-        while count < num:
-            a = f.read(blocklength)
-            r = np.frombuffer(a[:1000], np.short).astype(float)
-            v = np.frombuffer(a[1000:2000], np.short).astype(float)
-            rraw.append(r)
-            vraw.append(v)
-            count += 1
-        rraw = np.array(rraw)
-        r = np.ma.array(rraw, mask=(rraw == -32768)) / 10
-        vraw = np.array(vraw)
-        v = np.ma.array(vraw, mask=(vraw == -32768)) / 10
+        data = np.frombuffer(f.read(), CC_data)
+        r = np.ma.array(data['Z'], mask=(data['Z'] == -0x8000)) / 10
+        v = np.ma.array(data['V'], mask=(data['V'] == -0x8000)) / 10
+        w = np.ma.array(data['W'], mask=(data['W'] == -0x8000)) / 10
         self.Rreso = 0.3
         self.Vreso = 0.3
-        self.el = [0.5, 1.45, 2.4, 3.4, 4.3, 6, 9.9, 14.6, 19.5]
         data = dict()
         for i in range(len(self.el) - 1):
             data[i] = dict()
-            data[i]['REF'] = rraw[i * 512: (i + 1) * 512] / 10
+            data[i]['REF'] = r[i * 512: (i + 1) * 512]
             data[i]['VEL'] = v[i * 512: (i + 1) * 512]
+            data[i]['SW'] = w[i * 512: (i + 1) * 512]
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
         self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
@@ -480,7 +474,6 @@ class StandardData:
         path directed to the file to read
         '''
         if filepath.endswith('bz2'):
-            import bz2
             f = bz2.open(filepath, 'rb')
         else:
             f = open(filepath, 'rb')
