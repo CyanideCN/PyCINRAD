@@ -2,12 +2,10 @@
 # Author: Puyuan Du
 
 import numpy as np
-from numba import jit
 
 from .constants import deg2rad
 from .projection import height
 
-@jit(nogil=True)
 def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     r'''
     Calculate vertically integrated liquid (VIL) in one full scan
@@ -33,11 +31,10 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     xshape, yshape = ref[0].shape
     distance *= 1000
     hi_arr = distance * np.sin(v_beam_width / 2)
-    vil = _vil_iter_numba(xshape, yshape, ref, distance, elev, hi_arr, threshold)
+    vil = _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold)
     return vil
 
-#@jit(nogil=True)
-def _vil_iter_numba(xshape, yshape, ref, distance, elev, hi_arr, threshold):
+def _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold):
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
@@ -62,7 +59,6 @@ def _vil_iter_numba(xshape, yshape, ref, distance, elev, hi_arr, threshold):
             VIL[i][j] = m1 + mb + mt
     return VIL
 
-@jit(nogil=True)
 def echo_top(ref, distance, elev, radarheight, threshold=18.):
     r'''
     Calculate height of echo tops (ET) in one full scan
