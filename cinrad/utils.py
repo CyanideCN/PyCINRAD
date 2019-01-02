@@ -28,12 +28,16 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     data: numpy.ndarray
         vertically integrated liquid data
     '''
-    const = 3.44e-6
     v_beam_width = 0.99 * deg2rad
     elev = np.array(elev) * deg2rad
     xshape, yshape = ref[0].shape
     distance *= 1000
     hi_arr = distance * np.sin(v_beam_width / 2)
+    vil = _vil_iter_numba(xshape, yshape, ref, distance, elev, hi_arr, threshold)
+    return vil
+
+#@jit(nogil=True)
+def _vil_iter_numba(xshape, yshape, ref, distance, elev, hi_arr, threshold):
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
@@ -52,9 +56,9 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
             for l in position[:-1].astype(int):
                 ht = dist * (np.sin(elev[l + 1]) - np.sin(elev[l]))
                 factor = ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7)
-                m1 += const * factor * ht
-            mb = const * vertical[pos_s] ** (4 / 7) * hi
-            mt = const * vertical[pos_e] ** (4 / 7) * hi
+                m1 += 3.44e-6 * factor * ht
+            mb = 3.44e-6 * vertical[pos_s] ** (4 / 7) * hi
+            mt = 3.44e-6 * vertical[pos_e] ** (4 / 7) * hi
             VIL[i][j] = m1 + mb + mt
     return VIL
 

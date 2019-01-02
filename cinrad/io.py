@@ -87,7 +87,7 @@ class CinradReader:
         path = Path(filepath)
         filename = path.name
         filetype = path.suffix
-        if filetype.endswith('bz2'):
+        if filetype.lower().endswith('bz2'):
             f = bz2.open(filepath, 'rb')
         else:
             f = open(filepath, 'rb')
@@ -473,7 +473,7 @@ class StandardData:
         filepath: str
         path directed to the file to read
         '''
-        if filepath.endswith('bz2'):
+        if filepath.lower().endswith('bz2'):
             f = bz2.open(filepath, 'rb')
         else:
             f = open(filepath, 'rb')
