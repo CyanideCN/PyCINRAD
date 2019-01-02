@@ -65,9 +65,9 @@ def grid_2d(data, x, y, x_out=None, y_out=None, resolution=(1000, 1000)):
     '''
     odf = GridDefinition(x, y)
     r_x, r_y = resolution
-    if not x_out:
+    if isinstance(x_out, type(None)):
         x_out = np.linspace(x.min(), x.max(), r_x)
-    if not y_out:
+    if isinstance(y_out, type(None)):
         y_out = np.linspace(y.min(), y.max(), r_y)
     t_x, t_y = np.meshgrid(x_out, y_out)
     tdf = GridDefinition(t_x, t_y)

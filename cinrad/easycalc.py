@@ -2,6 +2,7 @@
 # Author: Puyuan Du
 
 import datetime
+import time
 
 import numpy as np
 from xarray import DataArray
@@ -177,13 +178,14 @@ class VCS:
 
 class RadarMosaic:
     r'''Untested'''
-    def __init__(self, data=None):
+    def __init__(self, data):
         self.data_list = list()
         self.add_data(data)
 
     def _check_time(self):
-        d_list = [_nearest_ten_minute(datetime.datetime.strptime('%Y%m%d%H%M%S', i.time)) for i in self.data_list]
-        if np.average(d_list) != d_list[0]:
+        d_list = [_nearest_ten_minute(datetime.datetime.strptime(i.time, '%Y%m%d%H%M%S')) for i in self.data_list]
+        d_list_stamp = [time.mktime(i.timetuple()) for i in d_list]
+        if np.average(d_list_stamp) != d_list_stamp[0]:
             raise RadarCalculationError('Input radar data have inconsistent time')
 
     def add_data(self, data):
@@ -198,16 +200,16 @@ class RadarMosaic:
         if extent:
             return np.linspace(extent[0], extent[1], points)
         else:
-            left_coor = np.min([np.min(i.lon) for i in self.data_list]) - 2
-            right_coor = np.max([np.max(i.lon) for i in self.data_list]) + 2
+            left_coor = np.min([np.min(i.lon) for i in self.data_list])# - 0.5
+            right_coor = np.max([np.max(i.lon) for i in self.data_list])# + 0.5
             return np.linspace(left_coor, right_coor, points)
 
     def gen_latitude(self, extent=[], points=1000):
         if extent:
             return np.linspace(extent[0], extent[1], points)
         else:
-            bottom_coor = np.min([np.min(i.lat) for i in self.data_list]) - 2
-            top_coor = np.max([np.max(i.lat) for i in self.data_list]) + 2
+            bottom_coor = np.min([np.min(i.lat) for i in self.data_list])# - 0.5
+            top_coor = np.max([np.max(i.lat) for i in self.data_list])# + 0.5
             return np.linspace(bottom_coor, top_coor, points)
 
     def merge(self):
@@ -216,5 +218,6 @@ class RadarMosaic:
         data_tmp = list()
         for i in self.data_list:
             data, x, y = grid_2d(i.data, i.lon, i.lat, x_out=lon, y_out=lat)
-            data_tmp.append(data)
-        return np.average(data_tmp, axis=0), x, y
+            data_tmp.append(np.ma.array(data, mask=(data == 0)))
+        out_data = np.ma.average(data_tmp, axis=0)
+        return x, y, out_data
