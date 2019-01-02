@@ -14,7 +14,7 @@ setup(
     include_package_data = True,
     platforms = 'Windows',
     python_requires='>=3.5',
-    install_requires = ['metpy>=0.8', 'cartopy>=0.15', 'pyshp==1.2.12', 'numba', 'pyresample', 'matplotlib>=2.2'],
+    install_requires = ['metpy>=0.8', 'cartopy>=0.15', 'pyshp==1.2.12', 'pyresample', 'matplotlib>=2.2'],
     data_files=[('cinrad', ['RadarStation.npy']),
                     ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.cmap')),
                     ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
