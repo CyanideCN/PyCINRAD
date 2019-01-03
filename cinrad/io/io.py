@@ -15,7 +15,7 @@ from ..projection import get_coordinate, height
 from ..error import RadarDecodeError
 from ..utils import _find_azimuth_position
 from ._io import NetCDFWriter
-from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data
+from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
@@ -195,21 +195,15 @@ class CinradReader:
         self.data = out_data
 
     def _CC_handler(self, f):
-        # TODO: restructure header decoding
-        vraw = list()
-        rraw = list()
-        f.seek(106)
-        self.code = f.read(10).decode().split('\x00')[0]
-        f.seek(184)
-        self.scantime = datetime.datetime(year=np.frombuffer(f.read(1), 'u1')[0] * 100 + np.frombuffer(f.read(1), 'u1')[0],
-                                          month=np.frombuffer(f.read(1), 'u1')[0], day=np.frombuffer(f.read(1), 'u1')[0],
-                                          hour=np.frombuffer(f.read(1), 'u1')[0], minute=np.frombuffer(f.read(1), 'u1')[0],
-                                          second=np.frombuffer(f.read(1), 'u1')[0])
-        count = 0
+        header = np.frombuffer(f.read(1024), CC_header)
+        utc_offset = datetime.timedelta(hours=8)
+        self.scantime = datetime.datetime(header['ucEYear1'][0] * 10 + header['ucEYear2'][0], header['ucEMonth'][0],
+                                          header['ucEDay'][0], header['ucEHour'], header['ucEMinute'],
+                                          header['ucESecond']) - utc_offset
         f.seek(218)
         param = np.frombuffer(f.read(660), CC_param)
-        stop_angle = np.where(param['elevation_angle'] < param['elevation_angle'][0])[0][0]
-        self.el = param['elevation_angle'][:stop_angle] / 100
+        stop_angle = np.where(param['usAngle'] < param['usAngle'][0])[0][0]
+        self.el = param['usAngle'][:stop_angle] / 100
         f.seek(1024)
         data = np.frombuffer(f.read(), CC_data)
         r = np.ma.array(data['Z'], mask=(data['Z'] == -0x8000)) / 10

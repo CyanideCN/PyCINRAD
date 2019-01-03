@@ -89,3 +89,9 @@ scan_param = [("usMaxV", "u2"),
 
 scan_param_dtype = np.dtype(scan_param)
 
+data = [("Z", "500i2"),
+        ("V", "500i2"),
+        ("W", "500i2")]
+
+data_dtype = np.dtype(data)
+

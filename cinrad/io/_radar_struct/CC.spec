@@ -81,3 +81,7 @@ usSpulseW ushort
 usAngle short
 cSweepStatus B
 cAmbiguousp B
+#data#
+Z 500i2
+V 500i2
+W 500i2
