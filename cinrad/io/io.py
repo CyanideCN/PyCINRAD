@@ -9,11 +9,11 @@ import bz2
 
 import numpy as np
 
-from .constants import deg2rad, con, con2, rm, modpath
-from .datastruct import Radial, _Slice
-from .projection import get_coordinate, height
-from .error import RadarDecodeError
-from .utils import _find_azimuth_position
+from ..constants import deg2rad, con, con2, rm, modpath
+from ..datastruct import Radial, _Slice
+from ..projection import get_coordinate, height
+from ..error import RadarDecodeError
+from ..utils import _find_azimuth_position
 from ._io import NetCDFWriter
 from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data
 

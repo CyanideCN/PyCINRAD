@@ -5,7 +5,7 @@ import warnings
 
 from netCDF4 import Dataset
 
-from .datastruct import Radial, Grid # Coding convenience
+from ..datastruct import Radial, Grid # Coding convenience
 
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Reflectivity',
             'ET':'Echo Tops', 'VIL':'Vertically Integrated Liquid', 'ZDR':'Differential Reflectivity',
