@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from ._radar_struct.CC import header_dtype as CC_param
-from ._radar_struct.CC import header_dtype as CC_data
-
 import numpy as np
+
+from ._radar_struct.CC import scan_param as CC_param
+from ._radar_struct.CC import header_dtype as CC_header
+from ._radar_struct.CC import data_dtype as CC_data
 
 _S_HEADER = [('spare', 'u2', 7),
              ('a', 'u2'),
