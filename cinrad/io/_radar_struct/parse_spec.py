@@ -1,5 +1,3 @@
-import os
-os.chdir(r'C:\Users\27455\source\repos\PyCINRAD\cinrad\io\_radar_struct')
 from glob import glob
 
 def replace_dtype(s:str):
