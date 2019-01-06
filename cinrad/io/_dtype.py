@@ -3,9 +3,11 @@
 
 import numpy as np
 
-from ._radar_struct.CC import scan_param as CC_param
-from ._radar_struct.CC import header_dtype as CC_header
-from ._radar_struct.CC import data_dtype as CC_data
+def gen_CC():
+    from ._radar_struct.CC import scan_param_dtype, header_dtype, data_dtype
+    return scan_param, header_dtype, data_dtype
+
+CC_param, CC_header, CC_data = gen_CC()
 
 _S_HEADER = [('spare', 'u2', 7),
              ('a', 'u2'),

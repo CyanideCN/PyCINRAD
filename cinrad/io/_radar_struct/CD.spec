@@ -4,10 +4,10 @@ province 20c
 station 40c
 stationnumber 10c
 radartype 20c
-longitude 16c
-latitude 16c
-longitudevalue long
-latitudevalue long
+Longitude 16c
+Latitude 16c
+Longitudevalue long
+Latitudevalue long
 height long
 Maxangle short
 Opangle short
