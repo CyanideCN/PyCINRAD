@@ -149,7 +149,6 @@ class CinradReader:
         return radartype
 
     def _SAB_handler(self, f, SAB=True):
-        # parse configuration
         if SAB:
             radar_dtype = SAB_dtype
         else:
@@ -165,6 +164,7 @@ class CinradReader:
         self.el = data['elevation'][boundary] * con
         self.azimuth = data['azimuth'] * con * deg2rad
         dv = data['v_reso'][0]
+        self.nyquist_v = data['nyquist_vel'][0] / 100
         f.seek(0)
         size = radar_dtype.itemsize
         b = np.append(boundary, data.shape[0] - 1)
