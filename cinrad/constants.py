@@ -37,7 +37,7 @@ if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
 else:
     from matplotlib.font_manager import fontManager
     fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
-    font2 = FontProperties(fonts[0])
+    font2 = FontProperties(fonts[0].fname)
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)

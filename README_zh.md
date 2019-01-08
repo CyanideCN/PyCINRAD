@@ -105,7 +105,7 @@ fig('D:\\')
 
 ### cinrad.visualize
 
-雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct.Raw`类型。
+雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct`包含的类型。
 
 例子：
 
@@ -136,6 +136,7 @@ fig('D:\\')
 |`dpi`|分辨率|
 |`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
 |`add_slice`|在`ppi`图中加上`vcs`的数据|
+|`style`|背景颜色，可设置为黑色`black`或者白色`white`|
 
 同时`PPI`类中定义有其他绘图函数：
 ##### PPI.plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs)

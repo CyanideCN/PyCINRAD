@@ -11,10 +11,11 @@ import cartopy.crs as ccrs
 from ..constants import font2, modpath
 from .shapepatch import highlight_area
 
-def setup_plot(dpi, figsize=(10, 10)):
+def setup_plot(dpi, figsize=(10, 10), style='black'):
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis('off')
-    plt.style.use('dark_background')
+    if style == 'black':
+        plt.style.use('dark_background')
     return fig
 
 def setup_axes(fig, cmap, norm):
@@ -38,15 +39,19 @@ def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches = 0)
     plt.close('all')
 
-def add_shp(renderer, coastline=False):
+def add_shp(renderer, coastline=False, style='black'):
     root = os.path.join(modpath, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
-    renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor='grey', facecolor='None', zorder=1, linewidth=0.5)
-    renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor='lightgrey', facecolor='None', zorder=1, linewidth=0.7)
-    renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor='white', facecolor='None', zorder=1, linewidth=1)
+    if style == 'black':
+        line_colors = ['grey', 'lightgrey', 'white']
+    elif style == 'white':
+        line_colors = ['lightgrey', 'grey', 'black']
+    renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=1, linewidth=0.5)
+    renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=1, linewidth=0.7)
+    renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=1, linewidth=1)
     if coastline:
-        renderer.coastlines(resolution='10m', color='white', zorder=1, linewidth=1)
+        renderer.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)
