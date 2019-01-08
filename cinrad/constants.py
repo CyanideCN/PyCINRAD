@@ -31,7 +31,14 @@ et_cbar = _cmap('ET_reverse')['cmap']
 vil_cmap = _cmap('VIL')['cmap']
 vil_cbar = _cmap('VIL_reverse')['cmap']
 rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
-font2 = FontProperties(fname=r"C:\\WINDOWS\\Fonts\\msyh.ttc")
+
+if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
+    font2 = FontProperties(fname='C:\\WINDOWS\\Fonts\\msyh.ttc')
+else:
+    from matplotlib.font_manager import fontManager
+    fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
+    font2 = FontProperties(fonts[0])
+
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
 norm3 = cmx.Normalize(-1, 0)
