@@ -63,11 +63,12 @@ class PPI:
     fig: matplotlib.figure.Figure
     '''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
-                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None, **kwargs):
+                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
+                 style='black', **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice}
+                         'extent':extent, 'slice':add_slice, 'style':style}
         self.ax = self._plot(**kwargs)
 
     def __call__(self, *fpath):
@@ -117,7 +118,7 @@ class PPI:
         if self.data.dtype == 'VEL' and self.data.include_rf:
             rf = var[1]
             var = var[0]
-        self.fig = setup_plot(self.settings['dpi'])
+        self.fig = setup_plot(self.settings['dpi'], style=self.settings['style'])
         self.geoax = set_geoaxes(lon, lat, extent=self.settings['extent'])
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
@@ -128,7 +129,7 @@ class PPI:
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        add_shp(self.geoax, coastline=self.settings['coastline'])
+        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
