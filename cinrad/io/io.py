@@ -197,7 +197,7 @@ class CinradReader:
     def _CC_handler(self, f):
         header = np.frombuffer(f.read(1024), CC_header)
         utc_offset = datetime.timedelta(hours=8)
-        self.scantime = datetime.datetime(header['ucEYear1'][0] * 10 + header['ucEYear2'][0], header['ucEMonth'][0],
+        self.scantime = datetime.datetime(header['ucEYear1'][0] * 100 + header['ucEYear2'][0], header['ucEMonth'][0],
                                           header['ucEDay'][0], header['ucEHour'], header['ucEMinute'],
                                           header['ucESecond']) - utc_offset
         f.seek(218)
@@ -212,7 +212,7 @@ class CinradReader:
         self.Rreso = 0.3
         self.Vreso = 0.3
         data = dict()
-        for i in range(len(self.el) - 1):
+        for i in range(len(self.el)):
             data[i] = dict()
             data[i]['REF'] = r[i * 512: (i + 1) * 512]
             data[i]['VEL'] = v[i * 512: (i + 1) * 512]
@@ -335,7 +335,7 @@ class CinradReader:
         rf_flag = False
         self.tilt = tilt
         reso = self.Rreso if dtype == 'REF' else self.Vreso
-        dmax = int(self.data[tilt][dtype][0].shape[0] * reso)
+        dmax = np.round(self.data[tilt][dtype][0].shape[0] * reso)
         if dmax < drange:
             warnings.warn('Requested data range exceed max range in this tilt')
         self.drange = drange
@@ -345,9 +345,9 @@ class CinradReader:
         except KeyError:
             raise RadarDecodeError('Invalid product name')
         length = data.shape[1] * reso
-        cut = data.T[:int(drange / reso)]
-        shape_diff = int(drange / reso) - cut.shape[0]
-        append = np.zeros((int(shape_diff), cut.shape[1])) * np.ma.masked
+        cut = data.T[:int(np.round(drange / reso))]
+        shape_diff = np.round(drange / reso) - cut.shape[0]
+        append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
         if dtype == 'VEL':
             try:
                 rf = self.data[tilt]['RF']
@@ -355,7 +355,7 @@ class CinradReader:
                 pass
             else:
                 rf_flag = True
-                rf = rf.T[:int(drange / reso)]
+                rf = rf.T[:int(np.round(drange / reso))]
                 rf = np.ma.vstack([rf, append])
         #r = np.ma.array(cut, mask=np.isnan(cut))
         r = np.ma.vstack([cut, append])
@@ -364,7 +364,7 @@ class CinradReader:
             ret = (r.T, rf.T)
         else:
             ret = r.T
-        r_obj = Radial(ret, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.timestr, dtype,
+        r_obj = Radial(ret, int(np.round(r.shape[0] * reso)), self.elev, reso, self.code, self.name, self.timestr, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
