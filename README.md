@@ -61,6 +61,16 @@ f.rhi(azimuth, drange) #Get range-height indicator data
 f.to_nc(path_to_nc_file)
 ```
 
+#### Decode PUP data
+
+`cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI. (Only radial data are supported.) 
+
+```python
+from cinrad.io import PUP
+f = PUP(your_radar_file)
+data = f.get_data()
+```
+
 ### cinrad.utils
 
 This submodule provides some useful algorithms in radar meteorology. All functions contained only accept `numpy.ndarray`. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.

@@ -17,7 +17,7 @@ from ..utils import _find_azimuth_position
 from ._io import NetCDFWriter
 from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
 
-__all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
+__all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
 
 radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
 
@@ -693,3 +693,66 @@ class NexradL2Data:
                                     h_offset=h_offset)
         hght = height(data_range[:datalength], self.elev, 0) * np.ones(azi.shape[0])[:, np.newaxis]
         return lonx, latx, hght, data_range, azi
+
+class PUP:
+    r'''
+    Class handling PUP data (Nexrad Level III data)
+    Currently only radial data are supported
+    '''
+    def __init__(self, filepath):
+        from metpy.io.nexrad import Level3File
+        f = Level3File(filepath)
+        data_block = f.sym_block[0][0]
+        data = np.ma.array(data_block['data'][1:]) # First element in data is mysteriously empty
+        data[data == 0] = np.ma.masked
+        self.az = np.array(data_block['start_az'][:-1]) * deg2rad
+        self.rng = np.linspace(1, f.max_range, data.shape[-1] + 1)
+        self.data = f.map_data(data)
+        self.stationlat = f.lat
+        self.stationlon = f.lon
+        self.el = f.metadata['el_angle']
+        self.scantime = f.metadata['vol_time']
+        o = open(filepath, 'rb')
+        spec = np.frombuffer(o.read(2), '>i2')[0]
+        self.dtype = self._det_product_type(spec)
+        o.seek(12)
+        self.code = 'Z9{}'.format(np.frombuffer(o.read(2), '>i2')[0])
+        o.close()
+        self._update_radar_info()
+
+    def set_radarheight(self, height):
+        self.radarheight = height
+
+    def set_station_position(self, stationlon, stationlat):
+        self.stationlon = stationlon
+        self.stationlat = stationlat
+
+    def set_station_name(self, name):
+        self.name = name
+
+    def _update_radar_info(self):
+        r'''Update radar station info automatically.'''
+        info = _get_radar_info(self.code)
+        if info is None:
+            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
+        else:
+            self.set_station_position(info[1], info[2])
+            self.set_station_name(info[0])
+            self.set_radarheight(info[4])
+
+    def get_data(self):
+        lon, lat = get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
+        return Radial(self.data, self.rng[-1], self.el, 1, self.code, self.name, self.scantime.strftime('%Y%m%d%H%M%S'),
+                      self.dtype, self.stationlon, self.stationlat, lon, lat)
+
+    @staticmethod
+    def _det_product_type(spec):
+        if spec in range(16, 22):
+            return 'REF'
+        elif spec in range(22, 28):
+            return 'VEL'
+        elif spec in range(28, 31):
+            return 'SW'
+        else:
+            raise RadarDecodeError('Unsupported product type {}, currently only radial\
+                                    data are supported'.format(spec))
