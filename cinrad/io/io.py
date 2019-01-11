@@ -695,11 +695,15 @@ class NexradL2Data:
         return lonx, latx, hght, data_range, azi
 
 class PUP:
+    r'''
+    Class handling PUP data (Nexrad Level III data)
+    Currently only radial data are supported
+    '''
     def __init__(self, filepath):
         from metpy.io.nexrad import Level3File
         f = Level3File(filepath)
         data_block = f.sym_block[0][0]
-        data = np.ma.array(data_block['data'][1:])
+        data = np.ma.array(data_block['data'][1:]) # First element in data is mysteriously empty
         data[data == 0] = np.ma.masked
         self.az = np.array(data_block['start_az'][:-1]) * deg2rad
         self.rng = np.linspace(1, f.max_range, data.shape[-1] + 1)
@@ -749,11 +753,6 @@ class PUP:
             return 'VEL'
         elif spec in range(28, 31):
             return 'SW'
-        elif spec in range(35, 39):
-            return 'CR'
-        elif spec == 41:
-            return 'ET'
-        elif spec == 57:
-            return 'VIL'
         else:
-            raise RadarDecodeError('Unsupported product type {}'.format(spec))
+            raise RadarDecodeError('Unsupported product type {}, currently only radial\
+                                    data are supported'.format(spec))
