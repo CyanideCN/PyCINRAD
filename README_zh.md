@@ -64,6 +64,17 @@ f.to_nc(path_to_nc_file)
 
 #### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
 
+
+#### 读取PUP数据
+
+`cinrad.io.PUP`提供读取PUP数据的功能，读取出来的数据为`cinrad.datastruct.Radial`格式并且可以用来绘制PPI。目前只支持径向类型的数据。
+
+```python
+from cinrad.io import PUP
+f = PUP(your_radar_file)
+data = f.get_data()
+```
+
 ### cinrad.utils
 
 提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用，
