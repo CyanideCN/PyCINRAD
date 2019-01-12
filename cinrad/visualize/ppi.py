@@ -3,6 +3,7 @@
 
 import os
 from pathlib import Path
+import warnings
 
 import numpy as np
 from matplotlib._pylab_helpers import Gcf
@@ -49,7 +50,7 @@ def _prepare(data, datatype):
         raise RadarPlotError('Expected datatype is "{}", received "{}"'.format(datatype, data.dtype))
     return lon, lat, r
 
-class PPI:
+class PPI(object):
     r'''
     Create a figure plotting plan position indicator
 
@@ -195,3 +196,24 @@ class PPI:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
         self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
+
+    def storm_track_info(self, filepath):
+        from cinrad.io.pup import _StormTrackInfo
+        sti = _StormTrackInfo(filepath)
+        if len(sti.info.keys()) == 0:
+            warnings.warn('No storm track to plot', RuntimeWarning)
+            return
+        else:
+            stlist = sti.storm_list
+            extent = self.geoax.get_extent()
+            for st in stlist:
+                past = sti.track(st, 'past')
+                fcs = sti.track(st, 'forecast')
+                current = sti.current(st)
+                if past:
+                    self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5)
+                if fcs:
+                    self.geoax.plot(*fcs, marker='+', color='white', zorder=4, markersize=5)
+                self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey')
+#                if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
+#                    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
