@@ -6,8 +6,8 @@ from collections import OrderedDict, defaultdict
 from metpy.io.nexrad import Level3File
 import numpy as np
 
-from ..projection import get_coordinate
-from ..constants import deg2rad
+from cinrad.projection import get_coordinate
+from cinrad.constants import deg2rad
 
 class _StormTrackInfo(object):
     def __init__(self, filepath):

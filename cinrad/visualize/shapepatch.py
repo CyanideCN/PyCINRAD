@@ -8,8 +8,8 @@ import shapefile
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
-from ..constants import modpath
-from ..error import RadarPlotError
+from cinrad.constants import modpath
+from cinrad.error import RadarPlotError
 
 def highlight_area(area, facecolor='None', edgecolor='red', **kwargs):
     r'''Return pathpatch for given area name'''

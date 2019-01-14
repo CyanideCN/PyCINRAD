@@ -7,12 +7,12 @@ import time
 import numpy as np
 from xarray import DataArray
 
-from .utils import echo_top, vert_integrated_liquid
-from .datastruct import Radial, Grid, _Slice
-from .grid import grid_2d, resample
-from .projection import height, get_coordinate
-from .constants import deg2rad
-from .error import RadarCalculationError
+from cinrad.utils import echo_top, vert_integrated_liquid
+from cinrad.datastruct import Radial, Grid, _Slice
+from cinrad.grid import grid_2d, resample
+from cinrad.projection import height, get_coordinate
+from cinrad.constants import deg2rad
+from cinrad.error import RadarCalculationError
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS']
 

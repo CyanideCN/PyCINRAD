@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from .constants import deg2rad, rm
+from cinrad.constants import deg2rad, rm
 
 def height(distance, elevation, radarheight):
     r'''

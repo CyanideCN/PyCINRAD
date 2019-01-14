@@ -3,5 +3,5 @@
 
 import matplotlib
 matplotlib.rc('font', family='Arial')
-from .ppi import *
-from .rhi import *
+from cinrad.visualize.ppi import *
+from cinrad.visualize.rhi import *

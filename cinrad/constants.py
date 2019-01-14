@@ -6,7 +6,7 @@ import os
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 
-from .gpf import _cmap
+from cinrad.gpf import _cmap
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500
