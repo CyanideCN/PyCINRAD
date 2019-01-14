@@ -706,7 +706,7 @@ class PUP:
         data = np.ma.array(data_block['data'][1:]) # First element in data is mysteriously empty
         data[data == 0] = np.ma.masked
         self.az = np.array(data_block['start_az'][:-1]) * deg2rad
-        self.rng = np.linspace(1, f.max_range, data.shape[-1] + 1)
+        self.rng = np.linspace(1, f.max_range, data.shape[-1])
         self.data = f.map_data(data)
         self.stationlat = f.lat
         self.stationlon = f.lon
@@ -742,7 +742,7 @@ class PUP:
 
     def get_data(self):
         lon, lat = get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
-        return Radial(self.data, self.rng[-1], self.el, 1, self.code, self.name, self.scantime.strftime('%Y%m%d%H%M%S'),
+        return Radial(self.data, int(self.rng[-1]), self.el, 1, self.code, self.name, self.scantime.strftime('%Y%m%d%H%M%S'),
                       self.dtype, self.stationlon, self.stationlat, lon, lat)
 
     @staticmethod

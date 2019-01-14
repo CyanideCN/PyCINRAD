@@ -36,7 +36,7 @@ def text(ax, drange, reso, timestr, name, elev):
     ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font2)
 
 def save(fpath):
-    plt.savefig(fpath, bbox_inches='tight', pad_inches = 0)
+    plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
 def add_shp(renderer, coastline=False, style='black'):

@@ -198,6 +198,9 @@ class PPI(object):
         self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
 
     def storm_track_info(self, filepath):
+        r'''
+        Add storm tracks from Nexrad Level III (PUP) STI product file
+        '''
         from cinrad.io.pup import _StormTrackInfo
         sti = _StormTrackInfo(filepath)
         if len(sti.info.keys()) == 0:
@@ -209,11 +212,17 @@ class PPI(object):
             for st in stlist:
                 past = sti.track(st, 'past')
                 fcs = sti.track(st, 'forecast')
-                current = sti.current(st)
+                #current = sti.current(st)
                 if past:
                     self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5)
                 if fcs:
                     self.geoax.plot(*fcs, marker='+', color='white', zorder=4, markersize=5)
                 self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey')
-#                if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
-#                    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
+                #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
+                #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
+    
+    def gridlines(self, draw_labels=True, linewidth=0, **kwargs):
+        r'''Draw grid lines on cartopy axes'''
+        liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
+        liner.xlabels_top = False
+        liner.ylabels_right = False
