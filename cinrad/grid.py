@@ -6,7 +6,7 @@ from scipy.interpolate import griddata
 from pyresample.geometry import GridDefinition
 from pyresample.kd_tree import resample_nearest
 
-from .constants import deg2rad
+from cinrad.constants import deg2rad
 
 def resample(data, distance, azimuth, d_reso, a_reso):
     r'''

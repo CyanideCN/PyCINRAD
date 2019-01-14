@@ -8,10 +8,11 @@ import warnings
 import numpy as np
 from matplotlib._pylab_helpers import Gcf
 
-from .basicfunc import (add_shp, save, setup_axes, setup_plot, text,
-                        change_cbar_text, draw_highlight_area, set_geoaxes)
-from ..constants import *
-from ..error import RadarPlotError
+from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
+                                        change_cbar_text, draw_highlight_area, set_geoaxes)
+from cinrad.constants import *
+from cinrad.error import RadarPlotError
+from cinrad.io.pup import _StormTrackInfo
 
 __all__ = ['PPI']
 
@@ -201,7 +202,6 @@ class PPI(object):
         r'''
         Add storm tracks from Nexrad Level III (PUP) STI product file
         '''
-        from cinrad.io.pup import _StormTrackInfo
         sti = _StormTrackInfo(filepath)
         if len(sti.info.keys()) == 0:
             warnings.warn('No storm track to plot', RuntimeWarning)

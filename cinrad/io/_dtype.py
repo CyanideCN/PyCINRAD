@@ -4,7 +4,7 @@
 import numpy as np
 
 def gen_CC():
-    from ._radar_struct.CC import scan_param_dtype, header_dtype, data_dtype
+    from cinrad.io._radar_struct.CC import scan_param_dtype, header_dtype, data_dtype
     return scan_param_dtype, header_dtype, data_dtype
 
 CC_param, CC_header, CC_data = gen_CC()

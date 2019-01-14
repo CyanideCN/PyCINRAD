@@ -8,8 +8,8 @@ from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 
-from ..constants import font2, modpath
-from .shapepatch import highlight_area
+from cinrad.constants import font2, modpath
+from cinrad.visualize.shapepatch import highlight_area
 
 def setup_plot(dpi, figsize=(10, 10), style='black'):
     fig = plt.figure(figsize=figsize, dpi=dpi)

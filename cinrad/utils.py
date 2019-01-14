@@ -3,8 +3,8 @@
 
 import numpy as np
 
-from .constants import deg2rad
-from .projection import height
+from cinrad.constants import deg2rad
+from cinrad.projection import height
 
 def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     r'''

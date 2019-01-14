@@ -9,13 +9,13 @@ import bz2
 
 import numpy as np
 
-from ..constants import deg2rad, con, con2, rm, modpath
-from ..datastruct import Radial, _Slice
-from ..projection import get_coordinate, height
-from ..error import RadarDecodeError
-from ..utils import _find_azimuth_position
-from ._io import NetCDFWriter
-from ._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
+from cinrad.constants import deg2rad, con, con2, rm, modpath
+from cinrad.datastruct import Radial, _Slice
+from cinrad.projection import get_coordinate, height
+from cinrad.error import RadarDecodeError
+from cinrad.utils import _find_azimuth_position
+from cinrad.io._io import NetCDFWriter
+from cinrad.io._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
 
