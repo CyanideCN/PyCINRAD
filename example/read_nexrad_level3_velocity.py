@@ -27,8 +27,8 @@ scantime = f.metadata['msg_time']
 lon, lat = get_coordinate(rng, az, elev, slon, slat)
 threshold = f.thresholds
 data = data * threshold[1] / 10 + threshold[0] / 10
-v_obj = Radial([data, rf], int(f.max_range), elev, f.ij_to_km, f.siteID, f.siteID
-          , scantime.strftime('%Y%m%d%H%M%S'), 'VEL', slon, slat)
+v_obj = Radial([data, rf], int(f.max_range), elev, f.ij_to_km, f.siteID, f.siteID,
+               scantime, 'VEL', slon, slat)
 v_obj.add_geoc(lon, lat, np.zeros(lon.shape))
 norm2, v_cmap = colortables.get_with_range('NWS8bitVel', -64, 64)
 fig = ppi.PPI(v_obj, coastline=True, norm=norm2, cmap=v_cmap, nlabel=17)

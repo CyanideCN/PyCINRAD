@@ -28,13 +28,12 @@ slon, slat = radar.longitude['data'][0], radar.latitude['data'][0]
 scantime = datetime.datetime.strptime(radar.time['units'], 'seconds since %Y-%m-%dT%H:%M:%SZ')
 el = radar.get_elevation(sweep)[0]
 lon, lat = get_coordinate(v_range[:int(drange / reso)], az, el, slon, slat)
-timestr = scantime.strftime('%Y%m%d%H%M%S')
 data = v.T[:int(drange / reso)].T
 data_f = np.ma.array(data, mask=v_ori.mask)
 data_f = np.concatenate((data_f, data_f[0, None]))
 data_f[data_f == -64.5] = np.ma.masked
 rf = np.ma.array(data_f, mask=(data_f != -64))
-v_obj = Radial([data_f, rf], drange, el, reso, 'PGUA', 'PGUA', timestr, 'VEL', slon, slat)
+v_obj = Radial([data_f, rf], drange, el, reso, 'PGUA', 'PGUA', scantime, 'VEL', slon, slat)
 v_obj.add_geoc(lon, lat, np.zeros(lon.shape))
 norm2, v_cmap = colortables.get_with_range('NWS8bitVel', -64, 64)
 fig = ppi.PPI(v_obj, coastline=True, norm=norm2, cmap=v_cmap, nlabel=17)

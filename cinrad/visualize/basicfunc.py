@@ -24,11 +24,11 @@ def setup_axes(fig, cmap, norm):
     cbar.ax.tick_params(labelsize=8)
     return ax, cbar
 
-def text(ax, drange, reso, timestr, name, elev):
+def text(ax, drange, reso, scantime, name, elev):
     ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font2)
     ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
-    ax.text(0, 2.01, 'Date: {}.{}.{}'.format(timestr[:4], timestr[4:6], timestr[6:8]), fontproperties=font2)
-    ax.text(0, 1.97, 'Time: {}:{}'.format(timestr[8:10], timestr[10:12]), fontproperties=font2)
+    ax.text(0, 2.01, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), fontproperties=font2)
+    ax.text(0, 1.97, 'Time: {}'.format(scantime.strftime('%H:%M')), fontproperties=font2)
     if name is None:
         name = 'Unknown'
     ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font2)
