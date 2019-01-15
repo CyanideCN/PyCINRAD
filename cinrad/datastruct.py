@@ -4,7 +4,7 @@
 class Radial:
     r'''Structure for data arranged by radials'''
     def __init__(self, data, drange, elev, reso, code, name,
-                 time, dtype, stlon, stlat, lon=None, lat=None,
+                 scantime, dtype, stlon, stlat, lon=None, lat=None,
                  height=None, a_reso=None):
         r'''
         Parameters
@@ -21,7 +21,7 @@ class Radial:
             code for this radar
         name: str
             name for this radar
-        time: str
+        scantime: str
             scan time for this radar
         dtype: str
             product type
@@ -44,7 +44,7 @@ class Radial:
         self.reso = reso
         self.code = code
         self.name = name
-        self.time = time
+        self.scantime = scantime
         self.dtype = dtype
         if dtype == 'VEL':
             if len(data) == 2:
@@ -66,7 +66,7 @@ class Radial:
         repr_s = ('Datatype: {}\nStation name: {}\nScan time: {}\nElevation angle: '
         + '{}\nRange: {}')
         return repr_s.format(
-            self.dtype.upper(), self.name, self.time, self.elev, self.drange)
+            self.dtype.upper(), self.name, self.scantime, self.elev, self.drange)
 
     def add_geoc(self, lon, lat, height):
         if not lon.shape == lat.shape == height.shape:
@@ -82,26 +82,25 @@ class Radial:
 
 class _Slice:
     r'''Structure for slice data'''
-    def __init__(self, data, xcor, ycor, tstr, code, name, dtype, **geoinfo):
+    def __init__(self, data, xcor, ycor, scantime, code, name, dtype, **geoinfo):
         self.data = data
         self.xcor = xcor
         self.ycor = ycor
         self.geoinfo = geoinfo
-        self.tstr = tstr
+        self.scantime = scantime
         self.code = code
         self.name = name
         self.dtype = dtype
 
 class Grid:
     r'''Structure for processed grid data'''
-    def __init__(self, data, drange, reso, code, name
-                 , time, dtype, lon, lat):
+    def __init__(self, data, drange, reso, code, name, scantime, dtype, lon, lat):
         self.data = data
         self.drange = drange
         self.reso = reso
         self.code = code
         self.name = name
-        self.time = time
+        self.scantime = scantime
         self.dtype = dtype
         self.lon = lon
         self.lat = lat
@@ -111,4 +110,4 @@ class Grid:
     def __repr__(self):
         repr_s = ('Datatype: {}\nStation name: {}\nScan time: {}\n')
         return repr_s.format(
-            self.dtype.upper(), self.name, self.time)
+            self.dtype.upper(), self.name, self.scantime)

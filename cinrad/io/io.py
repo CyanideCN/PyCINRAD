@@ -45,7 +45,6 @@ class CinradReader:
     scantime: datetime.datetime
         time of scan for this data 
     timestr: str
-        time of scan for this data
     code: str
         code for this radar
     angleindex_r: list
@@ -113,6 +112,7 @@ class CinradReader:
         else:
             raise RadarDecodeError('Unrecognized data')
         self._update_radar_info()
+        f.close()
 
     def __lt__(self, value):
         return self.scantime < value.scantime
@@ -191,7 +191,6 @@ class CinradReader:
         angleindex = np.arange(0, data['el_num'][-1], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
-        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.data = out_data
 
     def _CC_handler(self, f):
@@ -219,7 +218,6 @@ class CinradReader:
             data[i]['SW'] = w[i * 512: (i + 1) * 512]
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
-        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
     def _SC_handler(self, f):
@@ -259,7 +257,6 @@ class CinradReader:
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
-        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
 
     def set_code(self, code):
         self.code = code
@@ -364,7 +361,7 @@ class CinradReader:
             ret = (r.T, rf.T)
         else:
             ret = r.T
-        r_obj = Radial(ret, int(np.round(r.shape[0] * reso)), self.elev, reso, self.code, self.name, self.timestr, dtype,
+        r_obj = Radial(ret, int(np.round(r.shape[0] * reso)), self.elev, reso, self.code, self.name, self.scantime, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
@@ -404,7 +401,7 @@ class CinradReader:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
+        return _Slice(rhi, xc, yc, self.scantime, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
 
     def to_nc(self, filepath, tilt='all', distance=230):
@@ -412,7 +409,7 @@ class CinradReader:
         ds = NetCDFWriter(filepath)
         for i in range(self.get_nscans()):
             ds.create_radial(self.get_data(i, distance, 'REF'))
-        ds._create_attribute('Time', self.timestr)
+        ds._create_attribute('Time', self.scantime.strftime('%Y%m%d%H%M%S'))
         ds._create_attribute('Station Code', self.code)
         ds._create_attribute('Station Name', self.name)
         ds._create_attribute('Radar Type', self.radartype)
@@ -425,8 +422,6 @@ class StandardData:
     ----------
     scantime: datetime.datetime
         time of scan for this data 
-    timestr: str
-        time of scan for this data
     code: str
         code for this radar
     angleindex_r: list
@@ -477,11 +472,11 @@ class StandardData:
         seconds = np.frombuffer(f.read(4), 'u4')[0]
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
         self.scanconfig = self._parse_configuration(f)
-        self.timestr = self.scantime.strftime('%Y%m%d%H%M%S')
         self.data = self._parse_datablock(f)
         self.el = [self.scanconfig[i]['elevation_angle'] for i in self.scanconfig.keys()]
         self._update_radar_info()
         self.angleindex_r = self.avaliable_tilt('REF')
+        f.close()
 
     def set_radarheight(self, height):
         self.radarheight = height
@@ -582,7 +577,7 @@ class StandardData:
         length = data.shape[1] * reso
         cut = data[:, :int(drange / reso)]
         r = np.ma.array(cut, mask=np.isnan(cut))
-        r_obj = Radial(r, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.timestr, dtype,
+        r_obj = Radial(r, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
@@ -618,7 +613,7 @@ class StandardData:
         rhi[rhi < 0] = 0
         xc = np.array(xcoor)
         yc = np.array(ycoor)
-        return _Slice(rhi, xc, yc, self.timestr, self.code, self.name, 'rhi', azimuth=azimuth,
+        return _Slice(rhi, xc, yc, self.scantime, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
 
     def avaliable_product(self, tilt):
@@ -646,8 +641,7 @@ class NexradL2Data:
         '''
         from metpy.io.nexrad import Level2File
         self.f = Level2File(filepath)
-        self.dtime = self.f.dt
-        self.timestr = self.dtime.strftime('%Y%m%d%H%M%S')
+        self.scantime = self.f.dt
         self.name = self.f.stid.decode()
         self.el = np.array([ray[0][0].el_angle for ray in self.f.sweeps])
         self.stationlon = self.f.sweeps[0][0][1].lon
@@ -678,7 +672,7 @@ class NexradL2Data:
         self.drange = drange
         self.elev = self.el[tilt]
         x, y, z, d, a = self.projection(self.reso)
-        radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.timestr, self.dtype.decode(),
+        radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.scantime, self.dtype.decode(),
                         self.stationlon, self.stationlat, x, y, a_reso=720)
         return radial
 

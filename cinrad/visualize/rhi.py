@@ -29,28 +29,27 @@ class Section:
         plt.ylim(0, self.hlim)
         if self.dtype == 'RHI':
             az = self.data.geoinfo['azimuth']
-            plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {}.{}.{} {}:{} Max: {}dbz'.format(
-                      self.data.name, az, self.data.tstr[:4], self.data.tstr[4:6], self.data.tstr[6:8],
-                      self.data.tstr[8:10], self.data.tstr[10:12], rmax), fontproperties=font2)
+            plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {} Max: {}dbz'.format(
+                      self.data.name, az, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font2)
             plt.xlabel('Range (km)')
         elif self.dtype == 'VCS':
             stps = self.data.geoinfo['stp_s']
             enps = self.data.geoinfo['enp_s']
             stp = self.data.geoinfo['stp']
             enp = self.data.geoinfo['enp']
-            plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {}.{}.{} {}:{} Max: {}dbz'.format(
-                      self.data.name, stps, enps, self.data.tstr[:4], self.data.tstr[4:6], self.data.tstr[6:8], self.data.tstr[8:10],
-                      self.data.tstr[10:12], rmax), fontproperties=font2)
+            plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
+                      self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font2)
             plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
         plt.ylabel('Altitude (km)')
         if self.path_customize:
             path_string = fpath
         else:
             if self.dtype == 'RHI':
-                path_string = '{}{}_{}_RHI_{}_{}.png'.format(fpath, self.data.code, self.data.tstr, self.data.drange, self.data.az)
+                path_string = '{}{}_{}_RHI_{}_{}.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
+                                                             self.data.drange, self.data.az)
             elif self.dtype == 'VCS':
-                path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.tstr, stp[1],
-                                                                     stp[0], enp[1], enp[0])
+                path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
+                                                                     stp[1], stp[0], enp[1], enp[0])
         plt.savefig(path_string , bbox_inches='tight')
 
     def __call__(self, *fpath):

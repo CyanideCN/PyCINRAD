@@ -141,7 +141,7 @@ class PPI(object):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
-        text(ax2, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
+        text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
         ax2.text(0, 2.13, prodname[dtype], fontproperties=font2)
         ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
         if self.data.dtype == 'VEL':
@@ -161,7 +161,8 @@ class PPI(object):
                 sec = '_{}N{}E_{}N{}E'.format(stp[1], stp[0], enp[1], enp[0])
             else:
                 sec = ''
-            path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code, self.data.time,
+            path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code,
+                                                              self.data.scantime.strftime('%Y%m%d%H%M%S'),
                                                               self.data.elev, self.data.drange,
                                                               self.data.dtype.upper(), sec)
         else:
