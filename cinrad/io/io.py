@@ -44,7 +44,6 @@ class CinradReader:
         type of radar (SA, SB, etc.)
     scantime: datetime.datetime
         time of scan for this data 
-    timestr: str
     code: str
         code for this radar
     angleindex_r: list
