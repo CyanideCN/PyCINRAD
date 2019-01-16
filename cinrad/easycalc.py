@@ -50,7 +50,7 @@ def quick_cr(Rlist):
         r_data.append(r)
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
-    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.time,
+    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.scantime,
                   'CR', x, y)
     return l2_obj
 
@@ -70,7 +70,7 @@ def quick_et(Rlist):
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
     et = echo_top(r_data, d, elev, 0)
-    l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.time, 'ET',
+    l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.scantime, 'ET',
                     i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
@@ -92,7 +92,7 @@ def quick_vil(Rlist):
     r_data, d, a, elev = _extract(Rlist)
     i = Rlist[0]
     vil = vert_integrated_liquid(r_data, d, elev)
-    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.time,
+    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
@@ -140,7 +140,7 @@ class VCS:
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
-        sl = _Slice(r, x, h, self.rl[0].time, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
+        sl = _Slice(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
@@ -183,7 +183,7 @@ class RadarMosaic:
         self.add_data(data)
 
     def _check_time(self):
-        d_list = [_nearest_ten_minute(datetime.datetime.strptime(i.time, '%Y%m%d%H%M%S')) for i in self.data_list]
+        d_list = [_nearest_ten_minute(i.scantime) for i in self.data_list]
         d_list_stamp = [time.mktime(i.timetuple()) for i in d_list]
         if np.average(d_list_stamp) != d_list_stamp[0]:
             raise RadarCalculationError('Input radar data have inconsistent time')
