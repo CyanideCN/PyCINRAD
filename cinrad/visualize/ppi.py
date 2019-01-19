@@ -142,10 +142,10 @@ class PPI(object):
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
         text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
-        ax2.text(0, 2.13, prodname[dtype], fontproperties=font2)
-        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
+        ax2.text(0, 2.13, prodname[dtype], fontproperties=font)
+        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
         if self.data.dtype == 'VEL':
-            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
         return self.geoax

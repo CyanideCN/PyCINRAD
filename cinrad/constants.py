@@ -8,6 +8,12 @@ from matplotlib.font_manager import FontProperties
 
 from cinrad.gpf import _cmap
 
+__all__ = ['deg2rad', 'rm', 'con', 'con2', 'modpath', 'r_cmap', 'v_cmap',
+           'v_cbar', 'r_cmap_smooth', 'zdr_cmap', 'zdr_cbar', 'kdp_cmap',
+           'kdp_cbar', 'cc_cmap', 'cc_cbar', 'et_cmap', 'et_cbar', 'vil_cmap',
+           'vil_cbar', 'rf_cmap', 'font', 'norm1', 'norm2', 'norm3', 'norm4',
+           'norm5', 'norm6', 'norm7', 'norm8']
+
 deg2rad = 3.141592653589793 / 180
 rm = 8500
 con = (180 / 4096) * 0.125
@@ -18,7 +24,6 @@ CMAP_DIR = os.path.join(modpath, 'colormap')
 r_cmap = _cmap('REF')['cmap']
 v_cmap = _cmap('VEL')['cmap']
 v_cbar = _cmap('VEL_reverse')['cmap']
-rhi_cmap_smooth = _cmap('REF_s')['cmap']
 r_cmap_smooth = _cmap('REF_s')['cmap']
 zdr_cmap = _cmap('ZDR')['cmap']
 zdr_cbar = _cmap('ZDR_reverse')['cmap']
@@ -33,11 +38,14 @@ vil_cbar = _cmap('VIL_reverse')['cmap']
 rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 
 if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
-    font2 = FontProperties(fname='C:\\WINDOWS\\Fonts\\msyh.ttc')
+    font = FontProperties(fname='C:\\WINDOWS\\Fonts\\msyh.ttc')
 else:
     from matplotlib.font_manager import fontManager
     fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
-    font2 = FontProperties(fonts[0].fname)
+    try:
+        font = FontProperties(fonts[0].fname)
+    except:
+        font = FontProperties(['sans-serif']) # empty font
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)

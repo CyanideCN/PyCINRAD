@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cinrad.constants import rhi_cmap_smooth, norm1, font2
+from cinrad.constants import r_cmap_smooth, norm1, font
 
 __all__ = ['Section']
 
@@ -30,7 +30,7 @@ class Section:
         if self.dtype == 'RHI':
             az = self.data.geoinfo['azimuth']
             plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {} Max: {}dbz'.format(
-                      self.data.name, az, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font2)
+                      self.data.name, az, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
             plt.xlabel('Range (km)')
         elif self.dtype == 'VCS':
             stps = self.data.geoinfo['stp_s']
@@ -38,7 +38,7 @@ class Section:
             stp = self.data.geoinfo['stp']
             enp = self.data.geoinfo['enp']
             plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
-                      self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font2)
+                      self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
             plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
         plt.ylabel('Altitude (km)')
         if self.path_customize:
