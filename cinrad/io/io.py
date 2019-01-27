@@ -34,6 +34,37 @@ def _get_radar_info(code):
     radarheight = radarinfo[5][pos]
     return name, lon, lat, radartype, radarheight
 
+def _detect_radartype(f, filename, type_assert=None):
+    r'''Detect radar type from records in file'''
+    f.seek(100)
+    typestring = f.read(9)
+    det_sc = typestring == b'CINRAD/SC'
+    det_cd = typestring == b'CINRAD/CD'
+    f.seek(116)
+    det_cc = f.read(9) == b'CINRAD/CC'
+    # Read information from filename (if applicable)
+    if filename.startswith('RADA'):
+        spart = filename.split('-')
+        code = spart[1]
+        radartype = spart[2]
+    elif filename.startswith('Z'):
+        spart = filename.split('_')
+        code = spart[3]
+        radartype = spart[7]
+    else:
+        code = None
+    if det_sc:
+        radartype = 'SC'
+    elif det_cd:
+        radartype = 'CD'
+    elif det_cc:
+        radartype = 'CC'
+    if type_assert:
+        radartype = type_assert
+    if radartype is None:
+        raise RadarDecodeError('Radar type undefined')
+    return code, radartype
+
 class CinradReader:
     r'''
     Class handling CINRAD radar reading
@@ -73,27 +104,31 @@ class CinradReader:
     tilt: int
         current selected tilt
     '''
-    def __init__(self, filepath, radar_type=None):
+    def __init__(self, file, radar_type=None):
         r'''
         Parameters
         ----------
-        filepath: str
-            path directed to the file to read
+        file: str / obj with read method
+            path directed to the file to read / file object
         radar_type: str, optional
             type of radar
         '''
-        path = Path(filepath)
-        filename = path.name
-        filetype = path.suffix
-        if filetype.lower().endswith('bz2'):
-            f = bz2.open(filepath, 'rb')
+        if hasattr(file, 'read'):
+            f = file
+            self.code, radartype = _detect_radartype(f, '')
         else:
-            f = open(filepath, 'rb')
-        radartype = self._detect_radartype(f, filename, type_assert=radar_type)
+            path = Path(file)
+            filename = path.name
+            filetype = path.suffix
+            if filetype.lower().endswith('bz2'):
+                f = bz2.open(file, 'rb')
+            else:
+                f = open(file, 'rb')
+            self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
         if radar_type:
             if radartype is not radar_type:
                 warnings.warn('Contradictory information from input radar type and\
-                radar type detected from input file.')
+                              radar type detected from input file.')
             self.radartype = radar_type
         else:
             self.radartype = radartype
@@ -112,40 +147,6 @@ class CinradReader:
             raise RadarDecodeError('Unrecognized data')
         self._update_radar_info()
         f.close()
-
-    def __lt__(self, value):
-        return self.scantime < value.scantime
-
-    def _detect_radartype(self, f, filename, type_assert=None):
-        r'''Detect radar type from records in file'''
-        f.seek(100)
-        typestring = f.read(9)
-        det_sc = typestring == b'CINRAD/SC'
-        det_cd = typestring == b'CINRAD/CD'
-        f.seek(116)
-        det_cc = f.read(9) == b'CINRAD/CC'
-        #Read information from filenames (if applicable)
-        if filename.startswith('RADA'):
-            spart = filename.split('-')
-            self.code = spart[1]
-            radartype = spart[2]
-        elif filename.startswith('Z'):
-            spart = filename.split('_')
-            self.code = spart[3]
-            radartype = spart[7]
-        else:
-            self.code = None
-        if det_sc:
-            radartype = 'SC'
-        elif det_cd:
-            radartype = 'CD'
-        elif det_cc:
-            radartype = 'CC'
-        if type_assert:
-            radartype = type_assert
-        if radartype is None:
-            raise RadarDecodeError('Radar type undefined')
-        return radartype
 
     def _SAB_handler(self, f, SAB=True):
         if SAB:
@@ -403,9 +404,9 @@ class CinradReader:
         return _Slice(rhi, xc, yc, self.scantime, self.code, self.name, 'rhi', azimuth=azimuth,
                       drange=drange)
 
-    def to_nc(self, filepath, tilt='all', distance=230):
+    def to_nc(self, file, tilt='all', distance=230):
         r'''Store data in NetCDF format'''
-        ds = NetCDFWriter(filepath)
+        ds = NetCDFWriter(file)
         for i in range(self.get_nscans()):
             ds.create_radial(self.get_data(i, distance, 'REF'))
         ds._create_attribute('Time', self.scantime.strftime('%Y%m%d%H%M%S'))
@@ -454,17 +455,20 @@ class StandardData:
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
 
-    def __init__(self, filepath):
+    def __init__(self, file):
         r'''
         Parameters
         ----------
-        filepath: str
-        path directed to the file to read
+        file: str
+            path directed to the file to read
         '''
-        if filepath.lower().endswith('bz2'):
-            f = bz2.open(filepath, 'rb')
+        if hasattr(file, 'read'):
+            f = file
         else:
-            f = open(filepath, 'rb')
+            if file.lower().endswith('bz2'):
+                f = bz2.open(file, 'rb')
+            else:
+                f = open(file, 'rb')
         f.seek(32)
         self.code = f.read(5).decode()
         f.seek(332)
@@ -497,7 +501,8 @@ class StandardData:
             self.set_station_name(info[0])
             self.set_radarheight(info[4])
 
-    def _parse_configuration(self, f):
+    @staticmethod
+    def _parse_configuration(f):
         f.seek(336)
         scan_num = np.frombuffer(f.read(4), 'u4')[0]
         f.seek(416)
@@ -631,15 +636,15 @@ class NexradL2Data:
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
     '''
-    def __init__(self, filepath):
+    def __init__(self, file):
         r'''
         Parameters
         ----------
-        filepath: str
-        path directed to the file to read
+        file: str
+            path directed to the file to read
         '''
         from metpy.io.nexrad import Level2File
-        self.f = Level2File(filepath)
+        self.f = Level2File(file)
         self.scantime = self.f.dt
         self.name = self.f.stid.decode()
         self.el = np.array([ray[0][0].el_angle for ray in self.f.sweeps])
@@ -692,9 +697,9 @@ class PUP:
     Class handling PUP data (Nexrad Level III data)
     Currently only radial data are supported
     '''
-    def __init__(self, filepath):
+    def __init__(self, file):
         from metpy.io.nexrad import Level3File
-        f = Level3File(filepath)
+        f = Level3File(file)
         data_block = f.sym_block[0][0]
         data = np.ma.array(data_block['data'][1:]) # First element in data is mysteriously empty
         data[data == 0] = np.ma.masked
@@ -705,7 +710,7 @@ class PUP:
         self.stationlon = f.lon
         self.el = f.metadata['el_angle']
         self.scantime = f.metadata['vol_time']
-        o = open(filepath, 'rb')
+        o = open(file, 'rb')
         spec = np.frombuffer(o.read(2), '>i2')[0]
         self.dtype = self._det_product_type(spec)
         o.seek(12)
