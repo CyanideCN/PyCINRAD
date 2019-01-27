@@ -9,7 +9,7 @@ import bz2
 
 import numpy as np
 
-from cinrad.constants import deg2rad, con, con2, rm, modpath
+from cinrad.constants import deg2rad, con, con2, rm, MODULE_DIR
 from cinrad.datastruct import Radial, _Slice
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
@@ -19,7 +19,7 @@ from cinrad.io._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
 
-radarinfo = np.load(os.path.join(modpath, 'RadarStation.npy'))
+radarinfo = np.load(os.path.join(MODULE_DIR, 'RadarStation.npy'))
 
 def _get_radar_info(code):
     r'''Get radar station info from the station database according to the station code.'''

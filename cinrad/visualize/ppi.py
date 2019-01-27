@@ -71,7 +71,7 @@ class PPI(object):
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
                          'extent':extent, 'slice':add_slice, 'style':style}
-        self.ax = self._plot(**kwargs)
+        self._plot(**kwargs)
 
     def __call__(self, *fpath):
         if not fpath:
@@ -136,6 +136,8 @@ class PPI(object):
             draw_highlight_area(self.settings['highlight'])
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
                                                           # the colorbar axes (for matplotlib 3 compatibility)
+        for sp in ax2.spines.values():
+            sp.set_visible(False)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
         if not isinstance(clabel, type(None)):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
@@ -148,7 +150,6 @@ class PPI(object):
             ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
-        return self.geoax
 
     def _save(self, fpath):
         if not self.settings['path_customize']:
@@ -181,6 +182,7 @@ class PPI(object):
 
     def plot_cross_section(self, data, ymax=None):
         r'''Plot cross section data below the PPI plot.'''
+        self.settings['slice'] = data
         ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
         ax2.yaxis.set_ticks_position('right')
         #ax2.spines['bottom'].set_color('none')
@@ -191,7 +193,7 @@ class PPI(object):
         ycor = data.ycor
         stp = data.geoinfo['stp']
         enp = data.geoinfo['enp']
-        ax2.contourf(xcor, ycor, sl, 128, cmap=rhi_cmap_smooth, norm=norm1)
+        ax2.contourf(xcor, ycor, sl, 128, cmap=r_cmap_smooth, norm=norm1)
         if ymax:
             ax2.set_ylim(0, ymax)
         else:

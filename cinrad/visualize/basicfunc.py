@@ -8,7 +8,7 @@ from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 
-from cinrad.constants import font, modpath
+from cinrad.constants import font, MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
 
 def setup_plot(dpi, figsize=(10, 10), style='black'):
@@ -21,7 +21,8 @@ def setup_plot(dpi, figsize=(10, 10), style='black'):
 def setup_axes(fig, cmap, norm):
     ax = fig.add_axes([0.92, 0.12, 0.04, 0.35])
     cbar = ColorbarBase(ax, cmap=cmap, norm=norm, orientation='vertical', drawedges=False)
-    cbar.ax.tick_params(labelsize=8)
+    cbar.ax.tick_params(axis='both', which='both', length=0, labelsize=8)
+    cbar.outline.set_visible(False)
     return ax, cbar
 
 def text(ax, drange, reso, scantime, name, elev):
@@ -39,19 +40,19 @@ def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(renderer, coastline=False, style='black'):
-    root = os.path.join(modpath, 'shapefile')
+def add_shp(ax, coastline=False, style='black'):
+    root = os.path.join(MODULE_DIR, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
     if style == 'black':
         line_colors = ['grey', 'lightgrey', 'white']
     elif style == 'white':
         line_colors = ['lightgrey', 'grey', 'black']
-    renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=1, linewidth=0.5)
-    renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=1, linewidth=0.7)
-    renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=1, linewidth=1)
+    ax.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=1, linewidth=0.5)
+    ax.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=1, linewidth=0.7)
+    ax.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=1, linewidth=1)
     if coastline:
-        renderer.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
+        ax.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)
