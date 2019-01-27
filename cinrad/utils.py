@@ -3,10 +3,13 @@
 
 import numpy as np
 
-from cinrad.constants import deg2rad
+from cinrad.constants import deg2rad, vil_const
 from cinrad.projection import height
 
-def vert_integrated_liquid(ref, distance, elev, threshold=18.):
+def r2z(r):
+    return 10 ** (r / 10)
+
+def vert_integrated_liquid(ref, distance, elev, beam_width=0.99, threshold=18.):
     r'''
     Calculate vertically integrated liquid (VIL) in one full scan
 
@@ -26,7 +29,7 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     data: numpy.ndarray
         vertically integrated liquid data
     '''
-    v_beam_width = 0.99 * deg2rad
+    v_beam_width = beam_width * deg2rad
     elev = np.array(elev) * deg2rad
     xshape, yshape = ref[0].shape
     distance *= 1000
@@ -35,16 +38,16 @@ def vert_integrated_liquid(ref, distance, elev, threshold=18.):
     return vil
 
 def _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold):
+    r = np.clip(ref, None, 55) #reduce the influence of hails
+    z = r2z(r)
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
-            vert_r = ref[:, i, j]
+            vert_r = r[:, i, j]
+            vert_z = z[:, i, j]
             dist = distance[i][j]
-            r_ = np.clip(vert_r, None, 55) #reduce the influence of hails
-            vertical = 10 ** (r_ / 10)
-            position = np.where(r_ > threshold)[0]
+            position = np.where(vert_r > threshold)[0]
             if position.shape[0] == 0:
-                VIL[i][j] = 0
                 continue
             pos_s = position[0]
             pos_e = position[-1]
@@ -52,10 +55,10 @@ def _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold):
             hi = hi_arr[i][j]
             for l in position[:-1].astype(int):
                 ht = dist * (np.sin(elev[l + 1]) - np.sin(elev[l]))
-                factor = ((vertical[l] + vertical[l + 1]) / 2) ** (4 / 7)
-                m1 += 3.44e-6 * factor * ht
-            mb = 3.44e-6 * vertical[pos_s] ** (4 / 7) * hi
-            mt = 3.44e-6 * vertical[pos_e] ** (4 / 7) * hi
+                factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
+                m1 += vil_const * factor * ht
+            mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
+            mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
             VIL[i][j] = m1 + mb + mt
     return VIL
 
