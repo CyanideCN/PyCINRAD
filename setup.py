@@ -4,7 +4,7 @@ import glob
 
 setup(
     name = 'cinrad',
-    version = '1.2',
+    version = '1.2.2',
     description = 'cinrad reading and plotting',
     long_description = 'cinrad reading and plotting',
     license = 'GPL Licence',
