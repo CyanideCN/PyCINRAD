@@ -8,9 +8,8 @@ from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 
-from ..constants import font2, modpath
-from .shapepatch import highlight_area
-
+from cinrad.constants import font, MODULE_DIR
+from cinrad.visualize.shapepatch import highlight_area
 import xlrd  # for reading city names
 
 def setup_plot(dpi, figsize=(10, 10), style='black'):
@@ -23,37 +22,38 @@ def setup_plot(dpi, figsize=(10, 10), style='black'):
 def setup_axes(fig, cmap, norm):
     ax = fig.add_axes([0.92, 0.12, 0.04, 0.35])
     cbar = ColorbarBase(ax, cmap=cmap, norm=norm, orientation='vertical', drawedges=False)
-    cbar.ax.tick_params(labelsize=8)
+    cbar.ax.tick_params(axis='both', which='both', length=0, labelsize=8)
+    cbar.outline.set_visible(False)
     return ax, cbar
 
-def text(ax, drange, reso, timestr, name, elev):
-    ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font2)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font2)
-    ax.text(0, 2.01, 'Date: {}.{}.{}'.format(timestr[:4], timestr[4:6], timestr[6:8]), fontproperties=font2)
-    ax.text(0, 1.97, 'Time: {}:{}'.format(timestr[8:10], timestr[10:12]), fontproperties=font2)
+def text(ax, drange, reso, scantime, name, elev):
+    ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font)
+    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font)
+    ax.text(0, 2.01, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), fontproperties=font)
+    ax.text(0, 1.97, 'Time: {}'.format(scantime.strftime('%H:%M')), fontproperties=font)
     if name is None:
         name = 'Unknown'
-    ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font2)
-    ax.text(0, 1.89, 'Mode: Precipitation', fontproperties=font2)
-    ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font2)
+    ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font)
+    ax.text(0, 1.89, 'Mode: Precipitation', fontproperties=font)
+    ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font)
 
 def save(fpath):
-    plt.savefig(fpath, bbox_inches='tight', pad_inches = 0)
+    plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(renderer, coastline=False, style='black'):
-    root = os.path.join(modpath, 'shapefile')
+def add_shp(ax, coastline=False, style='black'):
+    root = os.path.join(MODULE_DIR, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
     if style == 'black':
         line_colors = ['grey', 'lightgrey', 'white']
     elif style == 'white':
         line_colors = ['lightgrey', 'grey', 'black']
-    renderer.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=1, linewidth=0.5)
-    renderer.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=1, linewidth=0.7)
-    renderer.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=1, linewidth=1)
+    ax.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=1, linewidth=0.5)
+    ax.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=1, linewidth=0.7)
+    ax.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=1, linewidth=1)
     if coastline:
-        renderer.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
+        ax.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
 
     # add city names --- Modified By Fulang WU at 2019-01-30
     stationList = os.path.join(root, 'StationNames.xlsx')
@@ -64,9 +64,8 @@ def add_shp(renderer, coastline=False, style='black'):
     lat = sheet1.col_values(1) #获取行内容
     lon = sheet1.col_values(2) #获取行内容
     for i in range(1,len(citynames)):
-        renderer.text(lon[i], lat[i], r'.', transform=ccrs.Geodetic(), size=30, color='white') #描点
-        renderer.text(lon[i]-0.08, lat[i]-0.08, citynames[i], transform=ccrs.Geodetic(), size=16, color='DarkGray') #标注城市名称
-    
+        ax.text(lon[i], lat[i], r'.', transform=ccrs.Geodetic(), size=30, color='white') #描点
+        ax.text(lon[i]-0.08, lat[i]-0.08, citynames[i], transform=ccrs.Geodetic(), size=16, color='DarkGray') #标注城市名称
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)
@@ -87,12 +86,3 @@ def set_geoaxes(lon, lat, extent=None):
         x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
     ax.set_extent([x_min, x_max, y_min, y_max], ccrs.PlateCarree())
     return ax
-
-# for reading city names
-def getColumnIndex(table, columnName):
-    columnIndex = None     
-    for i in range(table.ncols):       
-        if(table.cell_value(0, i) == columnName):
-            columnIndex = i
-            break
-    return columnIndex

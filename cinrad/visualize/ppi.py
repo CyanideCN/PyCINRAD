@@ -8,10 +8,11 @@ import warnings
 import numpy as np
 from matplotlib._pylab_helpers import Gcf
 
-from .basicfunc import (add_shp, save, setup_axes, setup_plot, text,
-                        change_cbar_text, draw_highlight_area, set_geoaxes)
-from ..constants import *
-from ..error import RadarPlotError
+from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
+                                        change_cbar_text, draw_highlight_area, set_geoaxes)
+from cinrad.constants import *
+from cinrad.error import RadarPlotError
+from cinrad.io.pup import _StormTrackInfo
 
 __all__ = ['PPI']
 
@@ -70,7 +71,7 @@ class PPI(object):
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
                          'extent':extent, 'slice':add_slice, 'style':style}
-        self.ax = self._plot(**kwargs)
+        self._plot(**kwargs)
 
     def __call__(self, *fpath):
         if not fpath:
@@ -135,19 +136,20 @@ class PPI(object):
             draw_highlight_area(self.settings['highlight'])
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
                                                           # the colorbar axes (for matplotlib 3 compatibility)
+        for sp in ax2.spines.values():
+            sp.set_visible(False)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
         if not isinstance(clabel, type(None)):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
-        text(ax2, self.data.drange, self.data.reso, self.data.time, self.data.name, self.data.elev)
-        ax2.text(0, 2.13, prodname[dtype], fontproperties=font2)
-        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font2)
+        text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
+        ax2.text(0, 2.13, prodname[dtype], fontproperties=font)
+        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
         if self.data.dtype == 'VEL':
-            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font2)
+            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
-        return self.geoax
 
     def _save(self, fpath):
         if not self.settings['path_customize']:
@@ -160,7 +162,8 @@ class PPI(object):
                 sec = '_{}N{}E_{}N{}E'.format(stp[1], stp[0], enp[1], enp[0])
             else:
                 sec = ''
-            path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code, self.data.time,
+            path_string = '{}{}_{}_{:.1f}_{}_{}{}.png'.format(fpath, self.data.code,
+                                                              self.data.scantime.strftime('%Y%m%d%H%M%S'),
                                                               self.data.elev, self.data.drange,
                                                               self.data.dtype.upper(), sec)
         else:
@@ -173,27 +176,27 @@ class PPI(object):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
         for d in _range:
-            radius = d / 111  # 1 degree = 111 km
+            radius = d / 111 # 1 degree = 111 km
             x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
-            self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+            #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+            self.geoax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             # add nunbers for circle
             xText1, yText1 = np.cos(1.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
             xText2, yText2 = np.cos(0.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
-            self.ax.text(xText1,yText1,'{}'.format(d),fontsize=12)
-            self.ax.text(xText2,yText2,'{}'.format(d),fontsize=12)
-        		
-                
+            self.geoax.text(xText1,yText1,'{}'.format(d),fontsize=12)
+            self.geoax.text(xText2,yText2,'{}'.format(d),fontsize=12)
         # add lines of 0 and 90 degree
         lenRadius = _range[0]/111
         x1, y1 = np.cos(1.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
         x2, y2 = np.cos(0.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
-        self.ax.plot([x1,x2], [y1,y2], color=color, linewidth=linewidth, **kwargs)
+        self.geoax.plot([x1,x2], [y1,y2], color=color, linewidth=linewidth, **kwargs)
         x3, y3 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(0.5*np.pi) * lenRadius + self.data.stp['lat']
         x4, y4 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(1.5*np.pi) * lenRadius + self.data.stp['lat']
-        self.ax.plot([x3,x4], [y3,y4], color=color, linewidth=linewidth, **kwargs)
+        self.geoax.plot([x3,x4], [y3,y4], color=color, linewidth=linewidth, **kwargs)
 
     def plot_cross_section(self, data, ymax=None):
         r'''Plot cross section data below the PPI plot.'''
+        self.settings['slice'] = data
         #ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
         ax2 = self.fig.add_axes([0.23, -0.12, 0.57, 0.18])
         ax2.yaxis.set_ticks_position('right')
@@ -205,16 +208,18 @@ class PPI(object):
         ycor = data.ycor
         stp = data.geoinfo['stp']
         enp = data.geoinfo['enp']
-        ax2.contourf(xcor, ycor, sl, 128, cmap=rhi_cmap_smooth, norm=norm1)
+        ax2.contourf(xcor, ycor, sl, 128, cmap=r_cmap_smooth, norm=norm1)
         if ymax:
             ax2.set_ylim(0, ymax)
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='+', color='red',linewidth=3) # Modified By Fulang WU at 2019-01-23
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
 
     def storm_track_info(self, filepath):
-        from cinrad.io.pup import _StormTrackInfo
+        r'''
+        Add storm tracks from Nexrad Level III (PUP) STI product file
+        '''
         sti = _StormTrackInfo(filepath)
         if len(sti.info.keys()) == 0:
             warnings.warn('No storm track to plot', RuntimeWarning)
@@ -225,11 +230,17 @@ class PPI(object):
             for st in stlist:
                 past = sti.track(st, 'past')
                 fcs = sti.track(st, 'forecast')
-                current = sti.current(st)
+                #current = sti.current(st)
                 if past:
                     self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5)
                 if fcs:
                     self.geoax.plot(*fcs, marker='+', color='white', zorder=4, markersize=5)
                 self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey')
-#                if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
-#                    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
+                #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
+                #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
+    
+    def gridlines(self, draw_labels=True, linewidth=0, **kwargs):
+        r'''Draw grid lines on cartopy axes'''
+        liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
+        liner.xlabels_top = False
+        liner.ylabels_right = False
