@@ -14,6 +14,7 @@ from cinrad.constants import *
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
 
+
 __all__ = ['PPI']
 
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
@@ -66,11 +67,11 @@ class PPI(object):
     '''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
                  dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
-                 style='black', **kwargs):
+                 style='black', add_city_names=False, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'style':style}
+                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names}
         self._plot(**kwargs)
 
     def __call__(self, *fpath):
@@ -131,7 +132,13 @@ class PPI(object):
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'])
+        if self.settings['extent']==None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
+            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+                extent=[lon.min(), lon.max(), lat.min(), lat.max()], add_city_names=self.settings['add_city_names'])
+        else:
+            region = self.settings['extent']
+            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+                extent=[region[0], region[1], region[2], region[3]], add_city_names=self.settings['add_city_names'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
@@ -176,14 +183,29 @@ class PPI(object):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
         for d in _range:
-            radius = d / 111
+            radius = d / 111 # 1 degree = 111 km
             x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
-            self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+            #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+            self.geoax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
+            # add nunbers for circle
+            xText1, yText1 = np.cos(1.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
+            xText2, yText2 = np.cos(0.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
+            self.geoax.text(xText1,yText1,'{}'.format(d),fontsize=12)
+            self.geoax.text(xText2,yText2,'{}'.format(d),fontsize=12)
+        # add lines of 0 and 90 degree
+        lenRadius = _range[0]/111
+        x1, y1 = np.cos(1.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
+        x2, y2 = np.cos(0.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
+        self.geoax.plot([x1,x2], [y1,y2], color=color, linewidth=linewidth, **kwargs)
+        x3, y3 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(0.5*np.pi) * lenRadius + self.data.stp['lat']
+        x4, y4 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(1.5*np.pi) * lenRadius + self.data.stp['lat']
+        self.geoax.plot([x3,x4], [y3,y4], color=color, linewidth=linewidth, **kwargs)
 
     def plot_cross_section(self, data, ymax=None):
         r'''Plot cross section data below the PPI plot.'''
         self.settings['slice'] = data
-        ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
+        #ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
+        ax2 = self.fig.add_axes([0.23, -0.12, 0.57, 0.18])
         ax2.yaxis.set_ticks_position('right')
         #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
