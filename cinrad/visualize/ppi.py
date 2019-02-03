@@ -7,13 +7,13 @@ import warnings
 
 import numpy as np
 from matplotlib._pylab_helpers import Gcf
+import pandas as pd
 
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.constants import *
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
-
 
 __all__ = ['PPI']
 
@@ -133,14 +133,13 @@ class PPI(object):
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         if self.settings['extent']==None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
-            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
-                extent=[lon.min(), lon.max(), lat.min(), lat.max()], add_city_names=self.settings['add_city_names'])
-        else:
-            region = self.settings['extent']
-            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
-                extent=[region[0], region[1], region[2], region[3]], add_city_names=self.settings['add_city_names'])
+            self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
+        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+                extent=self.settings['extent'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
+        if self.settings['add_city_names']:
+            self._add_city_names()
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
                                                           # the colorbar axes (for matplotlib 3 compatibility)
         for sp in ax2.spines.values():
@@ -187,25 +186,24 @@ class PPI(object):
             x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
             #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             self.geoax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
-            # add nunbers for circle
-            xText1, yText1 = np.cos(1.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
-            xText2, yText2 = np.cos(0.0*np.pi) *radius + self.data.stp['lon'], np.sin(np.pi) * radius + self.data.stp['lat']
-            self.geoax.text(xText1,yText1,'{}'.format(d),fontsize=12)
-            self.geoax.text(xText2,yText2,'{}'.format(d),fontsize=12)
+            # add numbers for circle
+            xText1, yText1 = -1 * radius + self.data.stp['lon'], radius + self.data.stp['lat']
+            xText2, yText2 = radius + self.data.stp['lon'], self.data.stp['lat']
+            self.geoax.text(xText1, yText1,'{}'.format(d), fontsize=12)
+            self.geoax.text(xText2, yText2,'{}'.format(d), fontsize=12)
         # add lines of 0 and 90 degree
-        lenRadius = _range[0]/111
-        x1, y1 = np.cos(1.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
-        x2, y2 = np.cos(0.0*np.pi) *lenRadius + self.data.stp['lon'], np.sin(np.pi) * lenRadius + self.data.stp['lat']
-        self.geoax.plot([x1,x2], [y1,y2], color=color, linewidth=linewidth, **kwargs)
-        x3, y3 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(0.5*np.pi) * lenRadius + self.data.stp['lat']
-        x4, y4 = np.cos(0.5*np.pi) *lenRadius + self.data.stp['lon'], np.sin(1.5*np.pi) * lenRadius + self.data.stp['lat']
-        self.geoax.plot([x3,x4], [y3,y4], color=color, linewidth=linewidth, **kwargs)
+        lenRadius = np.max(_range)
+        x1, y1 = -1 * lenRadius + self.data.stp['lon'], self.data.stp['lat']
+        x2, y2 = lenRadius + self.data.stp['lon'], self.data.stp['lat']
+        self.geoax.plot([x1, x2], [y1, y2], color=color, linewidth=linewidth, **kwargs)
+        x3, y3 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(0.5 * np.pi) * lenRadius + self.data.stp['lat']
+        x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
+        self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
 
     def plot_cross_section(self, data, ymax=None):
         r'''Plot cross section data below the PPI plot.'''
         self.settings['slice'] = data
-        #ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
-        ax2 = self.fig.add_axes([0.23, -0.12, 0.57, 0.18])
+        ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
         ax2.yaxis.set_ticks_position('right')
         #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
@@ -251,3 +249,14 @@ class PPI(object):
         liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
         liner.xlabels_top = False
         liner.ylabels_right = False
+
+    def _add_city_names(self):
+        df = pd.read_csv(os.path.join(MODULE_DIR, 'china_coordinates.csv'), names=['Code', 'Name', 'Lon', 'Lat'])
+        name = df['Name'].values
+        lon = df['Lon'].values.astype(float)
+        lat = df['Lat'].values.astype(float)
+        extent = self.geoax.get_extent()
+        fraction = (extent[1] - extent[0]) * 0.05
+        target_city = (lon > extent[0] + fraction) & (lon < extent[1] - fraction) & (lat > extent[2] + fraction) & (lat < extent[3] - fraction)
+        for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
+            self.geoax.text(stlon, stlat, nm, fontproperties=font, color='darkgrey')
