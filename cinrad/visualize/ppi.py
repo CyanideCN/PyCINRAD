@@ -187,10 +187,10 @@ class PPI(object):
             #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             self.geoax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             # add numbers for circle
-            xText1, yText1 = -1 * radius + self.data.stp['lon'], radius + self.data.stp['lat']
+            xText1, yText1 = -1 * radius + self.data.stp['lon'], self.data.stp['lat']
             xText2, yText2 = radius + self.data.stp['lon'], self.data.stp['lat']
-            self.geoax.text(xText1, yText1,'{}'.format(d), fontsize=12)
-            self.geoax.text(xText2, yText2,'{}'.format(d), fontsize=12)
+            self.geoax.text(xText1, yText1,'{}'.format(d), fontsize=8)
+            self.geoax.text(xText2, yText2,'{}'.format(d), fontsize=8)
         # add lines of 0 and 90 degree
         lenRadius = np.max(_range)
         x1, y1 = -1 * lenRadius + self.data.stp['lon'], self.data.stp['lat']
@@ -256,7 +256,7 @@ class PPI(object):
         lon = df['Lon'].values.astype(float)
         lat = df['Lat'].values.astype(float)
         extent = self.geoax.get_extent()
-        fraction = (extent[1] - extent[0]) * 0.05
+        fraction = (extent[1] - extent[0]) * 0.04
         target_city = (lon > extent[0] + fraction) & (lon < extent[1] - fraction) & (lat > extent[2] + fraction) & (lat < extent[3] - fraction)
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
-            self.geoax.text(stlon, stlat, nm, fontproperties=font, color='darkgrey')
+            self.geoax.text(stlon, stlat, nm[:2], fontproperties=font, color='darkgrey')
