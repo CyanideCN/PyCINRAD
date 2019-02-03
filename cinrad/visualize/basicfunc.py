@@ -41,7 +41,7 @@ def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(ax, coastline=False, style='black', minlon=None, maxlon=None, minlat=None, maxlat=None, add_city_names=False):
+def add_shp(ax, coastline=False, style='black', extent=None, add_city_names=False):
     root = os.path.join(MODULE_DIR, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
@@ -64,7 +64,7 @@ def add_shp(ax, coastline=False, style='black', minlon=None, maxlon=None, minlat
         lat = sheet1.col_values(1) #获取列内容
         lon = sheet1.col_values(2) #获取列内容
         for i in range(1,len(citynames)):
-            if (lon[i]>=minlon) and (lon[i]<=maxlon) and (lat[i]>=minlat) and (lat[i]<=maxlat): #城市经纬度是否在绘图区域范围内
+            if (lon[i]>=extent[0]) and (lon[i]<=extent[1]) and (lat[i]>=extent[2]) and (lat[i]<=extent[3]): #城市经纬度是否在绘图区域范围内
                 ax.text(lon[i], lat[i], r'.', transform=ccrs.PlateCarree(), size=30, color='white') #描点
                 ax.text(lon[i]-0.08, lat[i]-0.08, citynames[i], transform=ccrs.PlateCarree(), size=16, color='DarkGray') #标注城市名称
 
