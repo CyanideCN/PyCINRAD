@@ -41,7 +41,7 @@ def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(ax, coastline=False, style='black'):
+def add_shp(ax, coastline=False, style='black', minlon=None, maxlon=None, minlat=None, maxlat=None, add_city_names=False):
     root = os.path.join(MODULE_DIR, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [shapereader.Reader(i).geometries() for i in flist]
@@ -55,17 +55,18 @@ def add_shp(ax, coastline=False, style='black'):
     if coastline:
         ax.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
 
-    # add city names --- Modified By Fulang WU at 2019-01-30
-    stationList = os.path.join(root, 'StationNames.xlsx')
-    wb = xlrd.open_workbook(stationList) #打开文件
-    #with open(stationList, "rb") as f:
-    sheet1 = wb.sheet_by_index(0) #通过索引获取表格
-    citynames = sheet1.col_values(0) #获取行内容
-    lat = sheet1.col_values(1) #获取行内容
-    lon = sheet1.col_values(2) #获取行内容
-    for i in range(1,len(citynames)):
-        ax.text(lon[i], lat[i], r'.', transform=ccrs.Geodetic(), size=30, color='white') #描点
-        ax.text(lon[i]-0.08, lat[i]-0.08, citynames[i], transform=ccrs.Geodetic(), size=16, color='DarkGray') #标注城市名称
+    if (add_city_names): #增加判断，是否要绘制城市名称
+        # add city names --- Modified By Fulang WU at 2019-01-30
+        stationList = os.path.join(root, 'StationNames.xlsx')
+        wb = xlrd.open_workbook(stationList) #打开文件
+        sheet1 = wb.sheet_by_index(0) #通过索引获取表格
+        citynames = sheet1.col_values(0) #获取列内容
+        lat = sheet1.col_values(1) #获取列内容
+        lon = sheet1.col_values(2) #获取列内容
+        for i in range(1,len(citynames)):
+            if (lon[i]>=minlon) and (lon[i]<=maxlon) and (lat[i]>=minlat) and (lat[i]<=maxlat): #城市经纬度是否在绘图区域范围内
+                ax.text(lon[i], lat[i], r'.', transform=ccrs.PlateCarree(), size=30, color='white') #描点
+                ax.text(lon[i]-0.08, lat[i]-0.08, citynames[i], transform=ccrs.PlateCarree(), size=16, color='DarkGray') #标注城市名称
 
 def change_cbar_text(cbar, tick, text):
     cbar.set_ticks(tick)

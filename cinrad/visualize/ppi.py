@@ -14,6 +14,7 @@ from cinrad.constants import *
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
 
+
 __all__ = ['PPI']
 
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
@@ -66,11 +67,11 @@ class PPI(object):
     '''
     def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
                  dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
-                 style='black', **kwargs):
+                 style='black', add_city_names=False, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'style':style}
+                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names}
         self._plot(**kwargs)
 
     def __call__(self, *fpath):
@@ -131,7 +132,13 @@ class PPI(object):
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'])
+        if self.settings['extent']==None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
+            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+                minlon=lon.min(), maxlon=lon.max(), minlat=lat.min(), maxlat=lat.max(), add_city_names=self.settings['add_city_names'])
+        else:
+            areas = self.settings['extent']
+            add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+                minlon=areas[0], maxlon=areas[1], minlat=areas[2], maxlat=areas[3], add_city_names=self.settings['add_city_names'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
         ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
