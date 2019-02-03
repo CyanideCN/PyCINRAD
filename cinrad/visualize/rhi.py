@@ -24,14 +24,21 @@ class Section:
         ycor = self.data.ycor
         rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
         plt.style.use('dark_background')
-        plt.figure(figsize=(10, 4), dpi=200)
-        plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
+        #plt.figure(figsize=(10, 4), dpi=200)
+        plt.figure(figsize=(10, 8), dpi=600)  ## 修改于2019-01-22 By WU Fulang
+        plt.tick_params(labelsize=20) #坐标轴字体大小
+        plt.grid(True, linewidth=0.50, linestyle="-.", color='white') ## 修改于2019-01-22 By WU Fulang
+        #设置横纵坐标名称对应字体格式
+        font1 = {'family':'Times New Roman','weight':'normal','size':23,}
+        #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
+        plt.contourf(xcor, ycor, rhi, 128, cmap=r_cmap_smooth, norm=norm1)
         plt.ylim(0, self.hlim)
         if self.dtype == 'RHI':
             az = self.data.geoinfo['azimuth']
             plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {} Max: {}dbz'.format(
                       self.data.name, az, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
-            plt.xlabel('Range (km)')
+            #plt.xlabel('Range (km)')
+            plt.xlabel('Range (km)', fontproperties=font, fontsize=23) ## 修改于2019-01-22 By WU Fulang
         elif self.dtype == 'VCS':
             stps = self.data.geoinfo['stp_s']
             enps = self.data.geoinfo['enp_s']
@@ -39,8 +46,15 @@ class Section:
             enp = self.data.geoinfo['enp']
             plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
                       self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
-            plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
-        plt.ylabel('Altitude (km)')
+            #重新绘制VCS的横坐标，分为5等分
+            deltaLat = (enp[1]-stp[1])/5.0
+            deltaLon = (enp[0]-stp[0])/5.0
+            plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['{:.2f}N\n{:.2f}E'.format(stp[1], stp[0]), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*1., stp[0]+deltaLon*1.),
+                                     '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*2., stp[0]+deltaLon*2.), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*3., stp[0]+deltaLon*3.),
+                                    '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*4., stp[0]+deltaLon*4.), '{:.2f}N\n{:.2f}E'.format(enp[1], enp[0])]) #分为五等分
+        plt.ylabel('Height (km)', fontproperties=font, fontsize=23) ## 修改于2019-01-22 By WU Fulang
+            #plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
+        #plt.ylabel('Altitude (km)')
         if self.path_customize:
             path_string = fpath
         else:
