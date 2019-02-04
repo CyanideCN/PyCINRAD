@@ -308,8 +308,9 @@ class CinradReader:
             return self.elevdeg
         else:
             return self.elevdeg[scans]
-
-    def get_range(self, drange, reso):
+    
+    @staticmethod
+    def get_range(drange, reso):
         return np.arange(reso, drange + reso, reso)
 
     def get_data(self, tilt, drange, dtype):
@@ -421,7 +422,7 @@ class StandardData:
     Attributes
     ----------
     scantime: datetime.datetime
-        time of scan for this data 
+        time of scan for this data
     code: str
         code for this radar
     angleindex_r: list
@@ -578,7 +579,6 @@ class StandardData:
         if data.size == 0:
             raise RadarDecodeError('Current elevation does not contain this data.')
         reso = self.scanconfig[tilt]['radial_reso']
-        length = data.shape[1] * reso
         cut = data[:, :int(drange / reso)]
         r = np.ma.array(cut, mask=np.isnan(cut))
         r_obj = Radial(r, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,

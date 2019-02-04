@@ -10,7 +10,6 @@ import cartopy.crs as ccrs
 
 from cinrad.constants import font, MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
-import xlrd  # for reading city names
 
 def setup_plot(dpi, figsize=(10, 10), style='black'):
     fig = plt.figure(figsize=figsize, dpi=dpi)
