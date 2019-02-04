@@ -74,7 +74,7 @@ class CinradReader:
     radartype: str
         type of radar (SA, SB, etc.)
     scantime: datetime.datetime
-        time of scan for this data 
+        time of scan for this data
     code: str
         code for this radar
     angleindex_r: list
@@ -308,7 +308,7 @@ class CinradReader:
             return self.elevdeg
         else:
             return self.elevdeg[scans]
-    
+
     @staticmethod
     def get_range(drange, reso):
         return np.arange(reso, drange + reso, reso)
@@ -342,7 +342,6 @@ class CinradReader:
             data = np.ma.array(self.data[tilt][dtype])
         except KeyError:
             raise RadarDecodeError('Invalid product name')
-        length = data.shape[1] * reso
         cut = data.T[:int(np.round(drange / reso))]
         shape_diff = np.round(drange / reso) - cut.shape[0]
         append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
@@ -373,7 +372,6 @@ class CinradReader:
 
     def projection(self, reso, h_offset=False):
         r'''Calculate the geographic coordinates of the requested data range.'''
-        length = self.get_nrays(self.tilt)
         theta = self.get_azimuth_angles(self.tilt)
         r = self.get_range(self.drange, reso)
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat, h_offset=h_offset)
@@ -529,9 +527,9 @@ class StandardData:
             if el_num not in data.keys():
                 data[el_num] = dict()
                 data[el_num]['azimuth'] = list()
-            el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
+            #el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
             az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
-            length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
+            #length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
             type_num = np.frombuffer(header[40:44], 'u4')[0]#数据类别数量
             for i in range(type_num):
                 data_header = f.read(32)#径向数据头
