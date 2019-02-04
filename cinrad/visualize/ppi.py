@@ -130,7 +130,7 @@ class PPI(object):
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         if self.settings['extent']==None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
-        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'], 
+        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])

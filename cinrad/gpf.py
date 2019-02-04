@@ -227,7 +227,7 @@ class Colormap:
                 lvctrl = lvctrl[1:]
             levels = np.arange(tmin, tmax+float(lvctrl), float(lvctrl))
         return levels
-            
+
     def get_color(self, l, line):
         if l == '~':
             return LAST_COLOR
