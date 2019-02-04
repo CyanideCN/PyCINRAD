@@ -148,6 +148,7 @@ fig('D:\\')
 |`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
 |`add_slice`|在`ppi`图中加上`vcs`的数据|
 |`style`|背景颜色，可设置为黑色`black`或者白色`white`|
+|`add_city_names`|标注城市名|
 
 同时`PPI`类中定义有其他绘图函数：
 ##### PPI.plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs)
