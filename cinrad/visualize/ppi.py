@@ -4,10 +4,10 @@
 import os
 from pathlib import Path
 import warnings
+import json
 
 import numpy as np
 from matplotlib._pylab_helpers import Gcf
-import pandas as pd
 
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
@@ -251,12 +251,12 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
-        df = pd.read_csv(os.path.join(MODULE_DIR, 'china_coordinates.csv'), names=['Code', 'Name', 'Lon', 'Lat'])
-        name = df['Name'].values
-        lon = df['Lon'].values.astype(float)
-        lat = df['Lat'].values.astype(float)
+        js = json.load(open(os.path.join(MODULE_DIR, 'chinaCity.json'), encoding='utf-8'))
+        name = np.concatenate([[j['name'] for j in i['children']] for i in js])
+        lon = np.concatenate([[j['log'] for j in i['children']] for i in js]).astype(float)
+        lat = np.concatenate([[j['lat'] for j in i['children']] for i in js]).astype(float)
         extent = self.geoax.get_extent()
         fraction = (extent[1] - extent[0]) * 0.04
-        target_city = (lon > extent[0] + fraction) & (lon < extent[1] - fraction) & (lat > extent[2] + fraction) & (lat < extent[3] - fraction)
+        target_city = (lon > (extent[0] + fraction)) & (lon < (extent[1] - fraction)) & (lat > (extent[2] + fraction)) & (lat < (extent[3] - fraction))
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
-            self.geoax.text(stlon, stlat, nm[:2], fontproperties=font, color='darkgrey')
+            self.geoax.text(stlon, stlat, nm, fontproperties=font, color='darkgrey')
