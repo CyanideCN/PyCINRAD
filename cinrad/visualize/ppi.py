@@ -7,7 +7,6 @@ import warnings
 import json
 
 import numpy as np
-from matplotlib._pylab_helpers import Gcf
 
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
@@ -85,9 +84,6 @@ class PPI(object):
                 if not fpath.endswith(os.path.sep):
                     fpath += os.path.sep
         return self._save(fpath)
-
-    def close(self):
-        Gcf.destroy_all()
 
     def _norm(self):
         if self.settings['norm']:
@@ -231,7 +227,7 @@ class PPI(object):
             return
         else:
             stlist = sti.storm_list
-            extent = self.geoax.get_extent()
+            #extent = self.geoax.get_extent()
             for st in stlist:
                 past = sti.track(st, 'past')
                 fcs = sti.track(st, 'forecast')
@@ -243,7 +239,7 @@ class PPI(object):
                 self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey')
                 #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
-    
+
     def gridlines(self, draw_labels=True, linewidth=0, **kwargs):
         r'''Draw grid lines on cartopy axes'''
         liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)

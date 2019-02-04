@@ -45,7 +45,7 @@ else:
     fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
     try:
         font = FontProperties(fonts[0].fname)
-    except:
+    except ValueError:
         font = FontProperties(['sans-serif']) # empty font
 
 norm1 = cmx.Normalize(0, 75)

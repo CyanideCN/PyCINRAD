@@ -196,7 +196,7 @@ class RadarMosaic:
                 self.data_list.append(i)
         self._check_time()
 
-    def gen_longitude(self, extent=[], points=1000):
+    def gen_longitude(self, extent=None, points=1000):
         if extent:
             return np.linspace(extent[0], extent[1], points)
         else:
@@ -204,7 +204,7 @@ class RadarMosaic:
             right_coor = np.max([np.max(i.lon) for i in self.data_list])# + 0.5
             return np.linspace(left_coor, right_coor, points)
 
-    def gen_latitude(self, extent=[], points=1000):
+    def gen_latitude(self, extent=None, points=1000):
         if extent:
             return np.linspace(extent[0], extent[1], points)
         else:

@@ -28,8 +28,6 @@ class Section:
         plt.figure(figsize=(10, 8), dpi=600)  ## 修改于2019-01-22 By WU Fulang
         plt.tick_params(labelsize=20) #坐标轴字体大小
         plt.grid(True, linewidth=0.50, linestyle="-.", color='white') ## 修改于2019-01-22 By WU Fulang
-        #设置横纵坐标名称对应字体格式
-        font1 = {'family':'Times New Roman','weight':'normal','size':23,}
         #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
         plt.contourf(xcor, ycor, rhi, 128, cmap=r_cmap_smooth, norm=norm1)
         plt.ylim(0, self.hlim)

@@ -2,6 +2,7 @@
 
 import os
 import sys
+import ast
 
 import matplotlib.colors as mclr
 import numpy as np
@@ -218,7 +219,7 @@ class Colormap:
             for i in range(len(datacache)-1):
                 levels.extend(np.linspace(datacache[i][0], datacache[i+1][0], lvctrl))
         elif lvctrl.startswith('['):
-            levels = eval(lvctrl)
+            levels = ast.literal_eval(lvctrl)
         else:
             if lvctrl == 'auto':
                 lvctrl = 1
@@ -254,7 +255,7 @@ class Colormap:
             line = f.readline()
             while line:
                 if line[0] != '#':
-                    data = [eval(numbyte) for numbyte in line.split()]
+                    data = [ast.literal_eval(numbyte) for numbyte in line.split()]
                     red = (data[0], lastred[2], data[1])
                     green = (data[0], lastgreen[2], data[2])
                     blue = (data[0], lastblue[2], data[3])
@@ -266,7 +267,7 @@ class Colormap:
                     lastblue = blue
                 line = f.readline()
         return dict(cmap=mclr.LinearSegmentedColormap('gpf', cmap))
-        
+
 if __name__ == '__main__':
     from matplotlib.colorbar import ColorbarBase
     import matplotlib.pyplot as plt
