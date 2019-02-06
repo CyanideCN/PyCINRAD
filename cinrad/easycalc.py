@@ -176,7 +176,7 @@ class VCS:
             raise RadarCalculationError('Invalid input')
         return self._get_section(stp, enp, spacing)
 
-class RadarMosaic:
+class RadarMosaic(object):
     r'''Untested'''
     def __init__(self, data):
         self.data_list = list()

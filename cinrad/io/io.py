@@ -13,26 +13,12 @@ from cinrad.constants import deg2rad, con, con2, rm, MODULE_DIR
 from cinrad.datastruct import Radial, _Slice
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
-from cinrad.utils import _find_azimuth_position
+#from cinrad.utils import _find_azimuth_position
 from cinrad.io._io import NetCDFWriter
+from cinrad.io.base import BaseRadar, _get_radar_info
 from cinrad.io._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
-
-radarinfo = np.load(os.path.join(MODULE_DIR, 'RadarStation.npy'))
-
-def _get_radar_info(code):
-    r'''Get radar station info from the station database according to the station code.'''
-    try:
-        pos = np.where(radarinfo[0] == code)[0][0]
-    except IndexError:
-        raise RadarDecodeError('Invalid radar code')
-    name = radarinfo[1][pos]
-    lon = radarinfo[2][pos]
-    lat = radarinfo[3][pos]
-    radartype = radarinfo[4][pos]
-    radarheight = radarinfo[5][pos]
-    return name, lon, lat, radartype, radarheight
 
 def _detect_radartype(f, filename, type_assert=None):
     r'''Detect radar type from records in file'''
@@ -65,7 +51,7 @@ def _detect_radartype(f, filename, type_assert=None):
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
 
-class CinradReader:
+class CinradReader(BaseRadar):
     r'''
     Class handling CINRAD radar reading
 
@@ -258,24 +244,6 @@ class CinradReader:
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
-    def set_code(self, code):
-        self.code = code
-        self._update_radar_info()
-
-    def _update_radar_info(self):
-        r'''Update radar station info automatically.'''
-        info = _get_radar_info(self.code)
-        if info is None:
-            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
-        else:
-            self.stationlon = info[1]
-            self.stationlat = info[2]
-            self.name = info[0]
-            self.radarheight = info[4]
-
-    def get_nscans(self):
-        return len(self.el)
-
     def get_nrays(self, scan):
         r'''Get number of radials in certain scan'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
@@ -308,10 +276,6 @@ class CinradReader:
             return self.elevdeg
         else:
             return self.elevdeg[scans]
-
-    @staticmethod
-    def get_range(drange, reso):
-        return np.arange(reso, drange + reso, reso)
 
     def get_data(self, tilt, drange, dtype):
         r'''
@@ -378,31 +342,6 @@ class CinradReader:
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def rhi(self, azimuth, drange):
-        r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
-        azimuth *= deg2rad
-        rhi = list()
-        xcoor = list()
-        ycoor = list()
-        dist = np.arange(1, drange + 1, 1)
-        for i in self.angleindex_r:
-            cac = self.get_data(i, drange, 'REF').data
-            pos = _find_azimuth_position(self.data[i]['azimuth'], azimuth)
-            if pos is None:
-                nanarray = np.zeros((drange))
-                rhi.append(nanarray.tolist())
-            else:
-                rhi.append(cac[pos])
-            theta = self.elev * deg2rad
-            xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * rm ** 2)).tolist())
-        rhi = np.array(rhi)
-        rhi[rhi < 0] = 0
-        xc = np.array(xcoor)
-        yc = np.array(ycoor)
-        return _Slice(rhi, xc, yc, self.scantime, self.code, self.name, 'rhi', azimuth=azimuth,
-                      drange=drange)
-
     def to_nc(self, file, tilt='all', distance=230):
         r'''Store data in NetCDF format'''
         ds = NetCDFWriter(file)
@@ -413,7 +352,7 @@ class CinradReader:
         ds._create_attribute('Station Name', self.name)
         ds._create_attribute('Radar Type', self.radartype)
 
-class StandardData:
+class StandardData(BaseRadar):
     r'''
     Class handling new cinrad standard data reading
 
@@ -479,26 +418,6 @@ class StandardData:
         self._update_radar_info()
         self.angleindex_r = self.avaliable_tilt('REF')
         f.close()
-
-    def set_radarheight(self, height):
-        self.radarheight = height
-
-    def set_station_position(self, stationlon, stationlat):
-        self.stationlon = stationlon
-        self.stationlat = stationlat
-
-    def set_station_name(self, name):
-        self.name = name
-
-    def _update_radar_info(self):
-        r'''Update radar station info automatically.'''
-        info = _get_radar_info(self.code)
-        if info is None:
-            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
-        else:
-            self.set_station_position(info[1], info[2])
-            self.set_station_name(info[0])
-            self.set_radarheight(info[4])
 
     @staticmethod
     def _parse_configuration(f):
@@ -592,31 +511,6 @@ class StandardData:
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
-
-    def rhi(self, azimuth, drange):
-        r'''Clip the reflectivity data from certain elevation angles in a single azimuth angle.'''
-        azimuth *= deg2rad
-        rhi = list()
-        xcoor = list()
-        ycoor = list()
-        dist = np.arange(1, drange + 1, 1)
-        for i in self.angleindex_r:
-            cac = self.get_data(i, drange, 'REF').data
-            pos = _find_azimuth_position(self.data[i]['azimuth'] * deg2rad, azimuth)
-            if pos is None:
-                nanarray = np.zeros((drange))
-                rhi.append(nanarray.tolist())
-            else:
-                rhi.append(cac[pos])
-            theta = self.elev * deg2rad
-            xcoor.append((dist * np.cos(theta)).tolist())
-            ycoor.append(dist * np.sin(theta) + (dist ** 2 / (2 * rm ** 2)).tolist())
-        rhi = np.array(rhi)
-        rhi[rhi < 0] = 0
-        xc = np.array(xcoor)
-        yc = np.array(ycoor)
-        return _Slice(rhi, xc, yc, self.scantime, self.code, self.name, 'rhi', azimuth=azimuth,
-                      drange=drange)
 
     def avaliable_product(self, tilt):
         r'''Get all avaliable products in given tilt'''
