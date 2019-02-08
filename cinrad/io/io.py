@@ -584,7 +584,7 @@ class NexradL2Data:
         hght = height(data_range[:datalength], self.elev, 0) * np.ones(azi.shape[0])[:, np.newaxis]
         return lonx, latx, hght, data_range, azi
 
-class PUP:
+class PUP(BaseRadar):
     r'''
     Class handling PUP data (Nexrad Level III data)
     Currently only radial data are supported
@@ -610,30 +610,13 @@ class PUP:
         o.close()
         self._update_radar_info()
 
-    def set_radarheight(self, height):
-        self.radarheight = height
-
-    def set_station_position(self, stationlon, stationlat):
-        self.stationlon = stationlon
-        self.stationlat = stationlat
-
-    def set_station_name(self, name):
-        self.name = name
-
-    def _update_radar_info(self):
-        r'''Update radar station info automatically.'''
-        info = _get_radar_info(self.code)
-        if info is None:
-            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
-        else:
-            self.set_station_position(info[1], info[2])
-            self.set_station_name(info[0])
-            self.set_radarheight(info[4])
-
     def get_data(self):
-        lon, lat = get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
+        lon, lat = self.projection()
         return Radial(self.data, int(self.rng[-1]), self.el, 1, self.code, self.name, self.scantime.strftime('%Y%m%d%H%M%S'),
                       self.dtype, self.stationlon, self.stationlat, lon, lat)
+
+    def projection(self):
+        return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
 
     @staticmethod
     def _det_product_type(spec):

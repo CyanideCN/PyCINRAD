@@ -60,7 +60,7 @@ class PPI(object):
     data: cinrad.datastruct.Radial / cinrad.datastruct.Grid
     settings: dict
         settings extracted from __init__ function
-    ax: cartopy.mpl.geoaxes.GeoAxes
+    geoax: cartopy.mpl.geoaxes.GeoAxes
         cartopy axes plotting georeferenced data
     fig: matplotlib.figure.Figure
     '''
