@@ -16,28 +16,28 @@ from cinrad.error import RadarCalculationError
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS']
 
-def _extract(Rlist):
+def _extract(r_list):
     r_data = list()
     elev = list()
-    areso = Rlist[0].a_reso if Rlist[0].a_reso else 360
-    for i in Rlist:
+    areso = r_list[0].a_reso if r_list[0].a_reso else 360
+    for i in r_list:
         x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
         r_data.append(x)
         elev.append(i.elev)
-    data = np.concatenate(r_data).reshape(len(Rlist), r_data[0].shape[0], r_data[0].shape[1])
+    data = np.concatenate(r_data).reshape(len(r_list), r_data[0].shape[0], r_data[0].shape[1])
     return data, d, a, elev
 
 def _nearest_ten_minute(date:datetime.datetime):
     minute = (date.minute // 10) * 10
     return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
 
-def quick_cr(Rlist):
+def quick_cr(r_list):
     r'''
     Calculate composite reflectivity
 
     Paramters
     ---------
-    Rlist: list of cinrad.datastruct.Radial
+    r_list: list of cinrad.datastruct.Radial
 
     Returns
     -------
@@ -45,7 +45,7 @@ def quick_cr(Rlist):
         composite reflectivity
     '''
     r_data = list()
-    for i in Rlist:
+    for i in r_list:
         r, x, y = grid_2d(i.data, i.lon, i.lat)
         r_data.append(r)
     cr = np.max(r_data, axis=0)
@@ -54,21 +54,21 @@ def quick_cr(Rlist):
                   'CR', x, y)
     return l2_obj
 
-def quick_et(Rlist):
+def quick_et(r_list):
     r'''
     Calculate echo tops
 
     Paramters
     ---------
-    Rlist: list of cinrad.datastruct.Radial
+    r_list: list of cinrad.datastruct.Radial
 
     Returns
     -------
     l2_obj: cinrad.datastruct.Grid
         echo tops
     '''
-    r_data, d, a, elev = _extract(Rlist)
-    i = Rlist[0]
+    r_data, d, a, elev = _extract(r_list)
+    i = r_list[0]
     et = echo_top(r_data, d, elev, 0)
     l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.scantime, 'ET',
                     i.stp['lon'], i.stp['lat'])
@@ -76,21 +76,21 @@ def quick_et(Rlist):
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vil(Rlist):
+def quick_vil(r_list):
     r'''
     Calculate vertically integrated liquid
 
     Paramters
     ---------
-    Rlist: list of cinrad.datastruct.Radial
+    r_list: list of cinrad.datastruct.Radial
 
     Returns
     -------
     l2_obj: cinrad.datastruct.Grid
         vertically integrated liquid
     '''
-    r_data, d, a, elev = _extract(Rlist)
-    i = Rlist[0]
+    r_data, d, a, elev = _extract(r_list)
+    i = r_list[0]
     vil = vert_integrated_liquid(r_data, d, elev)
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])

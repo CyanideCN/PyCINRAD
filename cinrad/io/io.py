@@ -498,7 +498,7 @@ class StandardData(BaseRadar):
         reso = self.scanconfig[tilt]['radial_reso']
         cut = data[:, :int(drange / reso)]
         r = np.ma.array(cut, mask=np.isnan(cut))
-        r_obj = Radial(r, int(r.shape[0] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
+        r_obj = Radial(r, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
