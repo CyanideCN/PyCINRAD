@@ -7,6 +7,7 @@ import os
 import numpy as np
 
 from cinrad.constants import MODULE_DIR
+from cinrad.error import RadarDecodeError
 
 radarinfo = np.load(os.path.join(MODULE_DIR, 'RadarStation.npy'))
 
