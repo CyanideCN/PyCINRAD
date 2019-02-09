@@ -6,19 +6,26 @@ import warnings
 import datetime
 from pathlib import Path
 import bz2
+from collections import namedtuple, defaultdict
 
 import numpy as np
 
-from cinrad.constants import deg2rad, con, con2, rm, MODULE_DIR
-from cinrad.datastruct import Radial, _Slice
+from cinrad.constants import deg2rad, con, con2, rm
+from cinrad.datastruct import Radial
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 #from cinrad.utils import _find_azimuth_position
 from cinrad.io._io import NetCDFWriter
 from cinrad.io.base import BaseRadar, _get_radar_info
-from cinrad.io._dtype import SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header
+from cinrad.io._dtype import (SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header,
+                              SDD_header, SDD_site, SDD_task, SDD_cut, SDD_rad_header, SDD_mom_header)
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
+
+ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
+
+def merge_bytes(byte_list):
+    return b''.join(byte_list)
 
 def _detect_radartype(f, filename, type_assert=None):
     r'''Detect radar type from records in file'''
@@ -401,73 +408,53 @@ class StandardData(BaseRadar):
             path directed to the file to read
         '''
         if hasattr(file, 'read'):
-            f = file
+            self.f = file
         else:
             if file.lower().endswith('bz2'):
-                f = bz2.open(file, 'rb')
+                self.f = bz2.open(file, 'rb')
             else:
-                f = open(file, 'rb')
-        f.seek(32)
-        self.code = f.read(5).decode()
-        f.seek(332)
-        seconds = np.frombuffer(f.read(4), 'u4')[0]
-        self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(seconds))
-        self.scanconfig = self._parse_configuration(f)
-        self.data = self._parse_datablock(f)
-        self.el = [self.scanconfig[i]['elevation_angle'] for i in self.scanconfig.keys()]
+                self.f = open(file, 'rb')
+        self._parse()
+        self.f.close()
         self._update_radar_info()
-        self.angleindex_r = self.avaliable_tilt('REF')
-        f.close()
+        self.angleindex_r = self.avaliable_tilt('REF') # API consistency
 
-    @staticmethod
-    def _parse_configuration(f):
-        f.seek(336)
-        scan_num = np.frombuffer(f.read(4), 'u4')[0]
-        f.seek(416)
-        config = dict()
-        for i in range(scan_num):
-            f.seek(24, 1)
-            config[i] = dict()
-            config[i]['elevation_angle'] = np.frombuffer(f.read(4), 'f4')[0]
-            f.seek(8, 1)
-            config[i]['angular_reso'] = np.frombuffer(f.read(4), 'f4')[0]
-            f.seek(8, 1)
-            config[i]['radial_reso'] = np.frombuffer(f.read(4), 'u4')[0] / 1000
-            config[i]['max_distance'] = np.frombuffer(f.read(4), 'u4')[0] / 1000
-            f.seek(200, 1)
-        return config
-
-    def _parse_datablock(self, f):
+    def _parse(self):
+        header = np.frombuffer(self.f.read(32), SDD_header)
+        if header['magic_number'] != 0x4D545352:
+            raise RadarDecodeError('Invalid standard data')
+        site_config = np.frombuffer(self.f.read(128), SDD_site)
+        self.code = merge_bytes(site_config['site_code'][0]).decode()
+        task = np.frombuffer(self.f.read(256), SDD_task)
+        #task_name = merge_bytes(task['task_name'][0])
+        self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(task['scan_start_time']))
+        cut_num = task['cut_number'][0]
+        scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
+        self.scan_config = [ScanConfig(*i) for i in scan_config]
         data = dict()
-        while True:
-            header = f.read(64)#径向头块
-            radial_state = np.frombuffer(header[0:4], 'u4')[0]
-            el_num = np.frombuffer(header[16:20], 'u4')[0] - 1#仰角序号
+        aux = dict()
+        while 1:
+            radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
+            el_num = radial_header['elevation_number'][0] - 1
             if el_num not in data.keys():
-                data[el_num] = dict()
-                data[el_num]['azimuth'] = list()
-            #el = np.frombuffer(header[24:28], 'f4')[0]#仰角值
-            az_num = np.frombuffer(header[20:24], 'f4')[0]#方位角
-            #length = np.frombuffer(header[36:40], 'u4')[0]#数据块长度
-            type_num = np.frombuffer(header[40:44], 'u4')[0]#数据类别数量
-            for i in range(type_num):
-                data_header = f.read(32)#径向数据头
-                data_type = np.frombuffer(data_header[0:4], 'u4')[0]#数据类型
-                scale = np.frombuffer(data_header[4:8], 'u4')[0]
-                offset = np.frombuffer(data_header[8:12], 'u4')[0]
-                bitlength = np.frombuffer(data_header[12:14], 'u2')[0]
-                blocklength = np.frombuffer(data_header[16:20], 'u4')[0]
-                body = f.read(blocklength)#径向数据
-                raw = np.frombuffer(body, 'u' + str(bitlength)).astype(float)
-                raw[raw == 0] = np.nan
-                value = (raw - offset) / scale
-                if self.dtype_corr[data_type] not in data[el_num].keys():
-                    data[el_num][self.dtype_corr[data_type]] = list()
-                data[el_num][self.dtype_corr[data_type]].append(value)
-            data[el_num]['azimuth'].append(az_num)
-            if radial_state == 4:
+                data[el_num] = defaultdict(list)
+                aux[el_num] = defaultdict(list)
+            aux[el_num]['azimuth'].append(radial_header['azimuth'][0])
+            for _ in range(radial_header['moment_number'][0]):
+                moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
+                dtype = self.dtype_corr[moment_header['data_type'][0]]
+                data_body = np.frombuffer(self.f.read(moment_header['block_length'][0]),
+                                          'u{}'.format(moment_header['bin_length'][0]))
+                if dtype not in aux[el_num].keys():
+                    scale = moment_header['scale'][0]
+                    offset = moment_header['offset'][0]
+                    aux[el_num][dtype] = (scale, offset)
+                data[el_num][dtype].append(data_body.tolist())
+            if radial_header['radial_state'][0] == 4:
                 break
-        return data
+        self.data = data
+        self.aux = aux
+        self.el = [i.elev for i in self.scan_config]
 
     def get_data(self, tilt, drange, dtype):
         r'''
@@ -490,15 +477,23 @@ class StandardData(BaseRadar):
         self.drange = drange
         self.elev = self.el[tilt]
         try:
-            data = np.array(self.data[tilt][dtype])
+            raw = np.array(self.data[tilt][dtype])
         except KeyError:
             raise RadarDecodeError('Invalid product name')
-        if data.size == 0:
-            raise RadarDecodeError('Current elevation does not contain this data.')
-        reso = self.scanconfig[tilt]['radial_reso']
+        if raw.size == 0:
+            warnings.warn('Empty data', RuntimeWarning)
+        data = np.ma.array(raw, mask=(raw <= 5))
+        reso = self.scan_config[tilt].dop_reso / 1000
         cut = data[:, :int(drange / reso)]
-        r = np.ma.array(cut, mask=np.isnan(cut))
-        r_obj = Radial(r, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
+        if dtype == 'VEL':
+            rf = np.ma.array(cut.data, mask=(cut.data != 1))
+        scale, offset = self.aux[tilt][dtype]
+        r = (cut - offset) / scale
+        if dtype == 'VEL':
+            ret = (r, rf)
+        else:
+            ret = r
+        r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
                        self.stationlon, self.stationlat)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
@@ -507,7 +502,7 @@ class StandardData(BaseRadar):
 
     def projection(self, reso):
         r = np.arange(reso, self.drange + reso, reso)
-        theta = np.array(self.data[self.tilt]['azimuth']) * deg2rad
+        theta = np.array(self.aux[self.tilt]['azimuth']) * deg2rad
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
@@ -629,3 +624,5 @@ class PUP(BaseRadar):
         else:
             raise RadarDecodeError('Unsupported product type {}, currently only radial\
                                     data are supported'.format(spec))
+
+np.ma.masked

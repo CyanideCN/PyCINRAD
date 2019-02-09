@@ -119,27 +119,3 @@ def echo_top(ref, distance, elev, radarheight, threshold=18.):
                     w2 = 1 - w1
                     et[i][j] = w1 * h2 + w2 * h1
     return et
-
-def _find_azimuth_position(azimuth_array, azimuth):
-    r'''
-    Find the relative position of a certain azimuth angle in the data array.
-    All in radian
-    '''
-    count = 0
-    if azimuth < 0.3:
-        azimuth = 0.5 #TODO: Fix bug occured when azimuth is smaller than 0.3 degree
-    azimuth_ = azimuth
-    a_sorted = np.sort(azimuth_array)
-    add = False
-    while count < len(azimuth_array):
-        if azimuth_ == a_sorted[count]:
-            break
-        elif (azimuth_ - a_sorted[count]) * (azimuth_ - a_sorted[count + 1]) < 0:
-            if abs((azimuth_ - a_sorted[count])) >= abs(azimuth_ - a_sorted[count + 1]):
-                add = True
-            break
-        count += 1
-    if add:
-        count += 1
-    pos = np.where(azimuth == a_sorted[count])[0][0]
-    return pos
