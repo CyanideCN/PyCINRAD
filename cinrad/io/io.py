@@ -624,5 +624,3 @@ class PUP(BaseRadar):
         else:
             raise RadarDecodeError('Unsupported product type {}, currently only radial\
                                     data are supported'.format(spec))
-
-np.ma.masked
