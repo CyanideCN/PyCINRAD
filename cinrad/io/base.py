@@ -25,7 +25,10 @@ def _get_radar_info(code):
     return name, lon, lat, radartype, radarheight
 
 class BaseRadar(abc.ABC):
-    r'''Only used when subclassed'''
+    r'''
+    Base class for readers in `cinrad.io`.
+    Only used when subclassed
+    '''
 
     # Same methods for all radar classes
     def _update_radar_info(self):
