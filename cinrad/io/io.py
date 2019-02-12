@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-import os
 import warnings
 import datetime
 from pathlib import Path
@@ -10,13 +9,13 @@ from collections import namedtuple, defaultdict
 
 import numpy as np
 
-from cinrad.constants import deg2rad, con, con2, rm
+from cinrad.constants import deg2rad, con, con2
 from cinrad.datastruct import Radial
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 #from cinrad.utils import _find_azimuth_position
 from cinrad.io._io import NetCDFWriter
-from cinrad.io.base import BaseRadar, _get_radar_info
+from cinrad.io.base import BaseRadar
 from cinrad.io._dtype import (SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header,
                               SDD_header, SDD_site, SDD_task, SDD_cut, SDD_rad_header, SDD_mom_header)
 
@@ -29,6 +28,8 @@ def merge_bytes(byte_list):
 
 def _detect_radartype(f, filename, type_assert=None):
     r'''Detect radar type from records in file'''
+    # Attempt to find information in file, which has higher
+    # priority compared with information obtained from file name
     f.seek(100)
     typestring = f.read(9)
     det_sc = typestring == b'CINRAD/SC'
