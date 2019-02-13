@@ -10,16 +10,14 @@ from collections import namedtuple, defaultdict
 import numpy as np
 
 from cinrad.constants import deg2rad, con, con2
-from cinrad.datastruct import Radial
+from cinrad.datastruct import Radial, Grid
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
-#from cinrad.utils import _find_azimuth_position
 from cinrad.io._io import NetCDFWriter
 from cinrad.io.base import BaseRadar
-from cinrad.io._dtype import (SAB_dtype, CAB_dtype, CC_param, CC_data, CC_header,
-                              SDD_header, SDD_site, SDD_task, SDD_cut, SDD_rad_header, SDD_mom_header)
+from cinrad.io._dtype import *
 
-__all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP']
+__all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP', 'SWAN']
 
 ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
 
@@ -625,3 +623,41 @@ class PUP(BaseRadar):
         else:
             raise RadarDecodeError('Unsupported product type {}, currently only radial\
                                     data are supported'.format(spec))
+
+class SWAN(object):
+    dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
+    def __init__(self, file):
+        if hasattr(file, 'read'):
+            f = file
+            f.seek(0)
+        else:
+            if file.endswith('bz2'):
+                f = bz2.open(file)
+            else:
+                f = open(file, 'rb')
+        header = np.frombuffer(f.read(1024), swan_header_dtype)
+        xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
+        data_size = int(xdim) * int(ydim) * int(zdim)
+        dtype = self.dtype_conv[header['m_data_type'][0]]
+        data_body = np.frombuffer(f.read(data_size), dtype).astype(int)
+        if zdim == 1:
+            out = data_body.reshape(xdim, ydim)
+        else:
+            out = data_body.reshape(xdim, ydim, zdim)
+        self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
+        self.product_name = b''.join(header['data_name'][0]).decode()
+        start_lon = header['start_lon'][0]
+        start_lat = header['start_lat'][0]
+        center_lon = header['center_lon'][0]
+        center_lat = header['center_lat'][0]
+        end_lon = center_lon * 2 - start_lon
+        end_lat = center_lat * 2 - start_lat
+        x_reso = header['x_reso'][0]
+        y_reso = header['y_reso'][0]
+        self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
+        self.lat = np.linspace(start_lat, end_lat, ydim)
+        self.data = np.ma.array((out - 66) / 2, mask=(out==0))
+
+    def get_data(self):
+        x, y = np.meshgrid(self.lon, self.lat)
+        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)

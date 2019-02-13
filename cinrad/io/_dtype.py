@@ -3,6 +3,10 @@
 
 import numpy as np
 
+__all__ = ['CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_task',
+           'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
+           'swan_header_dtype']
+
 def gen_CC():
     from cinrad.io._radar_struct.CC import scan_param_dtype, header_dtype, data_dtype
     return scan_param_dtype, header_dtype, data_dtype
@@ -61,3 +65,35 @@ _CAB_DATA = [('r', 'u1', 800),
 
 SAB_dtype = np.dtype(_S_HEADER + _S_INFO + _SAB_DATA)
 CAB_dtype = np.dtype(_S_HEADER + _S_INFO + _CAB_DATA)
+
+swan_header = [('data_type', '12c'),
+               ('data_name', '38c'),
+               ('name', '8c'),
+               ('version', '8c'),
+               ('year', 'u2'),
+               ('month', 'u2'),
+               ('day', 'u2'),
+               ('hour', 'u2'),
+               ('minute', 'u2'),
+               ('interval', 'u2'),
+               ('x_grid_num', 'u2'),
+               ('y_grid_num', 'u2'),
+               ('z_grid_num', 'u2'),
+               ('radar_count', 'i4'),
+               ('start_lon', 'f4'),
+               ('start_lat', 'f4'),
+               ('center_lon', 'f4'),
+               ('center_lat', 'f4'),
+               ('x_reso', 'f4'),
+               ('y_reso', 'f4'),
+               ('height', '40f4'),
+               ('station_names', '20c16'),
+               ('station_lons', '20f4'),
+               ('station_lats', '20f4'),
+               ('station_alts', '20f4'),
+               ('mosaic_flags', '20B'),
+               ('m_data_type', 'i2'),
+               ('dimension', 'i2'),
+               ('res', '168c')]
+
+swan_header_dtype = np.dtype(swan_header)
