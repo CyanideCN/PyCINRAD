@@ -248,7 +248,7 @@ class CinradReader(BaseRadar):
             data[i]['VEL'] = v1[i * 360: (i + 1) * 360]
             data[i]['azimuth'] = self.get_azimuth_angles(i)
         self.data = data
-        self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
+        self.angleindex_r = self.angleindex_v = list(self.data.keys())
 
     def get_nrays(self, scan):
         r'''Get number of radials in certain scan'''
@@ -423,7 +423,7 @@ class StandardData(BaseRadar):
         if header['magic_number'] != 0x4D545352:
             raise RadarDecodeError('Invalid standard data')
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = merge_bytes(site_config['site_code'][0]).decode()
+        self.code = merge_bytes(site_config['site_code'][0])[:5].decode()
         task = np.frombuffer(self.f.read(256), SDD_task)
         #task_name = merge_bytes(task['task_name'][0])
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(task['scan_start_time']))
@@ -564,6 +564,7 @@ class NexradL2Data:
         x, y, z, d, a = self.projection(self.reso)
         radial = Radial(masked, drange, self.elev, self.reso, self.name, self.name, self.scantime, self.dtype.decode(),
                         self.stationlon, self.stationlat, x, y, a_reso=720)
+        radial.add_polarc(d, a)
         return radial
 
     def projection(self, reso, h_offset=False):
@@ -576,7 +577,7 @@ class NexradL2Data:
         lonx, latx = get_coordinate(data_range[:datalength], azi, self.elev, self.stationlon, self.stationlat,
                                     h_offset=h_offset)
         hght = height(data_range[:datalength], self.elev, 0) * np.ones(azi.shape[0])[:, np.newaxis]
-        return lonx, latx, hght, data_range, azi
+        return lonx, latx, hght, data_range[:datalength], azi
 
 class PUP(BaseRadar):
     r'''

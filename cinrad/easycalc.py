@@ -7,14 +7,14 @@ import time
 import numpy as np
 from xarray import DataArray
 
-from cinrad.utils import echo_top, vert_integrated_liquid
+from cinrad.utils import echo_top, vert_integrated_liquid, potential_maximum_gust_from_reflectivity
 from cinrad.datastruct import Radial, Grid, _Slice
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 
-__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS']
+__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust']
 
 def _extract(r_list):
     r_data = list()
@@ -94,6 +94,28 @@ def quick_vil(r_list):
     vil = vert_integrated_liquid(r_data, d, elev)
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
+    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
+    return l2_obj
+
+def max_potential_gust(r_list):
+    r'''
+    Estimate maximum potential descending gust by Stewart's formula
+
+    Paramters
+    ---------
+    r_list: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        Wind gust
+    '''
+    r_data, d, a, elev = _extract(r_list)
+    i = r_list[0]
+    g = potential_maximum_gust_from_reflectivity(r_data, d, elev)
+    l2_obj = Radial(np.ma.array(g, mask=(g <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
+                    'GUST', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj

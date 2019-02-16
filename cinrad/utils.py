@@ -119,3 +119,14 @@ def echo_top(ref, distance, elev, radarheight, threshold=18.):
                     w2 = 1 - w1
                     et[i][j] = w1 * h2 + w2 * h1
     return et
+
+def potential_maximum_gust(et, vil):
+    r'''
+    Estimate the potential maximum gust with a descending downdraft by Stewart's formula
+    '''
+    return np.sqrt(20.628571 * vil - 2.3810964e-6 * et ** 2)
+
+def potential_maximum_gust_from_reflectivity(ref, distance, elev):
+    et = echo_top(ref, distance, elev, 0)
+    vil = vert_integrated_liquid(ref, distance, elev)
+    return potential_maximum_gust(et, vil)
