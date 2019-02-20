@@ -484,8 +484,15 @@ class StandardData(BaseRadar):
         data = np.ma.array(raw, mask=(raw <= 5))
         reso = self.scan_config[tilt].dop_reso / 1000
         cut = data[:, :int(drange / reso)]
+        shape_diff = np.round(drange / reso) - cut.shape[1]
+        append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
         if dtype == 'VEL':
             rf = np.ma.array(cut.data, mask=(cut.data != 1))
+            rf = np.ma.hstack([rf, append])
+        #r = np.ma.array(cut, mask=np.isnan(cut))
+        print(cut.shape)
+        print(append.shape)
+        cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
         r = (cut - offset) / scale
         if dtype == 'VEL':

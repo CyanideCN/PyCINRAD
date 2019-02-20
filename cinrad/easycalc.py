@@ -17,6 +17,9 @@ from cinrad.error import RadarCalculationError
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust']
 
 def _extract(r_list):
+    d_list = np.array([i.drange for i in r_list])
+    if d_list.mean() != d_list.max():
+        raise ValueError('Input radials must have same data range')
     r_data = list()
     elev = list()
     areso = r_list[0].a_reso if r_list[0].a_reso else 360
