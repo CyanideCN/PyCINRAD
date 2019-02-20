@@ -65,20 +65,24 @@ class PPI(object):
         cartopy axes plotting georeferenced data
     fig: matplotlib.figure.Figure
     '''
-    def __init__(self, data, norm=None, cmap=None, nlabel=None, label=None,
+    def __init__(self, data, fig=None, norm=None, cmap=None, nlabel=None, label=None,
                  dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
                  style='black', add_city_names=False, **kwargs):
         self.data = data
-        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label, 'dpi':dpi,
+        self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names}
+                         'extent':extent, 'slice':add_slice, 'add_city_names':add_city_names}
+        if fig is None:
+            self.fig = setup_plot(dpi, style=style)
+        else:
+            self.fig = fig
+        self.geoax = set_geoaxes(self.fig, lon, lat, extent=extent)
         self._plot(**kwargs)
 
-    def __call__(self, *fpath):
+    def __call__(self, fpath=None):
         if not fpath:
             fpath = os.path.join(str(Path.home()), 'PyCINRAD')
         else:
-            fpath = fpath[0]
             if fpath.upper().endswith('.PNG'):
                 self.settings['path_customize'] = True
             else:
@@ -118,8 +122,6 @@ class PPI(object):
         if self.data.dtype == 'VEL' and self.data.include_rf:
             rf = var[1]
             var = var[0]
-        self.fig = setup_plot(self.settings['dpi'], style=self.settings['style'])
-        self.geoax = set_geoaxes(lon, lat, extent=self.settings['extent'])
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -129,7 +131,7 @@ class PPI(object):
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        if self.settings['extent']==None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
+        if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
