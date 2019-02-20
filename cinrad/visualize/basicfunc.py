@@ -65,7 +65,7 @@ def draw_highlight_area(area):
     pat.set_zorder(2)
 
 def set_geoaxes(fig, extent):
-    ax = fig.add_axes(projection=ccrs.PlateCarree())
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
     ax.background_patch.set_fill(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
     ax.set_extent([x_min, x_max, y_min, y_max], ccrs.PlateCarree())

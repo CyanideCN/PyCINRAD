@@ -71,12 +71,11 @@ class PPI(object):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'add_city_names':add_city_names}
+                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names}
         if fig is None:
             self.fig = setup_plot(dpi, style=style)
         else:
             self.fig = fig
-        self.geoax = set_geoaxes(self.fig, lon, lat, extent=extent)
         self._plot(**kwargs)
 
     def __call__(self, fpath=None):
@@ -119,6 +118,9 @@ class PPI(object):
     def _plot(self, **kwargs):
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
+        if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
+            self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
+        self.geoax = set_geoaxes(self.fig, extent=self.settings['extent'])
         if self.data.dtype == 'VEL' and self.data.include_rf:
             rf = var[1]
             var = var[0]
@@ -131,8 +133,6 @@ class PPI(object):
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
-            self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:

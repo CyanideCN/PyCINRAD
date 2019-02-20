@@ -489,9 +489,6 @@ class StandardData(BaseRadar):
         if dtype == 'VEL':
             rf = np.ma.array(cut.data, mask=(cut.data != 1))
             rf = np.ma.hstack([rf, append])
-        #r = np.ma.array(cut, mask=np.isnan(cut))
-        print(cut.shape)
-        print(append.shape)
         cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
         r = (cut - offset) / scale
