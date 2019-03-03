@@ -1,6 +1,20 @@
 from setuptools import setup, find_packages
 import os
 import glob
+try:
+    import Cython
+    _USE_CYTHON = True
+except ImportError:
+    _USE_CYTHON = False
+
+if _USE_CYTHON:
+    from Cython.Build import cythonize
+    import numpy as np
+    ext_modules = cythonize(os.path.join('cinrad', '_utils.pyx'))
+    include_dirs = [np.get_include()]
+else:
+    ext_modules = None
+    include_dirs = None
 
 setup(
     name = 'cinrad',
@@ -15,10 +29,12 @@ setup(
     platforms = 'Windows',
     python_requires='>=3.5',
     install_requires = ['metpy>=0.8', 'cartopy>=0.15', 'pyshp==1.2.12', 'pyresample', 'matplotlib>=2.2'],
-    data_files=[('cinrad', ['RadarStation.npy', 'chinaCity.json']),
-                ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.cmap')),
-                ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
+    data_files = [('cinrad', ['RadarStation.npy', 'chinaCity.json']),
+                  ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.cmap')),
+                  ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
     scripts = [],
+    ext_modules = ext_modules,
+    include_dirs = include_dirs,
     entry_points = {
         'console_scripts': [
             'test = test.help:main'
