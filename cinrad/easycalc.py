@@ -7,7 +7,14 @@ import time
 import numpy as np
 from xarray import DataArray
 
-from cinrad.utils import echo_top, vert_integrated_liquid, potential_maximum_gust_from_reflectivity
+try:
+    import Cython
+    from cinrad._utils import echo_top, vert_integrated_liquid
+except ImportError:
+    USE_CYTHON = False
+    from cinrad.utils import echo_top, vert_integrated_liquid
+
+from cinrad.utils import potential_maximum_gust_from_reflectivity
 from cinrad.datastruct import Radial, Grid, _Slice
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate

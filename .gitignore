@@ -10,3 +10,4 @@
 /shapefile/*
 *.ui
 /.vscode
+/cinrad/_utils.c
