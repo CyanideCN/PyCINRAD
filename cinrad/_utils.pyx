@@ -1,13 +1,13 @@
+#cython: language_level=3
 cimport numpy as np
 import numpy as np
 
-cdef double deg2rad, vil_const, _f
+cdef double deg2rad, vil_const
 cdef int rm
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500
 vil_const = 3.44e-6
-_f = 0.5714285714285714 # Cython bug
 
 cdef height(np.ndarray distance, np.ndarray elevation, double radarheight):
     return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
@@ -41,10 +41,10 @@ def vert_integrated_liquid(np.ndarray ref, np.ndarray distance, list elev, beam_
             hi = hi_arr[i][j]
             for l in position[:-1].astype(int):
                 ht = dist * (np.sin(elev_[l + 1]) - np.sin(elev_[l]))
-                factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** _f
+                factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
                 m1 += vil_const * factor * ht
-            mb = vil_const * vert_z[pos_s] ** _f * hi
-            mt = vil_const * vert_z[pos_e] ** _f * hi
+            mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
+            mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
             VIL[i][j] = m1 + mb + mt
     return VIL
 
