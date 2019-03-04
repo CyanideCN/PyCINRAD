@@ -9,7 +9,7 @@ deg2rad = 3.141592653589793 / 180
 rm = 8500
 vil_const = 3.44e-6
 
-cdef height(np.ndarray distance, np.ndarray elevation, double radarheight):
+cdef height(np.ndarray distance, double elevation, double radarheight):
     return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
 
 cdef r2z(np.ndarray r):
@@ -24,7 +24,8 @@ def vert_integrated_liquid(np.ndarray ref, np.ndarray distance, list elev, beam_
     xshape, yshape = ref[0].shape
     distance *= 1000
     hi_arr = distance * np.sin(v_beam_width / 2)
-    r = np.clip(ref, None, 55) #reduce the influence of hails
+    #r = np.clip(ref, None, 55) #reduce the influence of hails
+    r = ref
     z = r2z(r)
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
@@ -48,7 +49,7 @@ def vert_integrated_liquid(np.ndarray ref, np.ndarray distance, list elev, beam_
             VIL[i][j] = m1 + mb + mt
     return VIL
 
-def echo_top(np.ndarray ref, np.ndarray distance, list elev, np.ndarray radarheight, threshold=18.):
+def echo_top(np.ndarray ref, np.ndarray distance, list elev, double radarheight, threshold=18.):
     cdef np.ndarray r, et, h, vert_h, vert_r
     cdef int xshape, yshape, pos
     cdef list h_
@@ -60,7 +61,7 @@ def echo_top(np.ndarray ref, np.ndarray distance, list elev, np.ndarray radarhei
     for i in elev:
         h = height(distance, i, radarheight)
         h_.append(h)
-    hght = np.concatenate(h_).reshape(r.shape[0], r.shape[1])
+    hght = np.concatenate(h_).reshape(r.shape[0], r.shape[1], r.shape[2])
     for i in range(xshape):
         for j in range(yshape):
             vert_h = hght[:, i, j]
