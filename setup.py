@@ -13,7 +13,7 @@ except ImportError:
 
 setup(
     name = 'cinrad',
-    version = '1.2.2',
+    version = '1.3',
     description = 'cinrad reading and plotting',
     long_description = 'cinrad reading and plotting',
     license = 'GPL Licence',
