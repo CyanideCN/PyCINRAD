@@ -1,18 +1,13 @@
 from setuptools import setup, find_packages
 import os
 import glob
-try:
-    import Cython
-    _USE_CYTHON = True
-except ImportError:
-    _USE_CYTHON = False
 
-if _USE_CYTHON:
+try:
     from Cython.Build import cythonize
     import numpy as np
     ext_modules = cythonize(os.path.join('cinrad', '_utils.pyx'))
     include_dirs = [np.get_include()]
-else:
+except ImportError:
     ext_modules = None
     include_dirs = None
 

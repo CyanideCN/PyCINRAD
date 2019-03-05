@@ -13,34 +13,33 @@ vil_const = 3.44e-6
 cdef height(np.ndarray distance, double elevation, double radarheight):
     return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
 
-cdef r2z(np.ndarray r):
-    return 10 ** (r / 10)
-
 @cython.boundscheck(False)
-def vert_integrated_liquid(double[:, :, :] ref, double[:, :] distance, double[:] elev, beam_width=0.99, threshold=18.):
-    cdef double v_beam_width, m1, mb, mt, factor, ht, dist
-    cdef np.ndarray hi_arr, r, z, VIL, position, elev_
-    cdef int xshape, yshape, pos_s, pos_e
+def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev, beam_width=0.99, threshold=18.):
+    cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp
+    cdef np.ndarray hi_arr, VIL, position
+    cdef Py_ssize_t xshape, yshape, zshape
+    cdef int pos_s, pos_e, l
     v_beam_width = beam_width * deg2rad
-    elev_ = np.array(elev) * deg2rad
-    xshape, yshape = ref.shape[1], ref.shape[2]
-    r = np.asarray(ref)
-    z = r2z(r)
+    zshape, xshape, yshape = ref.shape[0], ref.shape[1], ref.shape[2]
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
-            vert_r = r[:, i, j]
-            vert_z = z[:, i, j]
+            vert_r = list()
+            vert_z = list()
+            for z in range(zshape):
+                r_tmp = ref[z, i, j]
+                vert_r.append(r_tmp)
+                vert_z.append(10 ** (r_tmp / 10))
             dist = distance[i][j] * 1000
             hi = dist * np.sin(v_beam_width / 2)
-            position = np.where(vert_r > threshold)[0]
+            position = np.where(np.asarray(vert_r) > threshold)[0]
             if position.shape[0] == 0:
                 continue
             pos_s = position[0]
             pos_e = position[-1]
             m1 = 0.
             for l in position[:-1].astype(int):
-                ht = dist * (np.sin(elev_[l + 1]) - np.sin(elev_[l]))
+                ht = dist * (np.sin(elev[l + 1] * deg2rad) - np.sin(elev[l] * deg2rad))
                 factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
                 m1 += vil_const * factor * ht
             mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
