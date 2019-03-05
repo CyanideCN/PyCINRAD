@@ -1,6 +1,7 @@
 #cython: language_level=3
 cimport numpy as np
 import numpy as np
+cimport cython
 
 cdef double deg2rad, vil_const
 cdef int rm
@@ -15,31 +16,29 @@ cdef height(np.ndarray distance, double elevation, double radarheight):
 cdef r2z(np.ndarray r):
     return 10 ** (r / 10)
 
-def vert_integrated_liquid(np.ndarray ref, np.ndarray distance, list elev, beam_width=0.99, threshold=18.):
+@cython.boundscheck(False)
+def vert_integrated_liquid(double[:, :, :] ref, double[:, :] distance, double[:] elev, beam_width=0.99, threshold=18.):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist
     cdef np.ndarray hi_arr, r, z, VIL, position, elev_
     cdef int xshape, yshape, pos_s, pos_e
     v_beam_width = beam_width * deg2rad
     elev_ = np.array(elev) * deg2rad
-    xshape, yshape = ref[0].shape
-    distance *= 1000
-    hi_arr = distance * np.sin(v_beam_width / 2)
-    #r = np.clip(ref, None, 55) #reduce the influence of hails
-    r = ref
+    xshape, yshape = ref.shape[1], ref.shape[2]
+    r = np.asarray(ref)
     z = r2z(r)
     VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
             vert_r = r[:, i, j]
             vert_z = z[:, i, j]
-            dist = distance[i][j]
+            dist = distance[i][j] * 1000
+            hi = dist * np.sin(v_beam_width / 2)
             position = np.where(vert_r > threshold)[0]
             if position.shape[0] == 0:
                 continue
             pos_s = position[0]
             pos_e = position[-1]
             m1 = 0.
-            hi = hi_arr[i][j]
             for l in position[:-1].astype(int):
                 ht = dist * (np.sin(elev_[l + 1]) - np.sin(elev_[l]))
                 factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
@@ -49,24 +48,25 @@ def vert_integrated_liquid(np.ndarray ref, np.ndarray distance, list elev, beam_
             VIL[i][j] = m1 + mb + mt
     return VIL
 
-def echo_top(np.ndarray ref, np.ndarray distance, list elev, double radarheight, threshold=18.):
+@cython.boundscheck(False)
+def echo_top(double[:, :, :] ref, double[:, :] distance, double[:] elev, double radarheight, threshold=18.):
     cdef np.ndarray r, et, h, vert_h, vert_r
     cdef int xshape, yshape, pos
     cdef list h_
     cdef double z1, z2, h1, h2, w1, w2
-    r = np.ma.array(ref, mask=(ref > threshold))
-    xshape, yshape = r[0].shape
+    xshape, yshape = ref.shape[1], ref.shape[2]
     et = np.zeros((xshape, yshape))
     h_ = list()
     for i in elev:
-        h = height(distance, i, radarheight)
+        h = height(np.asarray(distance), i, radarheight)
         h_.append(h)
-    hght = np.concatenate(h_).reshape(r.shape[0], r.shape[1], r.shape[2])
+    hght = np.concatenate(h_).reshape(ref.shape[0], ref.shape[1], ref.shape[2])
+    r = np.asarray(ref)
     for i in range(xshape):
         for j in range(yshape):
             vert_h = hght[:, i, j]
-            vert_r = ref[:, i, j]
-            if vert_r.max() < threshold: # Vertical points don't satisfy threshold
+            vert_r = r[:, i, j]
+            if np.max(vert_r) < threshold: # Vertical points don't satisfy threshold
                 et[i][j] = 0
                 continue
             elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold

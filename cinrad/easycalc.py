@@ -28,7 +28,7 @@ def _extract(r_list):
         r_data.append(x)
         elev.append(i.elev)
     data = np.concatenate(r_data).reshape(len(r_list), r_data[0].shape[0], r_data[0].shape[1])
-    return data, d, a, elev
+    return data, d, a, np.array(elev)
 
 def _nearest_ten_minute(date:datetime.datetime):
     minute = (date.minute // 10) * 10
