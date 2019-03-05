@@ -43,7 +43,7 @@ except ImportError:
 
     def _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold):
         #r = np.clip(ref, None, 55) #reduce the influence of hails
-        r = z
+        r = ref
         z = r2z(r)
         VIL = np.zeros((xshape, yshape))
         for i in range(xshape):
