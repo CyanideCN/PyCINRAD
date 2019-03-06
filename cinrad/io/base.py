@@ -16,7 +16,7 @@ def _get_radar_info(code):
     try:
         pos = np.where(radarinfo[0] == code)[0][0]
     except IndexError:
-        raise RadarDecodeError('Invalid radar code')
+        raise RadarDecodeError('Invalid radar code {}'.format(code))
     name = radarinfo[1][pos]
     lon = radarinfo[2][pos]
     lat = radarinfo[3][pos]

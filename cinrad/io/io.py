@@ -586,33 +586,52 @@ class NexradL2Data:
 class PUP(BaseRadar):
     r'''
     Class handling PUP data (Nexrad Level III data)
-    Currently only radial data are supported
     '''
     def __init__(self, file):
         from metpy.io.nexrad import Level3File
         f = Level3File(file)
+        self.dtype = self._det_product_type(f.prod_desc.prod_code)
+        self.radial_flag = self._is_radial()
         data_block = f.sym_block[0][0]
-        data = np.ma.array(data_block['data'][1:]) # First element in data is mysteriously empty
+        data = np.ma.array(data_block['data']) # First element in data is mysteriously empty
         data[data == 0] = np.ma.masked
-        self.az = np.array(data_block['start_az'][:-1]) * deg2rad
-        self.rng = np.linspace(1, f.max_range, data.shape[-1])
-        self.data = f.map_data(data)
+        self.data = np.ma.masked_invalid(f.map_data(data))
+        self.max_range = f.max_range
+        if self.radial_flag:
+            self.az = np.array(data_block['start_az']) * deg2rad
+            self.rng = np.linspace(1, f.max_range, data.shape[-1])
+        else:
+            xdim, ydim = data.shape
+            x = np.linspace(xdim * f.ij_to_km * -1, xdim * f.ij_to_km, xdim) / 111 + f.lon
+            y = np.linspace(ydim * f.ij_to_km, ydim * f.ij_to_km * -1, ydim) / 111 + f.lat
+            self.lon, self.lat = np.meshgrid(x, y)
+            self.reso = f.ij_to_km
         self.stationlat = f.lat
         self.stationlon = f.lon
         self.el = f.metadata['el_angle']
         self.scantime = f.metadata['vol_time']
         o = open(file, 'rb')
-        spec = np.frombuffer(o.read(2), '>i2')[0]
-        self.dtype = self._det_product_type(spec)
         o.seek(12)
-        self.code = 'Z9{}'.format(np.frombuffer(o.read(2), '>i2')[0])
+        code = np.frombuffer(o.read(2), '>i2')[0]
+        if code in range(0, 100):
+            cds = '0{}'.format(code)
+        else:
+            cds = str(code)
+        self.code = 'Z9' + cds
         o.close()
         self._update_radar_info()
 
     def get_data(self):
-        lon, lat = self.projection()
-        return Radial(self.data, int(self.rng[-1]), self.el, 1, self.code, self.name, self.scantime.strftime('%Y%m%d%H%M%S'),
-                      self.dtype, self.stationlon, self.stationlat, lon, lat)
+        if self.radial_flag:
+            lon, lat = self.projection()
+            return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
+                          self.dtype, self.stationlon, self.stationlat, lon, lat)
+        else:
+            return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
+                        self.dtype, self.lon, self.lat)
+    
+    def _is_radial(self):
+        return self.dtype in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
 
     def projection(self):
         return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
@@ -625,9 +644,10 @@ class PUP(BaseRadar):
             return 'VEL'
         elif spec in range(28, 31):
             return 'SW'
+        elif spec == 37:
+            return 'CR'
         else:
-            raise RadarDecodeError('Unsupported product type {}, currently only radial\
-                                    data are supported'.format(spec))
+            raise RadarDecodeError('Unsupported product type {}'.format(spec))
 
 class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
