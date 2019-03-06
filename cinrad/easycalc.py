@@ -72,7 +72,7 @@ def quick_et(r_list):
     '''
     r_data, d, a, elev = _extract(r_list)
     i = r_list[0]
-    et = echo_top(r_data, d, elev, 0.)
+    et = echo_top(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.)
     l2_obj = Radial(et, i.drange, 0, 1, i.code, i.name, i.scantime, 'ET',
                     i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0] / 1000, a[:, 0], 0, i.stp['lon'], i.stp['lat'])
@@ -94,7 +94,7 @@ def quick_vil(r_list):
     '''
     r_data, d, a, elev = _extract(r_list)
     i = r_list[0]
-    vil = vert_integrated_liquid(r_data, d, elev)
+    vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double))
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0] / 1000, a[:, 0], 0, i.stp['lon'], i.stp['lat'])
