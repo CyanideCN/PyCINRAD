@@ -636,7 +636,7 @@ class SWAN(object):
             f = file
             f.seek(0)
         else:
-            if file.endswith('bz2'):
+            if file.lower().endswith('bz2'):
                 f = bz2.open(file)
             else:
                 f = open(file, 'rb')
@@ -650,7 +650,7 @@ class SWAN(object):
         else:
             out = data_body.reshape(xdim, ydim, zdim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
-        self.product_name = b''.join(header['data_name'][0]).decode()
+        self.product_name = b''.join(header['data_name'][0, :4]).decode()
         start_lon = header['start_lon'][0]
         start_lat = header['start_lat'][0]
         center_lon = header['center_lon'][0]
@@ -666,3 +666,4 @@ class SWAN(object):
     def get_data(self):
         x, y = np.meshgrid(self.lon, self.lat)
         grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
+        return grid

@@ -128,11 +128,11 @@ class PPI(object):
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, zorder=3.5, **kwargs)
         else:
-            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, zorder=3.5, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
-                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
+                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], zorder=3.5, **kwargs)
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:
@@ -218,7 +218,7 @@ class PPI(object):
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red')
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red', zorder=5)
 
     def storm_track_info(self, filepath):
         r'''
