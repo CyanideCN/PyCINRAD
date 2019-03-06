@@ -11,7 +11,7 @@ import cartopy.crs as ccrs
 from cinrad.constants import font, MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
 
-def setup_plot(dpi, figsize=(10, 10), style='black'):
+def setup_plot(dpi, figsize=(9, 9), style='black'):
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis('off')
     if style == 'black':
@@ -19,22 +19,22 @@ def setup_plot(dpi, figsize=(10, 10), style='black'):
     return fig
 
 def setup_axes(fig, cmap, norm):
-    ax = fig.add_axes([0.92, 0.12, 0.04, 0.35])
+    ax = fig.add_axes([0.92, 0.06, 0.045, 0.38])
     cbar = ColorbarBase(ax, cmap=cmap, norm=norm, orientation='vertical', drawedges=False)
-    cbar.ax.tick_params(axis='both', which='both', length=0, labelsize=8)
+    cbar.ax.tick_params(axis='both', which='both', length=0, labelsize=10)
     cbar.outline.set_visible(False)
     return ax, cbar
 
 def text(ax, drange, reso, scantime, name, elev):
-    ax.text(0, 2.09, 'Range: {:.0f}km'.format(drange), fontproperties=font)
-    ax.text(0, 2.05, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font)
-    ax.text(0, 2.01, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), fontproperties=font)
-    ax.text(0, 1.97, 'Time: {}'.format(scantime.strftime('%H:%M')), fontproperties=font)
+    ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), fontproperties=font)
+    ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font)
+    ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), fontproperties=font)
+    ax.text(0, 2.16, 'Time: {}'.format(scantime.strftime('%H:%M')), fontproperties=font)
     if name is None:
         name = 'Unknown'
-    ax.text(0, 1.93, 'RDA: ' + name, fontproperties=font)
-    ax.text(0, 1.89, 'Mode: Precipitation', fontproperties=font)
-    ax.text(0, 1.85, 'Elev: {:.2f}deg'.format(elev), fontproperties=font)
+    ax.text(0, 2.11, 'RDA: ' + name, fontproperties=font)
+    ax.text(0, 2.06, 'Mode: Precipitation', fontproperties=font)
+    ax.text(0, 2.01, 'Elev: {:.2f}deg'.format(elev), fontproperties=font)
 
 def save(fpath):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
@@ -65,7 +65,7 @@ def draw_highlight_area(area):
     pat.set_zorder(2)
 
 def set_geoaxes(fig, extent):
-    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+    ax = fig.add_axes([0, 0, 0.9, 0.9], projection=ccrs.PlateCarree())
     ax.background_patch.set_fill(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
     ax.set_extent([x_min, x_max, y_min, y_max], ccrs.PlateCarree())

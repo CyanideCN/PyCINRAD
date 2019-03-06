@@ -139,7 +139,7 @@ class PPI(object):
             draw_highlight_area(self.settings['highlight'])
         if self.settings['add_city_names']:
             self._add_city_names()
-        ax2 = self.fig.add_axes([0.92, 0.12, 0.01, 0.35]) # axes used for text which has the same x-position as
+        ax2 = self.fig.add_axes([0.92, 0.06, 0.01, 0.35]) # axes used for text which has the same x-position as
                                                           # the colorbar axes (for matplotlib 3 compatibility)
         for sp in ax2.spines.values():
             sp.set_visible(False)
@@ -149,10 +149,10 @@ class PPI(object):
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
         text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
-        ax2.text(0, 2.13, prodname[dtype], fontproperties=font)
-        ax2.text(0, 1.81, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
+        ax2.text(0, 2.36, prodname[dtype], fontproperties=font)
+        ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
         if self.data.dtype == 'VEL':
-            ax2.text(0, 1.77, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
+            ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
@@ -202,7 +202,7 @@ class PPI(object):
     def plot_cross_section(self, data, ymax=None):
         r'''Plot cross section data below the PPI plot.'''
         self.settings['slice'] = data
-        ax2 = self.fig.add_axes([0.13, -0.12, 0.77, 0.2])
+        ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
         ax2.yaxis.set_ticks_position('right')
         #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
