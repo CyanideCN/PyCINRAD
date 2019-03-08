@@ -18,12 +18,13 @@ def highlight_area(area, facecolor='None', edgecolor='red', **kwargs):
     rec = shp.shapeRecords()
     vertices = list()
     codes = list()
+    if isinstance(area, str):
+        area = [area]
     for i in area:
         if not isinstance(i, str):
             raise RadarPlotError('Area name should be str')
         name = np.array([i.record[2].decode('GBK') for i in rec])
-        mask = np.ma.array(name, mask=(name==i))
-        target = np.array(rec)[mask.mask]
+        target = np.array(rec)[(name == i).nonzero()[0]]
         for j in target:
             codes += [Path.MOVETO] + [Path.LINETO] * (len(j.shape.points) - 1)
             vertices += j.shape.points
