@@ -680,5 +680,6 @@ class SWAN(object):
         self.data = np.ma.array((out - 66) / 2, mask=(out==0))
 
     def get_data(self):
+        x, y = np.meshgrid(self.lon, self.lat)
         grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
         return grid
