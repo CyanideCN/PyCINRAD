@@ -2,6 +2,7 @@
 # Author: Puyuan Du
 
 import os
+import warnings
 
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
@@ -43,10 +44,14 @@ if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
 else:
     from matplotlib.font_manager import fontManager
     fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
-    try:
-        font = FontProperties(fonts[0].fname)
-    except ValueError:
-        font = FontProperties(['sans-serif']) # empty font
+    if len(fonts) == 0:
+        warnings.warn('No Chinese font file found', RuntimeWarning)
+        font = FontProperties(['DejaVu Sans'])
+    else:
+        try:
+            font = FontProperties(fonts[0].fname)
+        except ValueError:
+            font = FontProperties(['DejaVu Sans'])
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
