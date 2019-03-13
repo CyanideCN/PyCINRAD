@@ -7,19 +7,10 @@ __all__ = ['CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_ta
            'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
            'swan_header_dtype']
 
-def gen_CC():
-    from cinrad.io._radar_struct.CC import scan_param_dtype, header_dtype, data_dtype
-    return scan_param_dtype, header_dtype, data_dtype
-
-def gen_SDD():
-    from cinrad.io._radar_struct.standard_data import (generic_header_dtype, site_config_dtype,
-                                                       task_config_dtype, cut_config_dtype, radial_header_dtype,
-                                                       moment_header_dtype)
-    return (generic_header_dtype, site_config_dtype, task_config_dtype,
-            cut_config_dtype, radial_header_dtype, moment_header_dtype)
-
-CC_param, CC_header, CC_data = gen_CC()
-SDD_header, SDD_site, SDD_task, SDD_cut, SDD_rad_header, SDD_mom_header = gen_SDD()
+from cinrad.io._radar_struct.CC import scan_param_dtype as CC_param, header_dtype as CC_header, data_dtype as CC_data
+from cinrad.io._radar_struct.standard_data import (generic_header_dtype as SDD_header, site_config_dtype as SDD_site,
+                                                   task_config_dtype as SDD_task, cut_config_dtype as SDD_cut,
+                                                   radial_header_dtype as SDD_rad_header, moment_header_dtype as SDD_mom_header)
 
 _S_HEADER = [('spare', 'u2', 7),
              ('a', 'u2'),

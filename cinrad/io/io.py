@@ -510,10 +510,6 @@ class StandardData(BaseRadar):
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def avaliable_product(self, tilt):
-        r'''Get all avaliable products in given tilt'''
-        return list(self.data[tilt].keys())
-
     def avaliable_tilt(self, product):
         r'''Get all avaliable tilts for given product'''
         tilt = list()
@@ -684,6 +680,5 @@ class SWAN(object):
         self.data = np.ma.array((out - 66) / 2, mask=(out==0))
 
     def get_data(self):
-        x, y = np.meshgrid(self.lon, self.lat)
         grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
         return grid

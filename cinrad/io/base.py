@@ -49,6 +49,10 @@ class BaseRadar(abc.ABC):
     def get_nscans(self):
         return len(self.el)
 
+    def avaliable_product(self, tilt):
+        r'''Get all avaliable products in given tilt'''
+        return list(self.data[tilt].keys())
+
     @staticmethod
     def get_range(drange, reso):
         return np.arange(reso, drange + reso, reso)

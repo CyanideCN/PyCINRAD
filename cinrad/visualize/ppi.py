@@ -67,11 +67,12 @@ class PPI(object):
     '''
     def __init__(self, data, fig=None, norm=None, cmap=None, nlabel=None, label=None,
                  dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
-                 style='black', add_city_names=False, **kwargs):
+                 style='black', add_city_names=False, plot_labels=True, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names}
+                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names,
+                         'plot_labels':plot_labels}
         if fig is None:
             self.fig = setup_plot(dpi, style=style)
         else:
@@ -148,11 +149,12 @@ class PPI(object):
             change_cbar_text(cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel)
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
-        text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
-        ax2.text(0, 2.36, prodname[dtype], fontproperties=font)
-        ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
-        if self.data.dtype == 'VEL':
-            ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
+        if self.settings['plot_labels']:
+            text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
+            ax2.text(0, 2.36, prodname[dtype], fontproperties=font)
+            ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
+            if self.data.dtype == 'VEL':
+                ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
