@@ -3,6 +3,10 @@
 
 class Radial:
     r'''Structure for data arranged by radials'''
+
+    __slots__ = ['data', 'drange', 'elev', 'reso', 'code', 'name', 'scantime', 'dtype', 'include_rf',
+                    'lon', 'lat', 'height', 'a_reso', 'stp', 'geoflag', 'dist', 'az']
+
     def __init__(self, data, drange, elev, reso, code, name,
                  scantime, dtype, stlon, stlat, lon=None, lat=None,
                  height=None, a_reso=None):
@@ -82,6 +86,9 @@ class Radial:
 
 class _Slice:
     r'''Structure for slice data'''
+
+    __slots__ = ['data', 'xcor', 'ycor', 'scantime', 'dtype', 'code', 'name', 'geoinfo']
+
     def __init__(self, data, xcor, ycor, scantime, code, name, dtype, **geoinfo):
         self.data = data
         self.xcor = xcor
@@ -94,6 +101,9 @@ class _Slice:
 
 class Grid:
     r'''Structure for processed grid data'''
+
+    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat']
+
     def __init__(self, data, drange, reso, code, name, scantime, dtype, lon, lat):
         self.data = data
         self.drange = drange
