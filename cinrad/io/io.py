@@ -6,6 +6,7 @@ import datetime
 from pathlib import Path
 import bz2
 from collections import namedtuple, defaultdict
+from typing import Union, Optional, List, Any
 
 import numpy as np
 
@@ -16,15 +17,16 @@ from cinrad.error import RadarDecodeError
 from cinrad.io._io import NetCDFWriter
 from cinrad.io.base import BaseRadar
 from cinrad.io._dtype import *
+from cinrad._typing import number_type
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP', 'SWAN']
 
 ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
 
-def merge_bytes(byte_list):
+def merge_bytes(byte_list:List[bytes]) -> bytes:
     return b''.join(byte_list)
 
-def _detect_radartype(f, filename, type_assert=None):
+def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tuple:
     r'''Detect radar type from records in file'''
     # Attempt to find information in file, which has higher
     # priority compared with information obtained from file name
@@ -96,7 +98,7 @@ class CinradReader(BaseRadar):
     tilt: int
         current selected tilt
     '''
-    def __init__(self, file, radar_type=None):
+    def __init__(self, file:Any, radar_type:Optional[str]=None):
         r'''
         Parameters
         ----------
@@ -140,7 +142,7 @@ class CinradReader(BaseRadar):
         self._update_radar_info()
         f.close()
 
-    def _SAB_handler(self, f, SAB=True):
+    def _SAB_handler(self, f:Any, SAB:bool=True):
         if SAB:
             radar_dtype = SAB_dtype
         else:
@@ -185,7 +187,7 @@ class CinradReader(BaseRadar):
         self.angleindex_v = np.delete(angleindex, [0, 2])
         self.data = out_data
 
-    def _CC_handler(self, f):
+    def _CC_handler(self, f:Any):
         header = np.frombuffer(f.read(1024), CC_header)
         utc_offset = datetime.timedelta(hours=8)
         self.scantime = datetime.datetime(header['ucEYear1'][0] * 100 + header['ucEYear2'][0], header['ucEMonth'][0],
@@ -212,7 +214,7 @@ class CinradReader(BaseRadar):
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
-    def _SC_handler(self, f):
+    def _SC_handler(self, f:Any):
         vraw = list()
         rraw = list()
         blocklength = 4000
@@ -250,7 +252,7 @@ class CinradReader(BaseRadar):
         self.data = data
         self.angleindex_r = self.angleindex_v = list(self.data.keys())
 
-    def get_nrays(self, scan):
+    def get_nrays(self, scan:int) -> int:
         r'''Get number of radials in certain scan'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             return len(self.data[scan]['azimuth'])
@@ -259,7 +261,7 @@ class CinradReader(BaseRadar):
         elif self.radartype == 'SC':
             return 360
 
-    def get_azimuth_angles(self, scans=None):
+    def get_azimuth_angles(self, scans:Optional[int]=None) -> np.ndarray:
         r'''Get index of input azimuth angle (radian)'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             if scans is None:
@@ -277,13 +279,13 @@ class CinradReader(BaseRadar):
             else:
                 return np.array(np.linspace(0, 360, 360).tolist()) * deg2rad
 
-    def get_elevation_angles(self, scans=None):
+    def get_elevation_angles(self, scans:Optional[int]=None) -> Union[np.ndarray, float]:
         if scans is None:
-            return self.elevdeg
+            return self.el
         else:
-            return self.elevdeg[scans]
+            return self.el[scans]
 
-    def get_data(self, tilt, drange, dtype):
+    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
         r'''
         Get radar raw data
 
@@ -340,7 +342,7 @@ class CinradReader(BaseRadar):
             r_obj.a_reso = 512
         return r_obj
 
-    def projection(self, reso, h_offset=False):
+    def projection(self, reso:float, h_offset:bool=False) -> tuple:
         r'''Calculate the geographic coordinates of the requested data range.'''
         theta = self.get_azimuth_angles(self.tilt)
         r = self.get_range(self.drange, reso)
@@ -348,7 +350,7 @@ class CinradReader(BaseRadar):
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def to_nc(self, file, tilt='all', distance=230):
+    def to_nc(self, file:str, tilt:Union[str, int]='all', distance:number_type=230):
         r'''Store data in NetCDF format'''
         ds = NetCDFWriter(file)
         for i in range(self.get_nscans()):
@@ -399,7 +401,7 @@ class StandardData(BaseRadar):
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
 
-    def __init__(self, file):
+    def __init__(self, file:Any):
         r'''
         Parameters
         ----------
@@ -455,7 +457,7 @@ class StandardData(BaseRadar):
         self.aux = aux
         self.el = [i.elev for i in self.scan_config]
 
-    def get_data(self, tilt, drange, dtype):
+    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
         r'''
         Get radar raw data
 
@@ -503,14 +505,14 @@ class StandardData(BaseRadar):
         r_obj.add_polarc(d, a)
         return r_obj
 
-    def projection(self, reso):
+    def projection(self, reso:float) -> tuple:
         r = np.arange(reso, self.drange + reso, reso)
         theta = np.array(self.aux[self.tilt]['azimuth']) * deg2rad
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def avaliable_tilt(self, product):
+    def avaliable_tilt(self, product:str) -> List[int]:
         r'''Get all avaliable tilts for given product'''
         tilt = list()
         for i in list(self.data.keys()):
@@ -522,7 +524,7 @@ class NexradL2Data:
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
     '''
-    def __init__(self, file):
+    def __init__(self, file:Any):
         r'''
         Parameters
         ----------
@@ -537,7 +539,7 @@ class NexradL2Data:
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
 
-    def get_data(self, tilt, drange, dtype):
+    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
         if isinstance(dtype, str):
             self.dtype = dtype.upper().encode()
         elif isinstance(dtype, bytes):
@@ -567,7 +569,7 @@ class NexradL2Data:
         radial.add_polarc(d, a)
         return radial
 
-    def projection(self, reso, h_offset=False):
+    def projection(self, reso:float, h_offset:bool=False) -> tuple:
         header = self.f.sweeps[self.tilt][0][4][self.dtype][0]
         gatenum = header.num_gates
         firstgate = header.first_gate
@@ -583,7 +585,7 @@ class PUP(BaseRadar):
     r'''
     Class handling PUP data (Nexrad Level III data)
     '''
-    def __init__(self, file):
+    def __init__(self, file:Any):
         from metpy.io.nexrad import Level3File
         f = Level3File(file)
         self.dtype = self._det_product_type(f.prod_desc.prod_code)
@@ -617,7 +619,7 @@ class PUP(BaseRadar):
         o.close()
         self._update_radar_info()
 
-    def get_data(self):
+    def get_data(self) -> Grid:
         if self.radial_flag:
             lon, lat = self.projection()
             return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
@@ -626,14 +628,14 @@ class PUP(BaseRadar):
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
                         self.dtype, self.lon, self.lat)
     
-    def _is_radial(self):
+    def _is_radial(self) -> bool:
         return self.dtype in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
 
-    def projection(self):
+    def projection(self) -> tuple:
         return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
 
     @staticmethod
-    def _det_product_type(spec):
+    def _det_product_type(spec:int) -> str:
         if spec in range(16, 22):
             return 'REF'
         elif spec in range(22, 28):
@@ -647,7 +649,7 @@ class PUP(BaseRadar):
 
 class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
-    def __init__(self, file):
+    def __init__(self, file:Any):
         if hasattr(file, 'read'):
             f = file
             f.seek(0)
@@ -679,7 +681,7 @@ class SWAN(object):
         self.lat = np.linspace(start_lat, end_lat, ydim)
         self.data = np.ma.array((out - 66) / 2, mask=(out==0))
 
-    def get_data(self):
+    def get_data(self) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
         grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
         return grid

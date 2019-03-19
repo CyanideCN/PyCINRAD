@@ -5,14 +5,17 @@ import os
 from pathlib import Path
 import warnings
 import json
+from typing import Union, Optional, Any, List
 
 import numpy as np
 
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.constants import *
+from cinrad.datastruct import Radial, _Slice, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
+from cinrad._typing import RList, number_type
 
 __all__ = ['PPI']
 
@@ -42,7 +45,7 @@ cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
                     '0.85', '0.8', '0.7', '0.6', '0.5', '0.3', '0.1', '0'],
              'TREF':None}
 
-def _prepare(data, datatype):
+def _prepare(data:Radial, datatype:str) -> tuple:
     if not data.geoflag:
         raise RadarPlotError('Geographic information should be contained in data')
     else:
@@ -65,9 +68,11 @@ class PPI(object):
         cartopy axes plotting georeferenced data
     fig: matplotlib.figure.Figure
     '''
-    def __init__(self, data, fig=None, norm=None, cmap=None, nlabel=None, label=None,
-                 dpi=350, highlight=None, coastline=False, extent=None, add_slice=None,
-                 style='black', add_city_names=False, plot_labels=True, **kwargs):
+    def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
+                 cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
+                 dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
+                 extent:Optional[List[number_type]]=None, add_slice:Optional[_Slice]=None,
+                 style:str='black', add_city_names:bool=False, plot_labels:bool=True, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
@@ -79,7 +84,7 @@ class PPI(object):
             self.fig = fig
         self._plot(**kwargs)
 
-    def __call__(self, fpath=None):
+    def __call__(self, fpath:Optional[str]=None):
         if not fpath:
             fpath = os.path.join(str(Path.home()), 'PyCINRAD')
         else:
@@ -158,7 +163,7 @@ class PPI(object):
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
-    def _save(self, fpath):
+    def _save(self, fpath:str):
         if not self.settings['path_customize']:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
@@ -177,7 +182,8 @@ class PPI(object):
             path_string = fpath
         save(path_string)
 
-    def plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs):
+    def plot_range_rings(self, _range:Union[int, float, list], color:str='white', linewidth:number_type=0.5,
+                         **kwargs):
         r'''Plot range rings on PPI plot.'''
         if isinstance(_range, (int, float)):
             _range = [_range]
@@ -201,7 +207,7 @@ class PPI(object):
         x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
         self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
 
-    def plot_cross_section(self, data, ymax=None):
+    def plot_cross_section(self, data:_Slice, ymax:Optional[int]=None):
         r'''Plot cross section data below the PPI plot.'''
         self.settings['slice'] = data
         ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
@@ -222,7 +228,7 @@ class PPI(object):
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
         self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red', zorder=5)
 
-    def storm_track_info(self, filepath):
+    def storm_track_info(self, filepath:str):
         r'''
         Add storm tracks from Nexrad Level III (PUP) STI product file
         '''
@@ -245,7 +251,7 @@ class PPI(object):
                 #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
-    def gridlines(self, draw_labels=True, linewidth=0, **kwargs):
+    def gridlines(self, draw_labels:bool=True, linewidth:number_type=0, **kwargs):
         r'''Draw grid lines on cartopy axes'''
         liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
         liner.xlabels_top = False

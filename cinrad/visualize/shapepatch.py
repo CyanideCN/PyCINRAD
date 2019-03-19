@@ -11,7 +11,7 @@ from matplotlib.patches import PathPatch
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarPlotError
 
-def highlight_area(area, facecolor='None', edgecolor='red', **kwargs):
+def highlight_area(area:str, facecolor='None', edgecolor='red', **kwargs):
     r'''Return pathpatch for given area name'''
     fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)

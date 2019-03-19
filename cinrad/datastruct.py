@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
+from datetime import datetime
+from typing import Union, Optional
+
+from numpy import ndarray
 
 class Radial:
     r'''Structure for data arranged by radials'''
@@ -7,9 +11,9 @@ class Radial:
     __slots__ = ['data', 'drange', 'elev', 'reso', 'code', 'name', 'scantime', 'dtype', 'include_rf',
                     'lon', 'lat', 'height', 'a_reso', 'stp', 'geoflag', 'dist', 'az']
 
-    def __init__(self, data, drange, elev, reso, code, name,
-                 scantime, dtype, stlon, stlat, lon=None, lat=None,
-                 height=None, a_reso=None):
+    def __init__(self, data:ndarray, drange:Union[float, int], elev:float, reso:float, code:str, name:str,
+                 scantime:datetime, dtype:str, stlon:float, stlat:float, lon:Optional[ndarray]=None,
+                 lat:Optional[ndarray]=None, height:Optional[ndarray]=None, a_reso:Optional[int]=None):
         r'''
         Parameters
         ----------
@@ -72,7 +76,7 @@ class Radial:
         return repr_s.format(
             self.dtype.upper(), self.name, self.scantime, self.elev, self.drange)
 
-    def add_geoc(self, lon, lat, height):
+    def add_geoc(self, lon:ndarray, lat:ndarray, height:ndarray):
         if not lon.shape == lat.shape == height.shape:
             raise ValueError('Coordinate sizes are incompatible')
         self.lon = lon
@@ -80,7 +84,7 @@ class Radial:
         self.height = height
         self.geoflag = True
 
-    def add_polarc(self, distance, azimuth):
+    def add_polarc(self, distance:ndarray, azimuth:ndarray):
         self.dist = distance
         self.az = azimuth
 
@@ -89,7 +93,8 @@ class _Slice:
 
     __slots__ = ['data', 'xcor', 'ycor', 'scantime', 'dtype', 'code', 'name', 'geoinfo']
 
-    def __init__(self, data, xcor, ycor, scantime, code, name, dtype, **geoinfo):
+    def __init__(self, data:ndarray, xcor:ndarray, ycor:ndarray, scantime:datetime, code:str,
+                 name:str, dtype:str, **geoinfo):
         self.data = data
         self.xcor = xcor
         self.ycor = ycor
@@ -104,7 +109,8 @@ class Grid:
 
     __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat']
 
-    def __init__(self, data, drange, reso, code, name, scantime, dtype, lon, lat):
+    def __init__(self, data:ndarray, drange:Union[float, int], reso:float, code:str, name:str,
+                 scantime:datetime, dtype:str, lon:ndarray, lat:ndarray):
         self.data = data
         self.drange = drange
         self.reso = reso

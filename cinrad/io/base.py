@@ -8,10 +8,11 @@ import numpy as np
 
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarDecodeError
+from cinrad._typing import number_type
 
 radarinfo = np.load(os.path.join(MODULE_DIR, 'RadarStation.npy'))
 
-def _get_radar_info(code):
+def _get_radar_info(code:str) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
     try:
         pos = np.where(radarinfo[0] == code)[0][0]
@@ -42,26 +43,26 @@ class BaseRadar(abc.ABC):
             self.name = info[0]
             self.radarheight = info[4]
 
-    def set_code(self, code):
+    def set_code(self, code:str):
         self.code = code
         self._update_radar_info()
 
-    def get_nscans(self):
+    def get_nscans(self) -> int:
         return len(self.el)
 
-    def avaliable_product(self, tilt):
+    def avaliable_product(self, tilt:int) -> list:
         r'''Get all avaliable products in given tilt'''
         return list(self.data[tilt].keys())
 
     @staticmethod
-    def get_range(drange, reso):
+    def get_range(drange:number_type, reso:number_type) -> np.ndarray:
         return np.arange(reso, drange + reso, reso)
 
     # Similar methods
     @abc.abstractmethod
-    def projection(self, reso):
+    def projection(self, reso:number_type):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_data(self, tilt, drange, dtype):
+    def get_data(self, tilt:int, drange:number_type, dtype:str):
         raise NotImplementedError

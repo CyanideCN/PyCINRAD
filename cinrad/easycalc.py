@@ -3,6 +3,7 @@
 
 import datetime
 import time
+from typing import Tuple, Optional
 
 import numpy as np
 from xarray import DataArray
@@ -13,10 +14,11 @@ from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
+from cinrad._typing import RList
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust']
 
-def _extract(r_list):
+def _extract(r_list:RList) -> tuple:
     d_list = np.array([i.drange for i in r_list])
     if d_list.mean() != d_list.max():
         raise ValueError('Input radials must have same data range')
@@ -30,11 +32,11 @@ def _extract(r_list):
     data = np.concatenate(r_data).reshape(len(r_list), r_data[0].shape[0], r_data[0].shape[1])
     return data, d, a, np.array(elev)
 
-def _nearest_ten_minute(date:datetime.datetime):
+def _nearest_ten_minute(date:datetime.datetime) -> datetime.datetime:
     minute = (date.minute // 10) * 10
     return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
 
-def quick_cr(r_list):
+def quick_cr(r_list:RList) -> Grid:
     r'''
     Calculate composite reflectivity
 
@@ -57,7 +59,7 @@ def quick_cr(r_list):
                   'CR', x, y)
     return l2_obj
 
-def quick_et(r_list):
+def quick_et(r_list:RList) -> Radial:
     r'''
     Calculate echo tops
 
@@ -79,7 +81,7 @@ def quick_et(r_list):
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vil(r_list):
+def quick_vil(r_list:RList) -> Radial:
     r'''
     Calculate vertically integrated liquid
 
@@ -101,7 +103,7 @@ def quick_vil(r_list):
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def max_potential_gust(r_list):
+def max_potential_gust(r_list:RList) -> Radial:
     r'''
     Estimate maximum potential descending gust by Stewart's formula
 
@@ -125,12 +127,12 @@ def max_potential_gust(r_list):
 
 class VCS:
     r'''Class performing vertical cross-section calculation'''
-    def __init__(self, r_list):
+    def __init__(self, r_list:RList):
         self.rl = r_list
         self.el = [i.elev for i in r_list]
         self.x, self.y, self.h, self.r = self._geocoor()
 
-    def _geocoor(self):
+    def _geocoor(self) -> tuple:
         r_data = list()
         x_data = list()
         y_data = list()
@@ -147,7 +149,7 @@ class VCS:
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
-    def _get_section(self, stp, enp, spacing):
+    def _get_section(self, stp:Tuple[float], enp:Tuple[float], spacing:int) -> _Slice:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -169,8 +171,9 @@ class VCS:
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
-    def get_section(self, start_polar=None, end_polar=None, start_cart=None, end_cart=None,
-                    spacing=100):
+    def get_section(self, start_polar:Optional[Tuple[float]]=None, end_polar:Optional[Tuple[float]]=None,
+                    start_cart:Optional[Tuple[float]]=None, end_cart:Optional[Tuple[float]]=None,
+                    spacing=100) -> _Slice:
         r'''
         Get cross-section data from input points
 
