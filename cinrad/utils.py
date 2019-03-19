@@ -145,7 +145,6 @@ def lanczos_differentiator(winlen):
     return np.r_[f[::-1], [0], -f]
 
 def kdp_from_phidp(phidp, winlen=7, dr=1., method=None):
-    from scipy.interpolate import interp1d
     from scipy.stats import linregress
     from scipy.ndimage.filters import convolve1d
     # Copyright (c) 2011-2018, wradlib developers.
