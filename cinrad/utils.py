@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
+from typing import Union, Any, Optional
+
 import numpy as np
 
 from cinrad.constants import deg2rad, vil_const
 from cinrad.projection import height
+from cinrad._typing import GList, number_type
 
-try:
+try:    
     from cinrad._utils import *
 except ImportError:
 
-    def r2z(r):
+    def r2z(r:np.ndarray) -> np.ndarray:
         return 10 ** (r / 10)
 
-    def vert_integrated_liquid(ref, distance, elev, beam_width=0.99, threshold=18.):
+    def vert_integrated_liquid(ref:np.ndarray, distance:np.ndarray, elev:GList, beam_width:float=0.99,
+                               threshold:Union[float, int]=18.) -> np.ndarray:
         r'''
         Calculate vertically integrated liquid (VIL) in one full scan
 
@@ -41,7 +45,8 @@ except ImportError:
         vil = _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold)
         return vil
 
-    def _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold):
+    def _vil_iter(xshape:int, yshape:int, ref:np.ndarray, distance:np.ndarray, elev:GList,
+                  hi_arr:np.ndarray, threshold:number_type) -> np.ndarray:
         #r = np.clip(ref, None, 55) #reduce the influence of hails
         r = ref
         z = r2z(r)
@@ -67,7 +72,8 @@ except ImportError:
                 VIL[i][j] = m1 + mb + mt
         return VIL
 
-    def echo_top(ref, distance, elev, radarheight, threshold=18.):
+    def echo_top(ref:np.ndarray, distance:np.ndarray, elev:GList, radarheight:number_type,
+                 threshold:number_type=18.) -> np.ndarray:
         r'''
         Calculate height of echo tops (ET) in one full scan
 
@@ -125,18 +131,18 @@ except ImportError:
                         et[i][j] = w1 * h2 + w2 * h1
         return et
 
-def potential_maximum_gust(et, vil):
+def potential_maximum_gust(et:np.ndarray, vil:np.ndarray) -> np.ndarray:
     r'''
     Estimate the potential maximum gust with a descending downdraft by Stewart's formula
     '''
     return np.sqrt(20.628571 * vil - 2.3810964e-6 * et ** 2)
 
-def potential_maximum_gust_from_reflectivity(ref, distance, elev):
+def potential_maximum_gust_from_reflectivity(ref:np.ndarray, distance:np.ndarray, elev:GList) -> np.ndarray:
     et = echo_top(ref, distance, elev, 0)
     vil = vert_integrated_liquid(ref, distance, elev)
     return potential_maximum_gust(et, vil)
 
-def lanczos_differentiator(winlen):
+def lanczos_differentiator(winlen:int):
     # Copyright (c) 2011-2018, wradlib developers.
     m = (winlen - 1) / 2
     denom = m * (m + 1.) * (2 * m + 1.)

@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
+from typing import Union
 
 import numpy as np
 
 from cinrad.constants import deg2rad, rm
+from cinrad._typing import boardcast_type, number_type
 
-def height(distance, elevation, radarheight):
+def height(distance:boardcast_type, elevation:Union[int ,float],
+           radarheight:number_type) -> np.ndarray:
     r'''
     Calculate height of radar beam considering atmospheric refraction.
 
@@ -24,7 +27,9 @@ def height(distance, elevation, radarheight):
     '''
     return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
 
-def get_coordinate(distance, azimuth, elevation, centerlon, centerlat, h_offset=True):
+def get_coordinate(distance:boardcast_type, azimuth:boardcast_type,
+                   elevation:number_type, centerlon:number_type, centerlat:number_type,
+                   h_offset=True) -> tuple:
     r'''
     Convert polar coordinates to geographic coordinates with the given radar station position.
 

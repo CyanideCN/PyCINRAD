@@ -3,22 +3,24 @@
 
 import os
 from pathlib import Path
+from typing import Union, Optional, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from cinrad.constants import r_cmap_smooth, norm1, font
+from cinrad.datastruct import _Slice
 
 __all__ = ['Section']
 
 class Section:
-    def __init__(self, data, hlim=15):
+    def __init__(self, data:_Slice, hlim:int=15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
         self.path_customize = False
 
-    def _plot(self, fpath):
+    def _plot(self, fpath:str):
         rhi = self.data.data
         xcor = self.data.xcor
         ycor = self.data.ycor

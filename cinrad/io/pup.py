@@ -8,14 +8,15 @@ import numpy as np
 
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
+from cinrad._typing import boardcast_type
 
 class _StormTrackInfo(object):
-    def __init__(self, filepath):
+    def __init__(self, filepath:str):
         self.handler = Level3File(filepath)
         self.info = self.get_all_sti()
         self.storm_list = self.get_all_id()
 
-    def get_all_sti(self):
+    def get_all_sti(self) -> OrderedDict:
         f = self.handler
         if not hasattr(f, 'sym_block'):
             return OrderedDict()
@@ -43,19 +44,19 @@ class _StormTrackInfo(object):
         return sti_data
 
     @staticmethod
-    def xy2polar(x, y):
+    def xy2polar(x:boardcast_type, y:boardcast_type) -> tuple:
         return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
 
-    def get_all_id(self):
+    def get_all_id(self) -> list:
         return list(self.info.keys())
 
-    def current(self, storm_id):
+    def current(self, storm_id:str) -> tuple:
         curpos = self.info[storm_id]['current storm position']
         dist, az = self.xy2polar(*curpos)
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         return lonlat
 
-    def track(self, storm_id, tracktype):
+    def track(self, storm_id:str, tracktype:str) -> tuple:
         if tracktype == 'forecast':
             key = 'forecast storm position'
         elif tracktype == 'past':
