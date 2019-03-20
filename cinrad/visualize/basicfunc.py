@@ -5,7 +5,6 @@ import os
 from datetime import datetime
 from typing import Union, Optional, Any
 
-from numpy import ndarray
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from typing import Union, Tuple, Optional
+from typing import Tuple, Optional
 
 import numpy as np
 from scipy.interpolate import griddata
