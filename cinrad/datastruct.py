@@ -107,7 +107,7 @@ class _Slice:
 class Grid:
     r'''Structure for processed grid data'''
 
-    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat']
+    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat', 'geoflag', 'elev']
 
     def __init__(self, data:ndarray, drange:Union[float, int], reso:float, code:str, name:str,
                  scantime:datetime, dtype:str, lon:ndarray, lat:ndarray):
