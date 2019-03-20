@@ -18,13 +18,7 @@ Shapefile
 
 Pyresample
 
-You can directly install this module via
-
-```
-pip install cinrad
-```
-
-Alternatively, you can download from github page and then excecute
+You can download from github page and then excecute
 
 ```
 python setup.py install
@@ -53,7 +47,6 @@ from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #Old version data
 f = StandardData(your_radar_file) #New standard data
 f.get_data(tilt, drange, dtype) #Get data
-f.rhi(azimuth, drange) #Get range-height indicator data
 ```
 
 #### Saving data in NetCDF format
@@ -61,9 +54,11 @@ f.rhi(azimuth, drange) #Get range-height indicator data
 f.to_nc(path_to_nc_file)
 ```
 
-#### Decode PUP data
+#### Decode PUP data and SWAN data
 
 `cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI. (Only radial data are supported.) 
+
+`cinrad.io.SWAN` provides similar interface to decode SWAN data.
 
 ```python
 from cinrad.io import PUP
@@ -147,6 +142,10 @@ Plot range rings on the PPI plot.
 Plot VCS section under the PPI plot.
 
 This function is very similar to `vcs` argument of `PPI`, but the range of y-axis can be adjusted only by this function.
+
+##### PPI.storm_track_info(self, filepath)
+
+Plot PUP STI product on the current PPI map, including past position., current position, and forecast positions.
 
 ## Gallery
 

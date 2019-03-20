@@ -22,11 +22,7 @@ Pyresample
 
 ### 安装方法
 
-```
-pip install cinrad
-```
-
-或者在此页面下载并执行
+在此页面下载并执行
 ```
 python setup.py install
 ```
@@ -54,7 +50,6 @@ from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #老版本数据
 f = StandardData(your_radar_file) #新版本标准数据
 f.get_data(tilt, drange, dtype) #获取数据
-f.rhi(azimuth, drange) #获取RHI数据
 ```
 
 #### 将数据保存为NetCDF格式
@@ -65,9 +60,10 @@ f.to_nc(path_to_nc_file)
 #### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
 
 
-#### 读取PUP数据
+#### 读取PUP数据和SWAN数据
 
 `cinrad.io.PUP`提供读取PUP数据的功能，读取出来的数据为`cinrad.datastruct.Radial`格式并且可以用来绘制PPI。目前只支持径向类型的数据。
+`cinrad.io.SWAN`提供相似的接口来解码SWAN数据。
 
 ```python
 from cinrad.io import PUP
@@ -83,13 +79,12 @@ data = f.get_data()
 函数名：
 `composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
 
+计算ET和VIL时，考虑到速度问题，模块提供由cython转换而来的python扩展，可以大大提升速度。如果要使用此扩展，请安装cython以及C编译器，并重新安装此模块。
+
 ### cinrad.easycalc
 
-提供雷达衍生产品的计算（接受`list(cinrad.datastruct.Raw)`）
+提供雷达衍生产品的计算
 使用`cinrad.io`读取的数据可直接带入该模块下的函数来计算。
-
-函数名：
-`quick_cr`, `quick_et`, `quick_vil`
 
 传入一个包含每个仰角数据的list即可计算。
 
@@ -122,14 +117,14 @@ fig('D:\\')
 
 ```python
 from cinrad.visualize import PPI
-fig = PPI(R, highlight='成都市') #绘制基本反射率图片
+fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
 fig = Section(_Slice) #绘制RHI
 fig('D:\\')
 ```
 
-如果读取了其他雷达的数据，转换成`cinrad.datastruct.Raw`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
+如果读取了其他雷达的数据，转换成`cinrad.datastruct.Radial`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
 传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png	`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
 （Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
 
@@ -159,10 +154,14 @@ fig('D:\\')
 
 在PPI图下方加入VCS剖面图，和`vcs`参数相似，用此函数还可以自定义y轴的范围。
 
+##### PPI.storm_track_info(self, filepath)
+
+在PPI图上叠加PUP的STI产品。
+
 ## 其他
 
 回波顶高及垂直积分液态含水量算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
 
 如果你对这个模块感兴趣，欢迎加入这个模块的开发者行列！
 
-同时，如在使用该脚本中有任何问题和建议，可以提Issue，也可以发邮件给我 274555447@qq.com
+同时，如在使用该模块时有任何问题和建议，可以提Issue，也可以发邮件给我 274555447@qq.com
