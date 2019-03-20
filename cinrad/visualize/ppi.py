@@ -15,7 +15,7 @@ from cinrad.constants import *
 from cinrad.datastruct import Radial, _Slice, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
-from cinrad._typing import RList, number_type
+from cinrad._typing import number_type
 
 __all__ = ['PPI']
 
@@ -242,7 +242,7 @@ class PPI(object):
             for st in stlist:
                 past = sti.track(st, 'past')
                 fcs = sti.track(st, 'forecast')
-                #current = sti.current(st)
+                current = sti.current(st)
                 if past:
                     self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5)
                 if fcs:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-from typing import Union, Any, Optional
+from typing import Union, Any
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from cinrad.constants import deg2rad, vil_const
 from cinrad.projection import height
 from cinrad._typing import GList, number_type
 
-try:    
+try:
     from cinrad._utils import *
 except ImportError:
 

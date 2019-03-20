@@ -3,7 +3,7 @@
 
 import os
 from pathlib import Path
-from typing import Union, Optional, Any
+from typing import Union, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
