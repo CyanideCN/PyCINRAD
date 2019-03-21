@@ -134,11 +134,11 @@ class PPI(object):
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, zorder=3.5, **kwargs)
+            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
         else:
-            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, zorder=3.5, **kwargs)
+            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
             if self.data.dtype == 'VEL' and self.data.include_rf:
-                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], zorder=3.5, **kwargs)
+                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:

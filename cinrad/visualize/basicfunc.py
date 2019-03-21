@@ -51,11 +51,11 @@ def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[GLi
         line_colors = ['grey', 'lightgrey', 'white']
     elif style == 'white':
         line_colors = ['lightgrey', 'grey', 'black']
-    ax.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=0, linewidth=0.5)
-    ax.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=0, linewidth=0.7)
-    ax.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=0, linewidth=1)
+    ax.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=3, linewidth=0.5)
+    ax.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=3, linewidth=0.7)
+    ax.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=3, linewidth=1)
     if coastline:
-        ax.coastlines(resolution='10m', color=line_colors[2], zorder=1, linewidth=1)
+        ax.coastlines(resolution='10m', color=line_colors[2], zorder=3, linewidth=1)
 
 def change_cbar_text(cbar:ColorbarBase, tick:list, text:list):
     cbar.set_ticks(tick)
