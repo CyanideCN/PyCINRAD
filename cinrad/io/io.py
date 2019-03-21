@@ -173,7 +173,9 @@ class CinradReader(BaseRadar):
                           ('res', 'u1', size - 128 - rnum - vnum * 2)]
             da = np.frombuffer(f.read(bidx * size), dtype=np.dtype(temp_dtype))
             out_data[idx] = dict()
-            out_data[idx]['REF'] = (np.ma.array(da['ref'], mask=(da['ref'] == 0)) - 2) / 2 - 32
+            r = (np.ma.array(da['ref'], mask=(da['ref'] == 0)) - 2) / 2 - 32
+            r[r == 95.5] = 0
+            out_data[idx]['REF'] = r
             v = np.ma.array(da['vel'], mask=(da['vel'] < 2))
             if dv == 2:
                 out_data[idx]['VEL'] = (v - 2) / 2 - 63.5
