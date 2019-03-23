@@ -33,37 +33,26 @@ class Section:
         #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
         plt.contourf(xcor, ycor, rhi, 128, cmap=r_cmap_smooth, norm=norm1)
         plt.ylim(0, self.hlim)
-        if self.dtype == 'RHI':
-            az = self.data.geoinfo['azimuth']
-            plt.title('RHI scan\nStation: {} Azimuth: {}° Time: {} Max: {}dbz'.format(
-                      self.data.name, az, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
-            #plt.xlabel('Range (km)')
-            plt.xlabel('Range (km)', fontproperties=font, fontsize=23) ## 修改于2019-01-22 By WU Fulang
-        elif self.dtype == 'VCS':
-            stps = self.data.geoinfo['stp_s']
-            enps = self.data.geoinfo['enp_s']
-            stp = self.data.geoinfo['stp']
-            enp = self.data.geoinfo['enp']
-            plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
-                      self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
-            #重新绘制VCS的横坐标，分为5等分
-            deltaLat = (enp[1]-stp[1])/5.0
-            deltaLon = (enp[0]-stp[0])/5.0
-            plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['{:.2f}N\n{:.2f}E'.format(stp[1], stp[0]), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*1., stp[0]+deltaLon*1.),
-                                     '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*2., stp[0]+deltaLon*2.), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*3., stp[0]+deltaLon*3.),
-                                    '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*4., stp[0]+deltaLon*4.), '{:.2f}N\n{:.2f}E'.format(enp[1], enp[0])]) #分为五等分
+        stps = self.data.geoinfo['stp_s']
+        enps = self.data.geoinfo['enp_s']
+        stp = self.data.geoinfo['stp']
+        enp = self.data.geoinfo['enp']
+        plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
+                    self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
+        #重新绘制VCS的横坐标，分为5等分
+        deltaLat = (enp[1]-stp[1])/5.0
+        deltaLon = (enp[0]-stp[0])/5.0
+        plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['{:.2f}N\n{:.2f}E'.format(stp[1], stp[0]), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*1., stp[0]+deltaLon*1.),
+                                    '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*2., stp[0]+deltaLon*2.), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*3., stp[0]+deltaLon*3.),
+                                '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*4., stp[0]+deltaLon*4.), '{:.2f}N\n{:.2f}E'.format(enp[1], enp[0])]) #分为五等分
         plt.ylabel('Height (km)', fontproperties=font, fontsize=23) ## 修改于2019-01-22 By WU Fulang
             #plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
         #plt.ylabel('Altitude (km)')
         if self.path_customize:
             path_string = fpath
         else:
-            if self.dtype == 'RHI':
-                path_string = '{}{}_{}_RHI_{}_{}.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
-                                                             self.data.drange, self.data.az)
-            elif self.dtype == 'VCS':
-                path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
-                                                                     stp[1], stp[0], enp[1], enp[0])
+            path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
+                                                                    stp[1], stp[0], enp[1], enp[0])
         plt.savefig(path_string , bbox_inches='tight')
 
     def __call__(self, *fpath):

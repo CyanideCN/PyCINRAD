@@ -57,12 +57,3 @@ class BaseRadar(abc.ABC):
     @staticmethod
     def get_range(drange:number_type, reso:number_type) -> np.ndarray:
         return np.arange(reso, drange + reso, reso)
-
-    # Similar methods
-    @abc.abstractmethod
-    def projection(self, reso:number_type):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def get_data(self, tilt:int, drange:number_type, dtype:str):
-        raise NotImplementedError

@@ -149,7 +149,7 @@ class VCS:
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
-    def _get_section(self, stp:Tuple[float], enp:Tuple[float], spacing:int) -> _Slice:
+    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> _Slice:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -171,8 +171,8 @@ class VCS:
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
-    def get_section(self, start_polar:Optional[Tuple[float]]=None, end_polar:Optional[Tuple[float]]=None,
-                    start_cart:Optional[Tuple[float]]=None, end_cart:Optional[Tuple[float]]=None,
+    def get_section(self, start_polar:Optional[Tuple[float, float]]=None, end_polar:Optional[Tuple[float, float]]=None,
+                    start_cart:Optional[Tuple[float, float]]=None, end_cart:Optional[Tuple[float, float]]=None,
                     spacing=100) -> _Slice:
         r'''
         Get cross-section data from input points

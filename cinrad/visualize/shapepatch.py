@@ -2,6 +2,7 @@
 # Author: Du puyuan
 
 import os
+from typing import Union
 
 import numpy as np
 import shapefile
@@ -10,8 +11,9 @@ from matplotlib.patches import PathPatch
 
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarPlotError
+from cinrad._typing import GList
 
-def highlight_area(area:str, facecolor='None', edgecolor='red', **kwargs):
+def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='red', **kwargs):
     r'''Return pathpatch for given area name'''
     fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)

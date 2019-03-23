@@ -559,7 +559,7 @@ class NexradL2Data:
             self.reso = hdr.gate_width
             raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[tilt]])
         else:
-            raise RadarError('Unsupported data type {}'.format(self.dtype.decode()))
+            raise RadarDecodeError('Unsupported data type {}'.format(self.dtype.decode()))
         cut = raw[:, :int(drange / self.reso)]
         masked = np.ma.array(cut, mask=np.isnan(cut))
         self.tilt = tilt
@@ -621,7 +621,7 @@ class PUP(BaseRadar):
         o.close()
         self._update_radar_info()
 
-    def get_data(self) -> Grid:
+    def get_data(self) -> Union[Radial, Grid]:
         if self.radial_flag:
             lon, lat = self.projection()
             return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
