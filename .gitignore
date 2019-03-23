@@ -11,3 +11,4 @@
 *.ui
 /.vscode
 /cinrad/_utils.c
+/.mypy_cache/*

@@ -2,6 +2,7 @@
 # Author: Puyuan Du
 
 from collections import OrderedDict, defaultdict
+from typing import Union, Any
 
 from metpy.io.nexrad import Level3File
 import numpy as np
@@ -56,7 +57,7 @@ class _StormTrackInfo(object):
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         return lonlat
 
-    def track(self, storm_id:str, tracktype:str) -> tuple:
+    def track(self, storm_id:str, tracktype:str) -> Union[tuple, Any]:
         if tracktype == 'forecast':
             key = 'forecast storm position'
         elif tracktype == 'past':

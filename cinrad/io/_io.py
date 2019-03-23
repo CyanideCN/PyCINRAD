@@ -73,4 +73,4 @@ class NetCDFWriter:
         self._create_dimension(gpname, 'Latitude', grid.lat.shape[1])
         self._create_variable(gpname, 'Longitude', grid.lon[0], 'Longitude')
         self._create_variable(gpname, 'Latitude', grid.lat[:, 0], 'Latitude')
-        self._create_Variable(gpname, prodname[grid.dtype], grid.data, ('Longitude', 'Latitude'))
+        self._create_variable(gpname, prodname[grid.dtype], grid.data, ('Longitude', 'Latitude'))

@@ -45,7 +45,7 @@ def resample(data:np.ndarray, distance:np.ndarray, azimuth:np.ndarray, d_reso:nu
     return r, dist, theta
 
 def grid_2d(data:np.ndarray, x:np.ndarray, y:np.ndarray, x_out:Optional[np.ndarray]=None,
-            y_out:Optional[np.ndarray]=None, resolution:Tuple[int]=(1000, 1000)) -> tuple:
+            y_out:Optional[np.ndarray]=None, resolution:Tuple[int, int]=(1000, 1000)) -> tuple:
     r'''
     Interpolate data in polar coordinates into geographic coordinates
 
