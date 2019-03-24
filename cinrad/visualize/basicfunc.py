@@ -65,7 +65,7 @@ def draw_highlight_area(area:Union[GList, str]):
     patch = highlight_area(area)
     ax_ = plt.gca()
     pat = ax_.add_patch(patch)
-    pat.set_zorder(2)
+    pat.set_zorder(4)
 
 def set_geoaxes(fig:Any, extent:GList) -> Any:
     ax = fig.add_axes([0, 0, 0.9, 0.9], projection=ccrs.PlateCarree())
