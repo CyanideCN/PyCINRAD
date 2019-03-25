@@ -2,24 +2,22 @@
 # Author: Du puyuan
 
 import os
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 import shapefile
-from matplotlib.path import Path
-from matplotlib.patches import PathPatch
+from matplotlib.lines import Line2D
 
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarPlotError
 from cinrad._typing import GList
 
-def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='red', **kwargs):
-    r'''Return pathpatch for given area name'''
+def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='red', **kwargs) -> List[Line2D]:
+    r'''Return list of Line2D object for given area name'''
     fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)
     rec = shp.shapeRecords()
-    vertices = list()
-    codes = list()
+    lines = list()
     if isinstance(area, str):
         area = [area]
     for i in area:
@@ -28,10 +26,8 @@ def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='
         name = np.array([i.record[2].decode('GBK') for i in rec])
         target = np.array(rec)[(name == i).nonzero()[0]]
         for j in target:
-            codes += [Path.MOVETO] + [Path.LINETO] * (len(j.shape.points) - 1)
-            vertices += j.shape.points
-        codes += [Path.CLOSEPOLY]
-        vertices += [j.shape.points[0]]
-        path = Path(vertices, codes)
-    patch = PathPatch(path, facecolor=facecolor, edgecolor=edgecolor, **kwargs)
-    return patch
+            pts = j.shape.points
+            x = [i[0] for i in pts]
+            y = [i[1] for i in pts]
+            lines.append(Line2D(x, y, color='red'))
+    return lines
