@@ -62,10 +62,11 @@ def change_cbar_text(cbar:ColorbarBase, tick:list, text:list):
     cbar.set_ticklabels(text)
 
 def draw_highlight_area(area:Union[GList, str]):
-    patch = highlight_area(area)
+    lines = highlight_area(area)
     ax_ = plt.gca()
-    pat = ax_.add_patch(patch)
-    pat.set_zorder(4)
+    for l in lines:
+        pat = ax_.add_artist(l)
+        pat.set_zorder(4)
 
 def set_geoaxes(fig:Any, extent:GList) -> Any:
     ax = fig.add_axes([0, 0, 0.9, 0.9], projection=ccrs.PlateCarree())
