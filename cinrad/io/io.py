@@ -46,6 +46,7 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
         code = spart[3]
         radartype = spart[7]
     else:
+        radartype = None
         code = None
     if det_sc:
         radartype = 'SC'
@@ -98,7 +99,7 @@ class CinradReader(BaseRadar):
     tilt: int
         current selected tilt
     '''
-    def __init__(self, file:Any, radar_type:Optional[str]=None):
+    def __init__(self, file:Any, radar_type:Optional[str]=None, file_name:Optional[str]=None):
         r'''
         Parameters
         ----------
@@ -109,7 +110,9 @@ class CinradReader(BaseRadar):
         '''
         if hasattr(file, 'read'):
             f = file
-            self.code, radartype = _detect_radartype(f, '')
+            if not file_name:
+                file_name = ''
+            self.code, radartype = _detect_radartype(f, file_name, type_assert=radar_type)
         else:
             path = Path(file)
             filename = path.name
@@ -559,7 +562,7 @@ class NexradL2Data:
             self.reso = hdr.gate_width
             raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[tilt]])
         else:
-            raise RadarDecodeError('Unsupported data type {}'.format(self.dtype.decode()))
+            raise RadarError('Unsupported data type {}'.format(self.dtype.decode()))
         cut = raw[:, :int(drange / self.reso)]
         masked = np.ma.array(cut, mask=np.isnan(cut))
         self.tilt = tilt
@@ -621,7 +624,7 @@ class PUP(BaseRadar):
         o.close()
         self._update_radar_info()
 
-    def get_data(self) -> Union[Radial, Grid]:
+    def get_data(self) -> Grid:
         if self.radial_flag:
             lon, lat = self.projection()
             return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
