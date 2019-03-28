@@ -12,7 +12,7 @@ from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarPlotError
 from cinrad._typing import GList
 
-def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='red', **kwargs) -> List[Line2D]:
+def highlight_area(area:Union[GList, str], linecolor:str='red', **kwargs) -> List[Line2D]:
     r'''Return list of Line2D object for given area name'''
     fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)
@@ -29,5 +29,5 @@ def highlight_area(area:Union[GList, str], facecolor:str='None', edgecolor:str='
             pts = j.shape.points
             x = [i[0] for i in pts]
             y = [i[1] for i in pts]
-            lines.append(Line2D(x, y, color='red'))
+            lines.append(Line2D(x, y, color=linecolor))
     return lines
