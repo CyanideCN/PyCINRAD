@@ -13,9 +13,9 @@ except ImportError:
 
 setup(
     name = 'cinrad',
-    version = '1.3',
-    description = 'cinrad reading and plotting',
-    long_description = 'cinrad reading and plotting',
+    version = '1.3.2',
+    description = 'Decode CINRAD radar data and visualize',
+    long_description = 'Decode CINRAD radar data and visualize',
     license = 'GPL Licence',
     author = 'Puyuan Du',
     author_email = 'dpy274555447@gmail.com',
