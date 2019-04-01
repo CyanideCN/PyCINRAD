@@ -180,11 +180,13 @@ class CinradReader(BaseRadar):
             r[r == 95.5] = 0
             out_data[idx]['REF'] = r
             v = np.ma.array(da['vel'], mask=(da['vel'] < 2))
+            sw = np.ma.array(da['sw'], mask=(da['sw'] < 2))
             if dv == 2:
                 out_data[idx]['VEL'] = (v - 2) / 2 - 63.5
+                out_data[idx]['SW'] = (sw - 2) / 2 - 63.5
             elif dv == 4:
                 out_data[idx]['VEL'] = v - 2 - 127
-            out_data[idx]['SW'] = da['sw']
+                out_data[idx]['SW'] = sw - 2 - 127
             out_data[idx]['azimuth'] = self.azimuth[b[idx]:b[idx + 1]]
             out_data[idx]['RF'] = np.ma.array(da['vel'], mask=(da['vel'] != 1))
         angleindex = np.arange(0, data['el_num'][-1], 1)
@@ -322,7 +324,7 @@ class CinradReader(BaseRadar):
         cut = data.T[:int(np.round(drange / reso))]
         shape_diff = np.round(drange / reso) - cut.shape[0]
         append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             try:
                 rf = self.data[tilt]['RF']
             except KeyError:
@@ -499,7 +501,7 @@ class StandardData(BaseRadar):
         cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
         r = (cut - offset) / scale
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             ret = (r, rf)
         else:
             ret = r
@@ -632,7 +634,7 @@ class PUP(BaseRadar):
         else:
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
                         self.dtype, self.lon, self.lat)
-    
+
     def _is_radial(self) -> bool:
         return self.dtype in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
 
@@ -680,8 +682,8 @@ class SWAN(object):
         center_lat = header['center_lat'][0]
         end_lon = center_lon * 2 - start_lon
         end_lat = center_lat * 2 - start_lat
-        x_reso = header['x_reso'][0]
-        y_reso = header['y_reso'][0]
+        #x_reso = header['x_reso'][0]
+        #y_reso = header['y_reso'][0]
         self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
         self.lat = np.linspace(start_lat, end_lat, ydim)
         self.data = np.ma.array((out - 66) / 2, mask=(out==0))
