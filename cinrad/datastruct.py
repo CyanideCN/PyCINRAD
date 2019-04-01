@@ -9,11 +9,11 @@ class Radial:
     r'''Structure for data arranged by radials'''
 
     __slots__ = ['data', 'drange', 'elev', 'reso', 'code', 'name', 'scantime', 'dtype', 'include_rf',
-                    'lon', 'lat', 'height', 'a_reso', 'stp', 'geoflag', 'dist', 'az']
+                    'lon', 'lat', 'height', 'a_reso', 'stp', 'geoflag', 'dist', 'az', 'scan_info']
 
     def __init__(self, data:ndarray, drange:Union[float, int], elev:float, reso:float, code:str, name:str,
                  scantime:datetime, dtype:str, stlon:float, stlat:float, lon:Optional[ndarray]=None,
-                 lat:Optional[ndarray]=None, height:Optional[ndarray]=None, a_reso:Optional[int]=None):
+                 lat:Optional[ndarray]=None, height:Optional[ndarray]=None, a_reso:Optional[int]=None, **scan_info):
         r'''
         Parameters
         ----------
@@ -45,6 +45,8 @@ class Radial:
             height array for wrapped data
         a_reso: int
             radial resolution of this data
+        scan_info: dict
+            scan parameters of radar
         '''
         self.data = data
         self.drange = drange
@@ -54,6 +56,7 @@ class Radial:
         self.name = name
         self.scantime = scantime
         self.dtype = dtype
+        self.scan_info = scan_info
         if dtype == 'VEL':
             if len(data) == 2:
                 self.include_rf = True

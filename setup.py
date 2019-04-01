@@ -1,11 +1,13 @@
 from setuptools import setup, find_packages
 import os
+from os.path import join
 import glob
+from distutils.extension import Extension
 
 try:
     from Cython.Build import cythonize
     import numpy as np
-    ext_modules = cythonize(os.path.join('cinrad', '_utils.pyx'))
+    ext_modules = cythonize([join('cinrad', '_utils.pyx'), join('cinrad', 'correct', '_unwrap_2d.pyx')])
     include_dirs = [np.get_include()]
 except ImportError:
     ext_modules = None
