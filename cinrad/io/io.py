@@ -161,7 +161,7 @@ class CinradReader(BaseRadar):
         self.el = data['elevation'][boundary] * con
         self.azimuth = data['azimuth'] * con * deg2rad
         dv = data['v_reso'][0]
-        self.nyquist_v = data['nyquist_vel'][0] / 100
+        self.nyquist_v = data['nyquist_vel'][boundary] / 100
         f.seek(0)
         size = radar_dtype.itemsize
         b = np.append(boundary, data.shape[0] - 1)
@@ -339,7 +339,7 @@ class CinradReader(BaseRadar):
         else:
             ret = r.T
         r_obj = Radial(ret, int(np.round(r.shape[0] * reso)), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                       self.stationlon, self.stationlat)
+                       self.stationlon, self.stationlat, nyquist_velocity=self.nyquist_v[tilt])
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
@@ -504,7 +504,7 @@ class StandardData(BaseRadar):
         else:
             ret = r
         r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                       self.stationlon, self.stationlat)
+                       self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
