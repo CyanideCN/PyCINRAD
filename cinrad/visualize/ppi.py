@@ -27,6 +27,7 @@ cmap_plot = {'REF':r_cmap, 'VEL':v_cmap, 'CR':r_cmap, 'ET':et_cmap, 'VIL':vil_cm
              'ZDR':zdr_cmap, 'PHI':kdp_cmap, 'RHO':cc_cmap, 'TREF':r_cmap}
 cmap_cbar = {'REF':r_cmap, 'VEL':v_cbar, 'CR':r_cmap, 'ET':et_cbar, 'VIL':vil_cbar,
              'ZDR':zdr_cbar, 'PHI':kdp_cmap, 'RHO':cc_cbar, 'TREF':r_cmap}
+sec_plot = {'REF':r_cmap_smooth, 'VEL':v_cmap_smooth, 'ZDR':zdr_cmap_smooth, 'PHI':kdp_cmap_smooth, 'RHO':cc_cmap_smooth}
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Ref.',
             'ET':'Echo Tops', 'VIL':'V Integrated Liquid', 'ZDR':'Differential Ref.',
             'PHI':'Difference Phase', 'RHO':'Correlation Coe.', 'TREF':'Total Reflectivity'}
@@ -127,7 +128,7 @@ class PPI(object):
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
         self.geoax = set_geoaxes(self.fig, extent=self.settings['extent'])
-        if self.data.dtype == 'VEL' and self.data.include_rf:
+        if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             rf = var[1]
             var = var[0]
         popnan = var[np.logical_not(np.isnan(var))]
@@ -137,7 +138,7 @@ class PPI(object):
             self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
         else:
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
-            if self.data.dtype == 'VEL' and self.data.include_rf:
+            if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
@@ -220,7 +221,7 @@ class PPI(object):
         ycor = data.ycor
         stp = data.geoinfo['stp']
         enp = data.geoinfo['enp']
-        ax2.contourf(xcor, ycor, sl, 128, cmap=r_cmap_smooth, norm=norm1)
+        ax2.contourf(xcor, ycor, sl, 128, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
         if ymax:
             ax2.set_ylim(0, ymax)
         else:

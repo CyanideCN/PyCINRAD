@@ -10,6 +10,7 @@ import numpy as np
 
 from cinrad.constants import r_cmap_smooth, norm1, font
 from cinrad.datastruct import _Slice
+from cinrad.visualize.ppi import sec_plot, norm_plot, prodname
 
 __all__ = ['Section']
 
@@ -31,14 +32,15 @@ class Section:
         plt.tick_params(labelsize=20) #坐标轴字体大小
         plt.grid(True, linewidth=0.50, linestyle="-.", color='white') ## 修改于2019-01-22 By WU Fulang
         #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
-        plt.contourf(xcor, ycor, rhi, 128, cmap=r_cmap_smooth, norm=norm1)
+        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
         plt.ylim(0, self.hlim)
         stps = self.data.geoinfo['stp_s']
         enps = self.data.geoinfo['enp_s']
         stp = self.data.geoinfo['stp']
         enp = self.data.geoinfo['enp']
-        plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
-                    self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
+        plt.title('Vertical cross-section ({})nStation: {} Start: {} End: {} Time: {} Max: {}'.format(
+                  prodname[self.dtype],self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax),
+                  fontproperties=font)
         #重新绘制VCS的横坐标，分为5等分
         deltaLat = (enp[1]-stp[1])/5.0
         deltaLon = (enp[0]-stp[0])/5.0

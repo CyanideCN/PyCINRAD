@@ -13,7 +13,8 @@ __all__ = ['deg2rad', 'rm', 'con', 'con2', 'MODULE_DIR', 'r_cmap', 'v_cmap',
            'v_cbar', 'r_cmap_smooth', 'zdr_cmap', 'zdr_cbar', 'kdp_cmap',
            'kdp_cbar', 'cc_cmap', 'cc_cbar', 'et_cmap', 'et_cbar', 'vil_cmap',
            'vil_cbar', 'rf_cmap', 'font', 'norm1', 'norm2', 'norm3', 'norm4',
-           'norm5', 'norm6', 'norm7', 'norm8']
+           'norm5', 'norm6', 'norm7', 'norm8', 'v_cmap_smooth', 'zdr_cmap_smooth',
+           'cc_cmap_smooth', 'kdp_cmap_smooth']
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500
@@ -24,15 +25,19 @@ vil_const = 3.44e-6
 MODULE_DIR = os.path.dirname(__file__)
 CMAP_DIR = os.path.join(MODULE_DIR, 'colormap')
 r_cmap = _cmap('REF')['cmap']
+r_cmap_smooth = _cmap('REF_s')['cmap']
 v_cmap = _cmap('VEL')['cmap']
 v_cbar = _cmap('VEL_reverse')['cmap']
-r_cmap_smooth = _cmap('REF_s')['cmap']
+v_cmap_smooth = _cmap('VEL_s')['cmap']
 zdr_cmap = _cmap('ZDR')['cmap']
 zdr_cbar = _cmap('ZDR_reverse')['cmap']
+zdr_cmap_smooth = _cmap('ZDR_s')['cmap']
 kdp_cmap = _cmap('KDP')['cmap']
 kdp_cbar = _cmap('KDP_reverse')['cmap']
+kdp_cmap_smooth = _cmap('KDP_s')['cmap']
 cc_cmap = _cmap('CC')['cmap']
 cc_cbar = _cmap('CC_reverse')['cmap']
+cc_cmap_smooth = _cmap('CC_s')['cmap']
 et_cmap = _cmap('ET')['cmap']
 et_cbar = _cmap('ET_reverse')['cmap']
 vil_cmap = _cmap('VIL')['cmap']
