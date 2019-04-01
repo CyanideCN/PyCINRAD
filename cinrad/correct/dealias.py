@@ -4,7 +4,6 @@ from cinrad.datastruct import Radial
 
 def dealias_unwrap_2d(vdata:np.ndarray, nyquist_vel:float) -> np.ndarray:
     """ Dealias using 2D phase unwrapping (sweep-by-sweep). """
-    data = np.zeros_like(vdata)
     scaled_sweep = vdata.data * np.pi / nyquist_vel
     sweep_mask = vdata.mask
     wrapped = np.require(scaled_sweep, np.float64, ['C'])
@@ -13,7 +12,7 @@ def dealias_unwrap_2d(vdata:np.ndarray, nyquist_vel:float) -> np.ndarray:
     unwrap_2d(wrapped, mask, unwrapped, [True, False])
     return unwrapped * nyquist_vel / np.pi
 
-def dealias(v_data:Radial):
+def dealias(v_data:Radial) -> Radial:
     v_field = v_data.data[0]
     nyq = v_data.scan_info.pop('nyquist_velocity')
     out_data = dealias_unwrap_2d(v_field, nyq)
