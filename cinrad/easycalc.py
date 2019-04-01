@@ -36,6 +36,10 @@ def _nearest_ten_minute(date:datetime.datetime) -> datetime.datetime:
     minute = (date.minute // 10) * 10
     return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
 
+def is_uniform(radial_list:RList) -> bool:
+    r'''Check if all input radials have same data type'''
+    return len(set([i.dtype for i in radial_list])) == 1
+
 def quick_cr(r_list:RList) -> Grid:
     r'''
     Calculate composite reflectivity
@@ -128,6 +132,8 @@ def max_potential_gust(r_list:RList) -> Radial:
 class VCS:
     r'''Class performing vertical cross-section calculation'''
     def __init__(self, r_list:RList):
+        if not is_uniform(r_list):
+            raise RadarCalculationError('All input radials must have the same data type')
         self.rl = r_list
         self.el = [i.elev for i in r_list]
         self.x, self.y, self.h, self.r = self._geocoor()
@@ -138,7 +144,10 @@ class VCS:
         y_data = list()
         h_data = list()
         for i in self.rl:
-            r, x, y = grid_2d(i.data, i.lon, i.lat)
+            if i.dtype in ['VEL', 'SW']:
+                r, x, y = grid_2d(i.data[0], i.lon, i.lat)
+            else:
+                r, x, y = grid_2d(i.data, i.lon, i.lat)
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
@@ -167,7 +176,7 @@ class VCS:
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
-        sl = _Slice(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
+        sl = _Slice(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, self.rl[0].dtype, stp_s=stp_s,
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
