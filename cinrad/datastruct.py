@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 from datetime import datetime
-from typing import Union, Optional
+from typing import Union, Optional, Any
+from copy import deepcopy as dc
 
 from numpy import ndarray
 
@@ -90,6 +91,17 @@ class Radial:
     def add_polarc(self, distance:ndarray, azimuth:ndarray):
         self.dist = distance
         self.az = azimuth
+
+    def __deepcopy__(self, memo:Any) -> Radial:
+        r'''Used if copy.deepcopy is called'''
+        r = Radial(dc(self.data), dc(self.drange), dc(self.elev), dc(self.reso), dc(self.code),
+                   dc(self.name), dc(self.scantime), dc(self.dtype), dc(self.stp['lon']), dc(self.stp['lat']),
+                   dc(self.scan_info))
+        if self.geoflag:
+            r.add_geoc(dc(self.lon), dc(self.lat), dc(self.height))
+        if hasattr(self, 'dist'):
+            r.add_polarc(dc(self.dist), dc(self.az))
+        return r
 
 class _Slice:
     r'''Structure for slice data'''

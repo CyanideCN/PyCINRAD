@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from cinrad.correct._unwrap_2d import unwrap_2d
 from cinrad.datastruct import Radial
@@ -17,5 +18,6 @@ def dealias(v_data:Radial) -> Radial:
     nyq = v_data.scan_info.pop('nyquist_velocity')
     out_data = dealias_unwrap_2d(v_field, nyq)
     out_masked = np.ma.array(out_data, mask=v_field.mask)
-    v_data.data = (out_masked, v_data.data[1])
-    return v_data
+    v_ret = copy.deepcopy(v_data)
+    v_ret.data = (out_masked, v_data.data[1])
+    return v_ret
