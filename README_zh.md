@@ -57,8 +57,7 @@ f.get_data(tilt, drange, dtype) #获取数据
 f.to_nc(path_to_nc_file)
 ```
 
-#### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
-
+**关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`**
 
 #### 读取PUP数据和SWAN数据
 
@@ -94,7 +93,7 @@ r_list = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
 ```
 #### VCS
 
-`cinrad.easycalc.VCS`用于计算任意两点剖面。
+`cinrad.easycalc.VCS`用于计算任意两点剖面，目前支持所有要素。
 
 示例代码：
 ```python
@@ -109,9 +108,24 @@ fig = Section(sec)
 fig('D:\\')
 ```
 
+### cinrad.correct
+
+提供雷达原数据的校正。
+
+#### cinrad.correct.dealias
+
+利用`pyart`的算法进行速度退模糊。（需要C编译器）
+
+```python
+import cinrad
+#(文件处理部分省略)
+v = f.get_data(1, 230, 'VEL')
+v_corrected = cinrad.correct.dealias(v)
+```
+
 ### cinrad.visualize
 
-雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct`包含的类型。
+雷达数据可视化，包括`PPI`和`Section`，仅接受`cinrad.datastruct`包含的类型。
 
 例子：
 
