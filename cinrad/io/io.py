@@ -673,7 +673,7 @@ class SWAN(object):
         if zdim == 1:
             out = data_body.reshape(xdim, ydim)
         else:
-            out = data_body.reshape(xdim, ydim, zdim)
+            out = data_body.reshape(zdim, xdim, ydim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
         self.product_name = b''.join(header['data_name'][0, :4]).decode()
         start_lon = header['start_lon'][0]
