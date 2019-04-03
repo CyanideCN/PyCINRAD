@@ -9,10 +9,28 @@ import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
+import shapefile
 
 from cinrad.constants import font, MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
 from cinrad._typing import GList, number_type
+
+class ShpReader(shapereader.BasicReader):
+    r'''Customized reader to deal with encoding issue'''
+    def __init__(self, filename, encoding='gbk'):
+        # Validate the filename/shapefile
+        self._reader = reader = shapefile.Reader(filename, encoding=encoding)
+        if reader.shp is None or reader.shx is None or reader.dbf is None:
+            raise ValueError("Incomplete shapefile definition "
+                             "in '%s'." % filename)
+
+        # Figure out how to make appropriate shapely geometry instances
+        shapeType = reader.shapeType
+        self._geometry_factory = shapereader.GEOMETRY_FACTORIES.get(shapeType)
+        if self._geometry_factory is None:
+            raise ValueError('Unsupported shape type: %s' % shapeType)
+
+        self._fields = self._reader.fields
 
 def setup_plot(dpi:number_type, figsize:tuple=(9, 9), style:str='black') -> Any:
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -46,7 +64,7 @@ def save(fpath:str):
 def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[GList]=None):
     root = os.path.join(MODULE_DIR, 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
-    shps = [shapereader.Reader(i).geometries() for i in flist]
+    shps = [ShpReader(i).geometries() for i in flist]
     if style == 'black':
         line_colors = ['grey', 'lightgrey', 'white']
     elif style == 'white':

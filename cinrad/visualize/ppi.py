@@ -213,10 +213,13 @@ class PPI(object):
 
     def plot_cross_section(self, data:_Slice, ymax:Optional[int]=None):
         r'''Plot cross section data below the PPI plot.'''
+        if self.settings['style'] = 'black':
+            linecolor = 'white'
+        elif self.settings['stype'] = 'white':
+            linecolor = 'black'
         self.settings['slice'] = data
         ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
         ax2.yaxis.set_ticks_position('right')
-        #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
         sl = data.data
         sl[sl == 0] = -1
@@ -230,7 +233,7 @@ class PPI(object):
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red', zorder=5)
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color=linecolor, zorder=5)
 
     def storm_track_info(self, filepath:str):
         r'''
