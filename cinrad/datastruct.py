@@ -92,7 +92,7 @@ class Radial:
         self.dist = distance
         self.az = azimuth
 
-    def __deepcopy__(self, memo:Any) -> Radial:
+    def __deepcopy__(self, memo:Any):
         r'''Used if copy.deepcopy is called'''
         r = Radial(dc(self.data), dc(self.drange), dc(self.elev), dc(self.reso), dc(self.code),
                    dc(self.name), dc(self.scantime), dc(self.dtype), dc(self.stp['lon']), dc(self.stp['lat']),
