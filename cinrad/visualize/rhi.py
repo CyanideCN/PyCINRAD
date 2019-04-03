@@ -12,7 +12,7 @@ from cinrad.constants import r_cmap_smooth, norm1, font
 from cinrad.datastruct import _Slice
 from cinrad.visualize.ppi import sec_plot, norm_plot, prodname
 
-__all__ = ['Section']
+__all__ = ['Section', 'RHI']
 
 class Section:
     def __init__(self, data:_Slice, hlim:int=15):
@@ -55,6 +55,47 @@ class Section:
         else:
             path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
                                                                     stp[1], stp[0], enp[1], enp[0])
+        plt.savefig(path_string , bbox_inches='tight')
+
+    def __call__(self, *fpath):
+        if not fpath:
+            fpath = os.path.join(str(Path.home()), 'PyCINRAD')
+        else:
+            fpath = fpath[0]
+            if fpath.upper().endswith('.PNG'):
+                self.path_customize = True
+            else:
+                if not fpath.endswith(os.path.sep):
+                    fpath += os.path.sep
+        return self._plot(fpath)
+
+class RHI:
+    def __init__(self, data:_Slice, hlim:int=15):
+        self.data = data
+        self.dtype = data.dtype
+        self.hlim = hlim
+        self.azimuth = data.geoinfo['azimuth']
+        self.path_customize = False
+
+    def _plot(self, fpath:str):
+        rhi = self.data.data
+        xcor = self.data.xcor
+        ycor = self.data.ycor
+        rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
+        plt.style.use('dark_background')
+        plt.figure(figsize=(10, 5), dpi=300)
+        plt.grid(True, linewidth=0.5, linestyle="-.", color='white')
+        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        plt.ylim(0, self.hlim)
+        plt.title('Range-Height Indicator\nStation: {} Data: {} Range: {:.0f}km Azimuth: {:.0f}° Time: {}'.format(
+                  self.data.name, self.data.dtype, self.data.xcor.max(), self.azimuth,
+                  self.data.scantime.strftime('%Y-%m-%d %H:%M:%S')))
+        plt.ylabel('Height (km)', fontproperties=font)
+        if self.path_customize:
+            path_string = fpath
+        else:
+            path_string = '{}{}_{}_RHI_{:.0f}_{:.0f}_{}.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
+                                                            self.azimuth, self.data.xcor.max(), self.dtype)
         plt.savefig(path_string , bbox_inches='tight')
 
     def __call__(self, *fpath):

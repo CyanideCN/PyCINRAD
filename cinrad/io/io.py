@@ -11,7 +11,7 @@ from typing import Union, Optional, List, Any
 import numpy as np
 
 from cinrad.constants import deg2rad, con, con2
-from cinrad.datastruct import Radial, Grid
+from cinrad.datastruct import Radial, Grid, _Slice
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io._io import NetCDFWriter
@@ -424,7 +424,13 @@ class StandardData(BaseRadar):
                 self.f = open(file, 'rb')
         self._parse()
         self.f.close()
-        self._update_radar_info()
+        try:
+            self._update_radar_info()
+        except RadarDecodeError:
+            self.stationlat = self.geo['lat']
+            self.stationlon = self.geo['lon']
+            self.radarheight = self.geo['height']
+            self.name = self.code
         self.angleindex_r = self.avaliable_tilt('REF') # API consistency
 
     def _parse(self):
@@ -433,6 +439,10 @@ class StandardData(BaseRadar):
             raise RadarDecodeError('Invalid standard data')
         site_config = np.frombuffer(self.f.read(128), SDD_site)
         self.code = merge_bytes(site_config['site_code'][0])[:5].decode()
+        self.geo = geo = dict()
+        geo['lat'] = site_config['Latitude']
+        geo['lon'] = site_config['Longitude']
+        geo['height'] = site_config['ground_height']
         task = np.frombuffer(self.f.read(256), SDD_task)
         #task_name = merge_bytes(task['task_name'][0])
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(task['scan_start_time']))
@@ -441,6 +451,10 @@ class StandardData(BaseRadar):
         self.scan_config = [ScanConfig(*i) for i in scan_config]
         data = dict()
         aux = dict()
+        if task['scan_type'] == 2: # Single-layer RHI
+            self.scan_type = 'RHI'
+        else:
+            self.scan_type = 'PPI'
         while 1:
             radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
             el_num = radial_header['elevation_number'][0] - 1
@@ -448,6 +462,7 @@ class StandardData(BaseRadar):
                 data[el_num] = defaultdict(list)
                 aux[el_num] = defaultdict(list)
             aux[el_num]['azimuth'].append(radial_header['azimuth'][0])
+            aux[el_num]['elevation'].append(radial_header['elevation'][0])
             for _ in range(radial_header['moment_number'][0]):
                 moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
                 dtype = self.dtype_corr[moment_header['data_type'][0]]
@@ -458,7 +473,7 @@ class StandardData(BaseRadar):
                     offset = moment_header['offset'][0]
                     aux[el_num][dtype] = (scale, offset)
                 data[el_num][dtype].append(data_body.tolist())
-            if radial_header['radial_state'][0] == 4:
+            if radial_header['radial_state'][0] in [4, 6]:
                 break
         self.data = data
         self.aux = aux
@@ -481,8 +496,11 @@ class StandardData(BaseRadar):
         -------
         r_obj: cinrad.datastruct.Radial
         '''
-        self.tilt = tilt
+        self.tilt = tilt if self.scan_type == 'PPI' else 0
         self.drange = drange
+        if self.scan_type == 'RHI':
+            if drange > self.scan_config[0].max_range1 / 1000:
+                drange = self.scan_config[0].max_range1 / 1000
         self.elev = self.el[tilt]
         try:
             raw = np.array(self.data[tilt][dtype])
@@ -505,12 +523,20 @@ class StandardData(BaseRadar):
             ret = (r, rf)
         else:
             ret = r
-        r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                       self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
-        x, y, z, d, a = self.projection(reso)
-        r_obj.add_geoc(x, y, z)
-        r_obj.add_polarc(d, a)
-        return r_obj
+        if self.scan_type == 'PPI':
+            r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
+                        self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
+            x, y, z, d, a = self.projection(reso)
+            r_obj.add_geoc(x, y, z)
+            r_obj.add_polarc(d, a)
+            return r_obj
+        else:
+            # Manual projection
+            dist = np.arange(reso, self.drange, reso)
+            d, e = np.meshgrid(dist, self.aux[tilt]['elevation'])
+            h = height(d, e, 0)
+            rhi = _Slice(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
+            return rhi
 
     def projection(self, reso:float) -> tuple:
         r = np.arange(reso, self.drange + reso, reso)
