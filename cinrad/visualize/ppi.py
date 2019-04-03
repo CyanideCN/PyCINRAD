@@ -213,9 +213,9 @@ class PPI(object):
 
     def plot_cross_section(self, data:_Slice, ymax:Optional[int]=None):
         r'''Plot cross section data below the PPI plot.'''
-        if self.settings['style'] = 'black':
+        if self.settings['style'] == 'black':
             linecolor = 'white'
-        elif self.settings['stype'] = 'white':
+        elif self.settings['stype'] == 'white':
             linecolor = 'black'
         self.settings['slice'] = data
         ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
