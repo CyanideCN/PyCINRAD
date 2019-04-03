@@ -1,6 +1,9 @@
 import copy
 import numpy as np
-from cinrad.correct._unwrap_2d import unwrap_2d
+try:
+    from cinrad.correct._unwrap_2d import unwrap_2d
+except ImportError:
+    print('Cython is not installed, velocity dealias function cannot be used')
 from cinrad.datastruct import Radial
 
 def dealias_unwrap_2d(vdata:np.ndarray, nyquist_vel:float) -> np.ndarray:
