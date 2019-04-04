@@ -51,6 +51,7 @@ f = CinradReader(your_radar_file) #老版本数据
 f = StandardData(your_radar_file) #新版本标准数据
 f.get_data(tilt, drange, dtype) #获取数据
 ```
+对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
 
 #### 将数据保存为NetCDF格式
 ```python
@@ -125,7 +126,7 @@ v_corrected = cinrad.correct.dealias(v)
 
 ### cinrad.visualize
 
-雷达数据可视化，包括`PPI`和`Section`，仅接受`cinrad.datastruct`包含的类型。
+雷达数据可视化，包括`PPI`和`Section`以及`RHI`，仅接受`cinrad.datastruct`包含的类型。
 
 例子：
 
@@ -134,7 +135,10 @@ from cinrad.visualize import PPI
 fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
-fig = Section(_Slice) #绘制RHI
+fig = Section(_Slice) #绘制VCS
+fig('D:\\')
+from cinrad.visualize import RHI
+fig = RHI(rhi) #绘制RHI扫描模式的数据
 fig('D:\\')
 ```
 

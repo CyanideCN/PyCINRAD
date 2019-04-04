@@ -525,7 +525,7 @@ class StandardData(BaseRadar):
             ret = r
         if self.scan_type == 'PPI':
             r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                        self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
+                           self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
             x, y, z, d, a = self.projection(reso)
             r_obj.add_geoc(x, y, z)
             r_obj.add_polarc(d, a)
