@@ -122,7 +122,10 @@ from cinrad.visualize import PPI
 fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
 from cinrad.visualize import Section
-fig = Section(_Slice) #Plot RHI
+fig = Section(_Slice) #Plot VCS
+fig('D:\\')
+from cinrad.visualize import RHI
+fig = RHI(rhi) #Plot data from RHI scan mode
 fig('D:\\')
 ```
 
@@ -178,6 +181,10 @@ Plot PUP STI product on the current PPI map, including past position., current p
 #### Cross-section other than reflectivity
 
 ![ZDR cross-section](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9574_20190321025715_0.5_230_ZDR_29.47N121.44E_29.4N122.04E.png)
+
+#### RHI reflectivity
+
+![RHI reflectivity](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/XXX_XXX_RHI_299_100_REF.png)
 
 ## Notes
 
