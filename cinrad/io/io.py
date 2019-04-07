@@ -499,8 +499,9 @@ class StandardData(BaseRadar):
         self.tilt = tilt if self.scan_type == 'PPI' else 0
         self.drange = drange
         if self.scan_type == 'RHI':
-            if drange > self.scan_config[0].max_range1 / 1000:
-                drange = self.scan_config[0].max_range1 / 1000
+            max_range = self.scan_config[0].max_range1 / 1000
+            if drange > max_range:
+                drange = max_range
         self.elev = self.el[tilt]
         try:
             raw = np.array(self.data[tilt][dtype])
@@ -532,7 +533,7 @@ class StandardData(BaseRadar):
             return r_obj
         else:
             # Manual projection
-            dist = np.arange(reso, self.drange, reso)
+            dist = np.linspace(reso, self.drange, cut.shape[1])
             d, e = np.meshgrid(dist, self.aux[tilt]['elevation'])
             h = height(d, e, 0)
             rhi = _Slice(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
