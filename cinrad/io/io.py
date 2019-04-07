@@ -11,7 +11,7 @@ from typing import Union, Optional, List, Any
 import numpy as np
 
 from cinrad.constants import deg2rad, con, con2
-from cinrad.datastruct import Radial, Grid, _Slice
+from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io._io import NetCDFWriter
@@ -536,7 +536,7 @@ class StandardData(BaseRadar):
             dist = np.linspace(reso, self.drange, cut.shape[1])
             d, e = np.meshgrid(dist, self.aux[tilt]['elevation'])
             h = height(d, e, 0)
-            rhi = _Slice(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
+            rhi = Slice_(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
             return rhi
 
     def projection(self, reso:float) -> tuple:

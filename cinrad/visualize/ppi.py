@@ -12,7 +12,7 @@ import numpy as np
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.constants import *
-from cinrad.datastruct import Radial, _Slice, Grid
+from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
 from cinrad._typing import number_type
@@ -75,7 +75,7 @@ class PPI(object):
     def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
                  cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
                  dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
-                 extent:Optional[List[number_type]]=None, add_slice:Optional[_Slice]=None,
+                 extent:Optional[List[number_type]]=None, add_slice:Optional[Slice_]=None,
                  style:str='black', add_city_names:bool=False, plot_labels:bool=True, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
@@ -211,7 +211,7 @@ class PPI(object):
         x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
         self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
 
-    def plot_cross_section(self, data:_Slice, ymax:Optional[int]=None):
+    def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None):
         r'''Plot cross section data below the PPI plot.'''
         if self.settings['style'] == 'black':
             linecolor = 'white'

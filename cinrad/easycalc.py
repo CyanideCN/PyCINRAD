@@ -9,7 +9,7 @@ import numpy as np
 from xarray import DataArray
 
 from cinrad.utils import *
-from cinrad.datastruct import Radial, Grid, _Slice
+from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
@@ -158,7 +158,7 @@ class VCS:
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
-    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> _Slice:
+    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> Slice_:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -176,13 +176,13 @@ class VCS:
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
-        sl = _Slice(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, self.rl[0].dtype, stp_s=stp_s,
+        sl = Slice_(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, self.rl[0].dtype, stp_s=stp_s,
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
     def get_section(self, start_polar:Optional[Tuple[float, float]]=None, end_polar:Optional[Tuple[float, float]]=None,
                     start_cart:Optional[Tuple[float, float]]=None, end_cart:Optional[Tuple[float, float]]=None,
-                    spacing=100) -> _Slice:
+                    spacing=100) -> Slice_:
         r'''
         Get cross-section data from input points
 
@@ -199,7 +199,7 @@ class VCS:
 
         Returns
         -------
-        sl: cinrad.datastruct._Slice
+        sl: cinrad.datastruct.Slice_
         '''
         if start_polar and end_polar:
             stlat = self.rl[0].stp['lat']

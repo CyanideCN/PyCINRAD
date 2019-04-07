@@ -35,7 +35,7 @@ python setup.py install
 
 径向数据类型：`cinrad.datastruct.Radial`
 
-剖面数据类型: `cinrad.datastruct._Slice`
+剖面数据类型: `cinrad.datastruct.Slice_`
 
 格点数据类型：`cinrad.datastruct.Grid`
 
@@ -135,7 +135,7 @@ from cinrad.visualize import PPI
 fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
-fig = Section(_Slice) #绘制VCS
+fig = Section(Slice_) #绘制VCS
 fig('D:\\')
 from cinrad.visualize import RHI
 fig = RHI(rhi) #绘制RHI扫描模式的数据

@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from cinrad.constants import r_cmap_smooth, norm1, font
-from cinrad.datastruct import _Slice
+from cinrad.datastruct import Slice_
 from cinrad.visualize.ppi import sec_plot, norm_plot, prodname
 
 __all__ = ['Section', 'RHI']
 
 class Section:
-    def __init__(self, data:_Slice, hlim:int=15):
+    def __init__(self, data:Slice_, hlim:int=15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
@@ -70,7 +70,7 @@ class Section:
         return self._plot(fpath)
 
 class RHI:
-    def __init__(self, data:_Slice, hlim:int=15):
+    def __init__(self, data:Slice_, hlim:int=15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim

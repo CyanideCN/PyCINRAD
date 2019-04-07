@@ -103,7 +103,7 @@ class Radial:
             r.add_polarc(dc(self.dist), dc(self.az))
         return r
 
-class _Slice:
+class Slice_:
     r'''Structure for slice data'''
 
     __slots__ = ['data', 'xcor', 'ycor', 'scantime', 'dtype', 'code', 'name', 'geoinfo']
