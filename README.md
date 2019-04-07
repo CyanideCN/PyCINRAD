@@ -32,7 +32,7 @@ This submodule contains data structure used in this program.
 
 Radial type data: `cinrad.datastruct.Radial`
 
-Cross-section type data: `cinrad.datastruct._Slice`
+Cross-section type data: `cinrad.datastruct.Slice_`
 
 Grid type data: `cinrad.datastruct.Grid`
 
@@ -122,7 +122,7 @@ from cinrad.visualize import PPI
 fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
 from cinrad.visualize import Section
-fig = Section(_Slice) #Plot VCS
+fig = Section(Slice_) #Plot VCS
 fig('D:\\')
 from cinrad.visualize import RHI
 fig = RHI(rhi) #Plot data from RHI scan mode
