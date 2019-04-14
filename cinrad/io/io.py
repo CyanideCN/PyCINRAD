@@ -683,6 +683,7 @@ class PUP(BaseRadar):
 
 class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
+    size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
     def __init__(self, file:Any):
         if hasattr(file, 'read'):
             f = file
@@ -694,9 +695,10 @@ class SWAN(object):
                 f = open(file, 'rb')
         header = np.frombuffer(f.read(1024), swan_header_dtype)
         xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
-        data_size = int(xdim) * int(ydim) * int(zdim)
-        dtype = self.dtype_conv[header['m_data_type'][0]]
-        data_body = np.frombuffer(f.read(data_size), dtype).astype(int)
+        dtype = header['m_data_type'][0]
+        data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]
+        bittype = self.dtype_conv[dtype]
+        data_body = np.frombuffer(f.read(data_size), bittype).astype(int)
         if zdim == 1:
             out = data_body.reshape(xdim, ydim)
         else:

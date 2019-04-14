@@ -16,7 +16,7 @@ from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import RList
 
-__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust']
+__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust', 'quick_vild']
 
 def _extract(r_list:RList) -> tuple:
     d_list = np.array([i.drange for i in r_list])
@@ -103,6 +103,29 @@ def quick_vil(r_list:RList) -> Radial:
     vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double))
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
+    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
+    return l2_obj
+
+def quick_vild(r_list:RList) -> Radial:
+    r'''
+    Calculate vertically integrated liquid density
+
+    Paramters
+    ---------
+    r_list: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        vertically integrated liquid density
+    '''
+    r_data, d, a, elev = _extract(r_list)
+    i = r_list[0]
+    vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), density=True)
+    vild = np.ma.masked_invalid(vil)
+    l2_obj = Radial(np.ma.array(vild, mask=(vild <= 0.1)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
+                    'VILD', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj

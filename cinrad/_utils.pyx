@@ -11,10 +11,15 @@ rm = 8500
 vil_const = 3.44e-6
 
 cdef height(np.ndarray distance, double elevation, double radarheight):
-    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
+    # unit is meter
+    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight
+
+cdef height_single(double distance, double elevation):
+    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm)
 
 @cython.boundscheck(False)
-def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev, beam_width=0.99, threshold=18.):
+def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
+                           beam_width=0.99, threshold=18., density=False):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp
     cdef np.ndarray hi_arr, VIL, position
     cdef Py_ssize_t xshape, yshape, zshape
@@ -42,9 +47,14 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
                 ht = dist * (np.sin(elev[l + 1] * deg2rad) - np.sin(elev[l] * deg2rad))
                 factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
                 m1 += vil_const * factor * ht
-            mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
-            mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
-            VIL[i][j] = m1 + mb + mt
+            if density == False:
+                mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
+                mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
+                VIL[i][j] = m1 + mb + mt
+            elif density == True:
+                h_lower = height_single(dist / 1000, elev[pos_s])
+                h_higher = height_single(dist / 1000, elev[pos_e])
+                VIL[i][j] = m1 / (h_higher - h_lower)
     return VIL
 
 @cython.boundscheck(False)
