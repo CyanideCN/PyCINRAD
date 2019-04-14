@@ -270,7 +270,7 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
-        with open(os.path.join(MODULE_DIR, 'chinaCity.json'), encoding='utf-8') as j:
+        with open(os.path.join(MODULE_DIR, 'data', 'chinaCity.json'), encoding='utf-8') as j:
             js = json.load(j)
         name = np.concatenate([[j['name'] for j in i['children']] for i in js])
         lon = np.concatenate([[j['log'] for j in i['children']] for i in js]).astype(float)

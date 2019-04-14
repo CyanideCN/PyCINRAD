@@ -23,7 +23,7 @@ con2 = 0.001824 # calculated manually
 vil_const = 3.44e-6
 
 MODULE_DIR = os.path.dirname(__file__)
-CMAP_DIR = os.path.join(MODULE_DIR, 'colormap')
+CMAP_DIR = os.path.join(MODULE_DIR, 'data', 'colormap')
 r_cmap = _cmap('REF')['cmap']
 r_cmap_smooth = _cmap('REF_s')['cmap']
 v_cmap = _cmap('VEL')['cmap']
