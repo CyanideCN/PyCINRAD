@@ -14,7 +14,7 @@ __all__ = ['deg2rad', 'rm', 'con', 'con2', 'MODULE_DIR', 'r_cmap', 'v_cmap',
            'kdp_cbar', 'cc_cmap', 'cc_cbar', 'et_cmap', 'et_cbar', 'vil_cmap',
            'vil_cbar', 'rf_cmap', 'font', 'norm1', 'norm2', 'norm3', 'norm4',
            'norm5', 'norm6', 'norm7', 'norm8', 'v_cmap_smooth', 'zdr_cmap_smooth',
-           'cc_cmap_smooth', 'kdp_cmap_smooth', 'norm9']
+           'cc_cmap_smooth', 'kdp_cmap_smooth', 'norm9', 'norm10']
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500
@@ -67,3 +67,4 @@ norm6 = cmx.Normalize(-4, 5)
 norm7 = cmx.Normalize(260, 360)
 norm8 = cmx.Normalize(0, 0.99)
 norm9 = cmx.Normalize(-0.8, 21)
+norm10 = cmx.Normalize(0.1, 6)
