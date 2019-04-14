@@ -62,7 +62,7 @@ def save(fpath:str):
     plt.close('all')
 
 def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[GList]=None):
-    root = os.path.join(MODULE_DIR, 'shapefile')
+    root = os.path.join(MODULE_DIR, 'data', 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [ShpReader(i).geometries() for i in flist]
     if style == 'black':

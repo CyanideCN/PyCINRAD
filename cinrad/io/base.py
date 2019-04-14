@@ -10,7 +10,7 @@ from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarDecodeError
 from cinrad._typing import number_type
 
-radarinfo = np.load(os.path.join(MODULE_DIR, 'RadarStation.npy'))
+radarinfo = np.load(os.path.join(MODULE_DIR, 'data', 'RadarStation.npy'))
 
 def _get_radar_info(code:str) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
