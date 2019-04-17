@@ -11,7 +11,7 @@ from cartopy.io import shapereader
 import cartopy.crs as ccrs
 import shapefile
 
-from cinrad.constants import font, MODULE_DIR
+from cinrad.constants import MODULE_DIR, plot_kw
 from cinrad.visualize.shapepatch import highlight_area
 from cinrad._typing import GList, number_type
 

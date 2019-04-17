@@ -8,7 +8,7 @@ from typing import Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cinrad.constants import r_cmap_smooth, norm1, font
+from cinrad.constants import r_cmap_smooth, norm1, plot_kw
 from cinrad.datastruct import Slice_
 from cinrad.visualize.ppi import sec_plot, norm_plot, prodname
 
