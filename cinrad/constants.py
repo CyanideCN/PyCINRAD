@@ -14,7 +14,7 @@ __all__ = ['deg2rad', 'rm', 'con', 'con2', 'MODULE_DIR', 'r_cmap', 'v_cmap',
            'kdp_cbar', 'cc_cmap', 'cc_cbar', 'et_cmap', 'et_cbar', 'vil_cmap',
            'vil_cbar', 'rf_cmap', 'font', 'norm1', 'norm2', 'norm3', 'norm4',
            'norm5', 'norm6', 'norm7', 'norm8', 'v_cmap_smooth', 'zdr_cmap_smooth',
-           'cc_cmap_smooth', 'kdp_cmap_smooth', 'norm9', 'norm10']
+           'cc_cmap_smooth', 'kdp_cmap_smooth', 'norm9', 'norm10', 'plot_kw']
 
 deg2rad = 3.141592653589793 / 180
 rm = 8500
@@ -46,17 +46,10 @@ rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 
 if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
     font = FontProperties(fname='C:\\WINDOWS\\Fonts\\msyh.ttc')
+    plot_kw = {'fontproperties':font}
 else:
-    from matplotlib.font_manager import fontManager
-    fonts = [font for font in fontManager.ttflist if os.path.exists(font.fname) and os.stat(font.fname).st_size > 5e6]
-    if len(fonts) == 0:
-        warnings.warn('No Chinese font file found', RuntimeWarning)
-        font = FontProperties(['DejaVu Sans'])
-    else:
-        try:
-            font = FontProperties(fonts[0].fname)
-        except ValueError:
-            font = FontProperties(['DejaVu Sans'])
+    plot_kw = {}
+
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
