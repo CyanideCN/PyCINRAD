@@ -12,7 +12,7 @@ from cinrad.gpf import _cmap
 __all__ = ['deg2rad', 'rm', 'con', 'con2', 'MODULE_DIR', 'r_cmap', 'v_cmap',
            'v_cbar', 'r_cmap_smooth', 'zdr_cmap', 'zdr_cbar', 'kdp_cmap',
            'kdp_cbar', 'cc_cmap', 'cc_cbar', 'et_cmap', 'et_cbar', 'vil_cmap',
-           'vil_cbar', 'rf_cmap', 'font', 'norm1', 'norm2', 'norm3', 'norm4',
+           'vil_cbar', 'rf_cmap', 'norm1', 'norm2', 'norm3', 'norm4',
            'norm5', 'norm6', 'norm7', 'norm8', 'v_cmap_smooth', 'zdr_cmap_smooth',
            'cc_cmap_smooth', 'kdp_cmap_smooth', 'norm9', 'norm10', 'plot_kw']
 
@@ -49,7 +49,6 @@ if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
     plot_kw = {'fontproperties':font}
 else:
     plot_kw = {}
-
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)
