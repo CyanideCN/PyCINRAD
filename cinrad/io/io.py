@@ -5,13 +5,15 @@ import warnings
 import datetime
 from pathlib import Path
 import bz2
+import gzip
+
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any
 
 import numpy as np
 
 from cinrad.constants import deg2rad, con, con2
-from cinrad.datastruct import Radial, Grid
+from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io._io import NetCDFWriter
@@ -59,6 +61,18 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
     if radartype is None:
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
+
+def prepare_file(file):
+    if hasattr(file, 'read'):
+        return file
+    f = open(file)
+    magic = f.read(3)
+    f.close()
+    if magic.startswith(b'\x1f\x8b'):
+        return gzip.GzipFile(file, 'rb')
+    if magic.startswith(b'BZh'):
+        return bz2.BZ2File(file, 'rb')
+    return open(file, 'rb')
 
 class CinradReader(BaseRadar):
     r'''
@@ -108,20 +122,9 @@ class CinradReader(BaseRadar):
         radar_type: str, optional
             type of radar
         '''
-        if hasattr(file, 'read'):
-            f = file
-            if not file_name:
-                file_name = ''
-            self.code, radartype = _detect_radartype(f, file_name, type_assert=radar_type)
-        else:
-            path = Path(file)
-            filename = path.name
-            filetype = path.suffix
-            if filetype.lower().endswith('bz2'):
-                f = bz2.open(file, 'rb')
-            else:
-                f = open(file, 'rb')
-            self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
+        f = prepare_file(file)
+        filename = Path(file).name if isinstance(file, str) else ''
+        self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
         if radar_type:
             if radartype is not radar_type:
                 warnings.warn('Contradictory information from input radar type and\
@@ -180,11 +183,13 @@ class CinradReader(BaseRadar):
             r[r == 95.5] = 0
             out_data[idx]['REF'] = r
             v = np.ma.array(da['vel'], mask=(da['vel'] < 2))
+            sw = np.ma.array(da['sw'], mask=(da['sw'] < 2))
             if dv == 2:
                 out_data[idx]['VEL'] = (v - 2) / 2 - 63.5
+                out_data[idx]['SW'] = (sw - 2) / 2 - 63.5
             elif dv == 4:
                 out_data[idx]['VEL'] = v - 2 - 127
-            out_data[idx]['SW'] = da['sw']
+                out_data[idx]['SW'] = sw - 2 - 127
             out_data[idx]['azimuth'] = self.azimuth[b[idx]:b[idx + 1]]
             out_data[idx]['RF'] = np.ma.array(da['vel'], mask=(da['vel'] != 1))
         angleindex = np.arange(0, data['el_num'][-1], 1)
@@ -322,7 +327,7 @@ class CinradReader(BaseRadar):
         cut = data.T[:int(np.round(drange / reso))]
         shape_diff = np.round(drange / reso) - cut.shape[0]
         append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             try:
                 rf = self.data[tilt]['RF']
             except KeyError:
@@ -413,17 +418,15 @@ class StandardData(BaseRadar):
         file: str
             path directed to the file to read
         '''
-        if hasattr(file, 'read'):
-            self.f = file
-        else:
-            if file.lower().endswith('bz2'):
-                self.f = bz2.open(file, 'rb')
-            else:
-                self.f = open(file, 'rb')
+        self.f = prepare_file(file)
         self._parse()
         self.f.close()
-        self._update_radar_info()
+        self.stationlat = self.geo['lat']
+        self.stationlon = self.geo['lon']
+        self.radarheight = self.geo['height']
+        self.name = self.code
         self.angleindex_r = self.avaliable_tilt('REF') # API consistency
+        del self.geo
 
     def _parse(self):
         header = np.frombuffer(self.f.read(32), SDD_header)
@@ -431,6 +434,10 @@ class StandardData(BaseRadar):
             raise RadarDecodeError('Invalid standard data')
         site_config = np.frombuffer(self.f.read(128), SDD_site)
         self.code = merge_bytes(site_config['site_code'][0])[:5].decode()
+        self.geo = geo = dict()
+        geo['lat'] = site_config['Latitude']
+        geo['lon'] = site_config['Longitude']
+        geo['height'] = site_config['ground_height']
         task = np.frombuffer(self.f.read(256), SDD_task)
         #task_name = merge_bytes(task['task_name'][0])
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(task['scan_start_time']))
@@ -439,6 +446,10 @@ class StandardData(BaseRadar):
         self.scan_config = [ScanConfig(*i) for i in scan_config]
         data = dict()
         aux = dict()
+        if task['scan_type'] == 2: # Single-layer RHI
+            self.scan_type = 'RHI'
+        else:
+            self.scan_type = 'PPI'
         while 1:
             radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
             el_num = radial_header['elevation_number'][0] - 1
@@ -446,8 +457,11 @@ class StandardData(BaseRadar):
                 data[el_num] = defaultdict(list)
                 aux[el_num] = defaultdict(list)
             aux[el_num]['azimuth'].append(radial_header['azimuth'][0])
+            aux[el_num]['elevation'].append(radial_header['elevation'][0])
             for _ in range(radial_header['moment_number'][0]):
                 moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
+                if moment_header[zip_type][0] == 1: # LZO compression
+                    raise NotImplementedError('LZO compressed file is not supported')
                 dtype = self.dtype_corr[moment_header['data_type'][0]]
                 data_body = np.frombuffer(self.f.read(moment_header['block_length'][0]),
                                           'u{}'.format(moment_header['bin_length'][0]))
@@ -456,7 +470,7 @@ class StandardData(BaseRadar):
                     offset = moment_header['offset'][0]
                     aux[el_num][dtype] = (scale, offset)
                 data[el_num][dtype].append(data_body.tolist())
-            if radial_header['radial_state'][0] == 4:
+            if radial_header['radial_state'][0] in [4, 6]: # End scan
                 break
         self.data = data
         self.aux = aux
@@ -479,8 +493,12 @@ class StandardData(BaseRadar):
         -------
         r_obj: cinrad.datastruct.Radial
         '''
-        self.tilt = tilt
+        self.tilt = tilt if self.scan_type == 'PPI' else 0
         self.drange = drange
+        if self.scan_type == 'RHI':
+            max_range = self.scan_config[0].max_range1 / 1000
+            if drange > max_range:
+                drange = max_range
         self.elev = self.el[tilt]
         try:
             raw = np.array(self.data[tilt][dtype])
@@ -493,22 +511,30 @@ class StandardData(BaseRadar):
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             rf = np.ma.array(cut.data, mask=(cut.data != 1))
             rf = np.ma.hstack([rf, append])
         cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
         r = (cut - offset) / scale
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             ret = (r, rf)
         else:
             ret = r
-        r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                       self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
-        x, y, z, d, a = self.projection(reso)
-        r_obj.add_geoc(x, y, z)
-        r_obj.add_polarc(d, a)
-        return r_obj
+        if self.scan_type == 'PPI':
+            r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
+                           self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
+            x, y, z, d, a = self.projection(reso)
+            r_obj.add_geoc(x, y, z)
+            r_obj.add_polarc(d, a)
+            return r_obj
+        else:
+            # Manual projection
+            dist = np.linspace(reso, self.drange, cut.shape[1])
+            d, e = np.meshgrid(dist, self.aux[tilt]['elevation'])
+            h = height(d, e, 0)
+            rhi = Slice_(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
+            return rhi
 
     def projection(self, reso:float) -> tuple:
         r = np.arange(reso, self.drange + reso, reso)
@@ -632,7 +658,7 @@ class PUP(BaseRadar):
         else:
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
                         self.dtype, self.lon, self.lat)
-    
+
     def _is_radial(self) -> bool:
         return self.dtype in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
 
@@ -654,24 +680,19 @@ class PUP(BaseRadar):
 
 class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
+    size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
     def __init__(self, file:Any):
-        if hasattr(file, 'read'):
-            f = file
-            f.seek(0)
-        else:
-            if file.lower().endswith('bz2'):
-                f = bz2.open(file)
-            else:
-                f = open(file, 'rb')
+        f = prepare_file(file)
         header = np.frombuffer(f.read(1024), swan_header_dtype)
         xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
-        data_size = int(xdim) * int(ydim) * int(zdim)
-        dtype = self.dtype_conv[header['m_data_type'][0]]
-        data_body = np.frombuffer(f.read(data_size), dtype).astype(int)
+        dtype = header['m_data_type'][0]
+        data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]
+        bittype = self.dtype_conv[dtype]
+        data_body = np.frombuffer(f.read(data_size), bittype).astype(int)
         if zdim == 1:
             out = data_body.reshape(xdim, ydim)
         else:
-            out = data_body.reshape(xdim, ydim, zdim)
+            out = data_body.reshape(zdim, xdim, ydim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
         self.product_name = b''.join(header['data_name'][0, :4]).decode()
         start_lon = header['start_lon'][0]
@@ -680,8 +701,8 @@ class SWAN(object):
         center_lat = header['center_lat'][0]
         end_lon = center_lon * 2 - start_lon
         end_lat = center_lat * 2 - start_lat
-        x_reso = header['x_reso'][0]
-        y_reso = header['y_reso'][0]
+        #x_reso = header['x_reso'][0]
+        #y_reso = header['y_reso'][0]
         self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
         self.lat = np.linspace(start_lat, end_lat, ydim)
         self.data = np.ma.array((out - 66) / 2, mask=(out==0))

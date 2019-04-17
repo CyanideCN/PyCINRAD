@@ -9,14 +9,14 @@ import numpy as np
 from xarray import DataArray
 
 from cinrad.utils import *
-from cinrad.datastruct import Radial, Grid, _Slice
+from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import RList
 
-__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust']
+__all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust', 'quick_vild']
 
 def _extract(r_list:RList) -> tuple:
     d_list = np.array([i.drange for i in r_list])
@@ -35,6 +35,10 @@ def _extract(r_list:RList) -> tuple:
 def _nearest_ten_minute(date:datetime.datetime) -> datetime.datetime:
     minute = (date.minute // 10) * 10
     return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
+
+def is_uniform(radial_list:RList) -> bool:
+    r'''Check if all input radials have same data type'''
+    return len(set([i.dtype for i in radial_list])) == 1
 
 def quick_cr(r_list:RList) -> Grid:
     r'''
@@ -75,7 +79,7 @@ def quick_et(r_list:RList) -> Radial:
     r_data, d, a, elev = _extract(r_list)
     i = r_list[0]
     et = echo_top(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.)
-    l2_obj = Radial(np.ma.array(et, mask=(et < 2)), i.drange, 0, 1, i.code, i.name, i.scantime, 'ET',
+    l2_obj = Radial(np.ma.array(et, mask=(et < 2)), i.drange, 0, i.reso, i.code, i.name, i.scantime, 'ET',
                     i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
@@ -97,8 +101,31 @@ def quick_vil(r_list:RList) -> Radial:
     r_data, d, a, elev = _extract(r_list)
     i = r_list[0]
     vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double))
-    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
+    l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
                     'VIL', i.stp['lon'], i.stp['lat'])
+    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
+    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
+    return l2_obj
+
+def quick_vild(r_list:RList) -> Radial:
+    r'''
+    Calculate vertically integrated liquid density
+
+    Paramters
+    ---------
+    r_list: list of cinrad.datastruct.Radial
+
+    Returns
+    -------
+    l2_obj: cinrad.datastruct.Grid
+        vertically integrated liquid density
+    '''
+    r_data, d, a, elev = _extract(r_list)
+    i = r_list[0]
+    vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), density=True)
+    vild = np.ma.masked_invalid(vil)
+    l2_obj = Radial(np.ma.array(vild, mask=(vild <= 0.1)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
+                    'VILD', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -119,7 +146,7 @@ def max_potential_gust(r_list:RList) -> Radial:
     r_data, d, a, elev = _extract(r_list)
     i = r_list[0]
     g = potential_maximum_gust_from_reflectivity(r_data, d, elev)
-    l2_obj = Radial(np.ma.array(g, mask=(g <= 0)), i.drange, 0, 1, i.code, i.name, i.scantime,
+    l2_obj = Radial(np.ma.array(g, mask=(g <= 0)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
                     'GUST', i.stp['lon'], i.stp['lat'])
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
@@ -128,6 +155,8 @@ def max_potential_gust(r_list:RList) -> Radial:
 class VCS:
     r'''Class performing vertical cross-section calculation'''
     def __init__(self, r_list:RList):
+        if not is_uniform(r_list):
+            raise RadarCalculationError('All input radials must have the same data type')
         self.rl = r_list
         self.el = [i.elev for i in r_list]
         self.x, self.y, self.h, self.r = self._geocoor()
@@ -138,7 +167,10 @@ class VCS:
         y_data = list()
         h_data = list()
         for i in self.rl:
-            r, x, y = grid_2d(i.data, i.lon, i.lat)
+            if i.dtype in ['VEL', 'SW']:
+                r, x, y = grid_2d(i.data[0], i.lon, i.lat)
+            else:
+                r, x, y = grid_2d(i.data, i.lon, i.lat)
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
@@ -149,7 +181,7 @@ class VCS:
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
-    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> _Slice:
+    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> Slice_:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -167,13 +199,13 @@ class VCS:
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
-        sl = _Slice(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, 'VCS', stp_s=stp_s,
+        sl = Slice_(r, x, h, self.rl[0].scantime, self.rl[0].code, self.rl[0].name, self.rl[0].dtype, stp_s=stp_s,
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
     def get_section(self, start_polar:Optional[Tuple[float, float]]=None, end_polar:Optional[Tuple[float, float]]=None,
                     start_cart:Optional[Tuple[float, float]]=None, end_cart:Optional[Tuple[float, float]]=None,
-                    spacing=100) -> _Slice:
+                    spacing=100) -> Slice_:
         r'''
         Get cross-section data from input points
 
@@ -190,7 +222,7 @@ class VCS:
 
         Returns
         -------
-        sl: cinrad.datastruct._Slice
+        sl: cinrad.datastruct.Slice_
         '''
         if start_polar and end_polar:
             stlat = self.rl[0].stp['lat']

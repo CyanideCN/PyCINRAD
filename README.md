@@ -32,7 +32,7 @@ This submodule contains data structure used in this program.
 
 Radial type data: `cinrad.datastruct.Radial`
 
-Cross-section type data: `cinrad.datastruct._Slice`
+Cross-section type data: `cinrad.datastruct.Slice_`
 
 Grid type data: `cinrad.datastruct.Grid`
 
@@ -82,19 +82,33 @@ r_list = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
 
 #### VCS
 
-`cinrad.easycalc.VCS` provides calculation of vertical cross-section.
+`cinrad.easycalc.VCS` provides calculation of vertical cross-section for **all variables**.
 
-Sample code
 ```python
 import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
 rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
 vcs = cinrad.easycalc.VCS(rl)
-sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (latitude, longitude)
+sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (longitude, latitude)
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # pass polar coordinates (distance, azimuth)
 fig = Section(sec)
 fig('D:\\')
+```
+
+### cinrad.correct
+
+This submodule provides algorithms to correct raw radar fields.
+
+#### cinrad.correct.dealias
+
+This function can unwrap the folded velocity using algorithm originated from `pyart`. (needs C compiler)
+
+```python
+import cinrad
+#(some codes omitted)
+v = f.get_data(1, 230, 'VEL')
+v_corrected = cinrad.correct.dealias(v)
 ```
 
 ### cinrad.visualize
@@ -108,7 +122,10 @@ from cinrad.visualize import PPI
 fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
 from cinrad.visualize import Section
-fig = Section(_Slice) #Plot RHI
+fig = Section(Slice_) #Plot VCS
+fig('D:\\')
+from cinrad.visualize import RHI
+fig = RHI(rhi) #Plot data from RHI scan mode
 fig('D:\\')
 ```
 
@@ -160,6 +177,14 @@ Plot PUP STI product on the current PPI map, including past position., current p
 #### Cross-section
 
 ![Cross-section](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304004209_VCS_25.5N111E_26.5N112E.png)
+
+#### Cross-section other than reflectivity
+
+![ZDR cross-section](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9574_20190321025715_0.5_230_ZDR_29.47N121.44E_29.4N122.04E.png)
+
+#### RHI reflectivity
+
+![RHI reflectivity](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/XXX_XXX_RHI_299_100_REF.png)
 
 ## Notes
 

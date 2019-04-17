@@ -35,7 +35,7 @@ python setup.py install
 
 径向数据类型：`cinrad.datastruct.Radial`
 
-剖面数据类型: `cinrad.datastruct._Slice`
+剖面数据类型: `cinrad.datastruct.Slice_`
 
 格点数据类型：`cinrad.datastruct.Grid`
 
@@ -51,14 +51,14 @@ f = CinradReader(your_radar_file) #老版本数据
 f = StandardData(your_radar_file) #新版本标准数据
 f.get_data(tilt, drange, dtype) #获取数据
 ```
+对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
 
 #### 将数据保存为NetCDF格式
 ```python
 f.to_nc(path_to_nc_file)
 ```
 
-#### 关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`
-
+**关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`**
 
 #### 读取PUP数据和SWAN数据
 
@@ -94,7 +94,7 @@ r_list = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
 ```
 #### VCS
 
-`cinrad.easycalc.VCS`用于计算任意两点剖面。
+`cinrad.easycalc.VCS`用于计算任意两点剖面，目前支持所有要素。
 
 示例代码：
 ```python
@@ -109,9 +109,24 @@ fig = Section(sec)
 fig('D:\\')
 ```
 
+### cinrad.correct
+
+提供雷达原数据的校正。
+
+#### cinrad.correct.dealias
+
+利用`pyart`的算法进行速度退模糊。（需要C编译器）
+
+```python
+import cinrad
+#(文件处理部分省略)
+v = f.get_data(1, 230, 'VEL')
+v_corrected = cinrad.correct.dealias(v)
+```
+
 ### cinrad.visualize
 
-雷达数据可视化，包括`ppi`和`rhi`，仅接受`cinrad.datastruct`包含的类型。
+雷达数据可视化，包括`PPI`和`Section`以及`RHI`，仅接受`cinrad.datastruct`包含的类型。
 
 例子：
 
@@ -120,7 +135,10 @@ from cinrad.visualize import PPI
 fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
-fig = Section(_Slice) #绘制RHI
+fig = Section(Slice_) #绘制VCS
+fig('D:\\')
+from cinrad.visualize import RHI
+fig = RHI(rhi) #绘制RHI扫描模式的数据
 fig('D:\\')
 ```
 

@@ -12,7 +12,7 @@ import numpy as np
 from cinrad.visualize.basicfunc import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.constants import *
-from cinrad.datastruct import Radial, _Slice, Grid
+from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import _StormTrackInfo
 from cinrad._typing import number_type
@@ -20,18 +20,24 @@ from cinrad._typing import number_type
 __all__ = ['PPI']
 
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
-             'ZDR':norm6, 'PHI':norm7, 'RHO':norm8, 'TREF':norm1} # Normalize object used to plot
+             'ZDR':norm6, 'PHI':norm7, 'RHO':norm8, 'TREF':norm1, 'KDP':norm9, 'VILD':norm10} # Normalize object used to plot
 norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4,
-             'ZDR':norm4, 'PHI':norm4, 'RHO':norm4, 'TREF':norm1} # Normalize object used for colorbar
+             'ZDR':norm4, 'PHI':norm4, 'RHO':norm4, 'TREF':norm1, 'KDP':norm4,
+             'VILD':norm4} # Normalize object used for colorbar
 cmap_plot = {'REF':r_cmap, 'VEL':v_cmap, 'CR':r_cmap, 'ET':et_cmap, 'VIL':vil_cmap, 'RF':rf_cmap,
-             'ZDR':zdr_cmap, 'PHI':kdp_cmap, 'RHO':cc_cmap, 'TREF':r_cmap}
+             'ZDR':zdr_cmap, 'PHI':kdp_cmap, 'RHO':cc_cmap, 'TREF':r_cmap, 'KDP':kdp_cmap,
+             'VILD':vil_cmap}
 cmap_cbar = {'REF':r_cmap, 'VEL':v_cbar, 'CR':r_cmap, 'ET':et_cbar, 'VIL':vil_cbar,
-             'ZDR':zdr_cbar, 'PHI':kdp_cmap, 'RHO':cc_cbar, 'TREF':r_cmap}
+             'ZDR':zdr_cbar, 'PHI':kdp_cbar, 'RHO':cc_cbar, 'TREF':r_cmap, 'KDP':kdp_cbar,
+             'VILD':vil_cbar}
+sec_plot = {'REF':r_cmap_smooth, 'VEL':v_cmap_smooth, 'ZDR':zdr_cmap_smooth, 'PHI':kdp_cmap_smooth, 'RHO':cc_cmap_smooth,
+            'KDP':kdp_cmap_smooth}
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Ref.',
             'ET':'Echo Tops', 'VIL':'V Integrated Liquid', 'ZDR':'Differential Ref.',
-            'PHI':'Difference Phase', 'RHO':'Correlation Coe.', 'TREF':'Total Reflectivity'}
+            'PHI':'Differential Phase', 'RHO':'Correlation Coe.', 'TREF':'Total Reflectivity',
+            'KDP':'Spec. Diff. Phase', 'VILD':'VIL Density'}
 unit = {'REF':'dBz', 'VEL':'m/s', 'CR':'dBz', 'ET':'km', 'VIL':'kg/m**2', 'ZDR':'dB', 'RHI':'deg',
-        'RHO':'', 'TREF':'dBz'}
+        'RHO':'', 'TREF':'dBz', 'KDP':'deg/km', 'VILD':'g/m**3'}
 cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
                                 '-1', '-5', '-10', '-15', '-20', '-27', '-35'],
              'CR':None, 'ET':['', '21', '20', '18', '17', '15', '14', '12',
@@ -43,7 +49,10 @@ cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
              'PHI':np.linspace(360, 260, 17).astype(str),
              'RHO':['', '0.99', '0.98', '0.97', '0.96', '0.95', '0.94', '0.92', '0.9',
                     '0.85', '0.8', '0.7', '0.6', '0.5', '0.3', '0.1', '0'],
-             'TREF':None}
+             'TREF':None, 'KDP':['', '20', '7', '3.1', '2.4', '1.7', '1.1', '0.75', '0.5',
+                                 '0.33', '0.22', '0.15', '0.1', '-0.1', '-0.2', '-0.4', '-0.8'],
+             'VILD':['', '6', '5', '4', '3.5', '3', '2.5', '2.1', '1.8', '1.5', '1.2',
+                     '0.9', '0.7', '0.5', '0.3', '0.1']}
 
 def _prepare(data:Radial, datatype:str) -> tuple:
     if not data.geoflag:
@@ -71,7 +80,7 @@ class PPI(object):
     def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
                  cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
                  dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
-                 extent:Optional[List[number_type]]=None, add_slice:Optional[_Slice]=None,
+                 extent:Optional[List[number_type]]=None, add_slice:Optional[Slice_]=None,
                  style:str='black', add_city_names:bool=False, plot_labels:bool=True, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
@@ -127,7 +136,7 @@ class PPI(object):
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
         self.geoax = set_geoaxes(self.fig, extent=self.settings['extent'])
-        if self.data.dtype == 'VEL' and self.data.include_rf:
+        if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             rf = var[1]
             var = var[0]
         popnan = var[np.logical_not(np.isnan(var))]
@@ -137,7 +146,7 @@ class PPI(object):
             self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
         else:
             self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
-            if self.data.dtype == 'VEL' and self.data.include_rf:
+            if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
                 self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
         add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
@@ -207,12 +216,15 @@ class PPI(object):
         x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
         self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
 
-    def plot_cross_section(self, data:_Slice, ymax:Optional[int]=None):
+    def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None):
         r'''Plot cross section data below the PPI plot.'''
+        if self.settings['style'] == 'black':
+            linecolor = 'white'
+        elif self.settings['stype'] == 'white':
+            linecolor = 'black'
         self.settings['slice'] = data
         ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
         ax2.yaxis.set_ticks_position('right')
-        #ax2.spines['bottom'].set_color('none')
         ax2.set_xticks([])
         sl = data.data
         sl[sl == 0] = -1
@@ -220,13 +232,13 @@ class PPI(object):
         ycor = data.ycor
         stp = data.geoinfo['stp']
         enp = data.geoinfo['enp']
-        ax2.contourf(xcor, ycor, sl, 128, cmap=r_cmap_smooth, norm=norm1)
+        ax2.contourf(xcor, ycor, sl, 128, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
         if ymax:
             ax2.set_ylim(0, ymax)
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color='red', zorder=5)
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color=linecolor, zorder=5)
 
     def storm_track_info(self, filepath:str):
         r'''
@@ -258,7 +270,7 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
-        with open(os.path.join(MODULE_DIR, 'chinaCity.json'), encoding='utf-8') as j:
+        with open(os.path.join(MODULE_DIR, 'data', 'chinaCity.json'), encoding='utf-8') as j:
             js = json.load(j)
         name = np.concatenate([[j['name'] for j in i['children']] for i in js])
         lon = np.concatenate([[j['log'] for j in i['children']] for i in js]).astype(float)

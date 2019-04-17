@@ -3,18 +3,19 @@
 
 import os
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from cinrad.constants import r_cmap_smooth, norm1, font
-from cinrad.datastruct import _Slice
+from cinrad.datastruct import Slice_
+from cinrad.visualize.ppi import sec_plot, norm_plot, prodname
 
-__all__ = ['Section']
+__all__ = ['Section', 'RHI']
 
 class Section:
-    def __init__(self, data:_Slice, hlim:int=15):
+    def __init__(self, data:Slice_, hlim:int=15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
@@ -31,14 +32,15 @@ class Section:
         plt.tick_params(labelsize=20) #坐标轴字体大小
         plt.grid(True, linewidth=0.50, linestyle="-.", color='white') ## 修改于2019-01-22 By WU Fulang
         #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
-        plt.contourf(xcor, ycor, rhi, 128, cmap=r_cmap_smooth, norm=norm1)
+        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
         plt.ylim(0, self.hlim)
         stps = self.data.geoinfo['stp_s']
         enps = self.data.geoinfo['enp_s']
         stp = self.data.geoinfo['stp']
         enp = self.data.geoinfo['enp']
-        plt.title('Vertical cross-section\nStation: {} Start: {} End: {} Time: {} Max: {}dbz'.format(
-                    self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax), fontproperties=font)
+        plt.title('Vertical cross-section ({})\nStation: {} Start: {} End: {} Time: {} Max: {}'.format(
+                  prodname[self.dtype],self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax),
+                  fontproperties=font)
         #重新绘制VCS的横坐标，分为5等分
         deltaLat = (enp[1]-stp[1])/5.0
         deltaLon = (enp[0]-stp[0])/5.0
@@ -53,6 +55,47 @@ class Section:
         else:
             path_string = '{}{}_{}_VCS_{}N{}E_{}N{}E.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
                                                                     stp[1], stp[0], enp[1], enp[0])
+        plt.savefig(path_string , bbox_inches='tight')
+
+    def __call__(self, *fpath):
+        if not fpath:
+            fpath = os.path.join(str(Path.home()), 'PyCINRAD')
+        else:
+            fpath = fpath[0]
+            if fpath.upper().endswith('.PNG'):
+                self.path_customize = True
+            else:
+                if not fpath.endswith(os.path.sep):
+                    fpath += os.path.sep
+        return self._plot(fpath)
+
+class RHI:
+    def __init__(self, data:Slice_, hlim:int=15):
+        self.data = data
+        self.dtype = data.dtype
+        self.hlim = hlim
+        self.azimuth = data.geoinfo['azimuth']
+        self.path_customize = False
+
+    def _plot(self, fpath:str):
+        rhi = self.data.data
+        xcor = self.data.xcor
+        ycor = self.data.ycor
+        rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
+        plt.style.use('dark_background')
+        plt.figure(figsize=(10, 5), dpi=300)
+        plt.grid(True, linewidth=0.5, linestyle="-.", color='white')
+        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        plt.ylim(0, self.hlim)
+        plt.title('Range-Height Indicator\nStation: {} Data: {} Range: {:.0f}km Azimuth: {:.0f}° Time: {}'.format(
+                  self.data.name, self.data.dtype, self.data.xcor.max(), self.azimuth,
+                  self.data.scantime.strftime('%Y-%m-%d %H:%M:%S')))
+        plt.ylabel('Height (km)', fontproperties=font)
+        if self.path_customize:
+            path_string = fpath
+        else:
+            path_string = '{}{}_{}_RHI_{:.0f}_{:.0f}_{}.png'.format(fpath, self.data.code, self.data.scantime.strftime('%Y%m%d%H%M%S'),
+                                                            self.azimuth, self.data.xcor.max(), self.dtype)
         plt.savefig(path_string , bbox_inches='tight')
 
     def __call__(self, *fpath):

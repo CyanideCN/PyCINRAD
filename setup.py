@@ -2,7 +2,6 @@ from setuptools import setup, find_packages
 import os
 from os.path import join
 import glob
-from distutils.extension import Extension
 
 try:
     from Cython.Build import cythonize
@@ -12,6 +11,8 @@ try:
 except ImportError:
     ext_modules = None
     include_dirs = None
+
+data_pth = join('cinrad', 'data')
 
 setup(
     name = 'cinrad',
@@ -26,9 +27,9 @@ setup(
     platforms = 'Windows',
     python_requires='>=3.5',
     install_requires = ['metpy>=0.8', 'cartopy>=0.15', 'pyshp!=2.0.0, !=2.0.1', 'pyresample', 'matplotlib>=2.2'],
-    data_files = [('cinrad', ['RadarStation.npy', 'chinaCity.json']),
-                  ('cinrad' + os.path.sep + 'colormap', glob.glob(r'colormap/*.cmap')),
-                  ('cinrad' + os.path.sep + 'shapefile', glob.glob(r'shapefile/*'))],
+    data_files = [(data_pth, [join(data_pth, 'RadarStation.npy'), join(data_pth, 'chinaCity.json')]),
+                  (data_pth + os.path.sep + 'colormap', glob.glob(join(data_pth,'colormap', '*.cmap'))),
+                  (data_pth + os.path.sep + 'shapefile', glob.glob(join(data_pth,'shapefile', '*')))],
     scripts = [],
     ext_modules = ext_modules,
     include_dirs = include_dirs,
