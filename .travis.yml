@@ -2,8 +2,8 @@ language: python
 sudo: true
 
 python:
+  - 3.5
   - 3.6
-  - 3.7
 
 before_install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -31,5 +31,9 @@ deploy:
       secure: rxuBlrRLKXHYamULsm1AyMACMtupDyfM3r81lVvkVus0HCo6VuLj+uDhWIWzkQyu+zHG6VWxx/Sm33LMUr88YkdYxoV8y9CVSAj+nB+NMavbYIRcPYBcgJDBeeQcvHDvuE0oelWtecYsU2HCTaqfEBpwa+FNLdKns+5DpmcV7gz3grHi8WJ3nJGa4PrV/ElP1u3tVa8L0DGkPW4LXUy/kOGvjaUfh+5VdZm/xkkkdEzua1HBPbyGS0HP2HfcU8ywLQQhweJ9rlvO1tCCGCGdLpjlM0hwn3/tuzGarc2jsJ3u2htfQPB7y6XerXsawN/U0ssA1Hwq+rkHZGXmVP8q6407JDVuopTCpkuvRK8DPPDoTZfNeUl/C8SrCp+p/iOjARxKgWJzhGwTDeCaU2z4aBah0VBGhq2tge+Hp/Uxr8rcxEsSyNKwUEkmEcETDqeocQZC3k9g2cqIMlfh+X+jja16o5BgqvgChQbkyiT/BORFsxAaaozQlWMTQKjMWW9YLmyA1sF66DnqS8ozjeJ0wy9Z91w0L6oHFdHeoIBwBMAhb7jwTT54/Q+02rCtlsdb+t8j67XYioKUWGTOOoCP3NSlmUr+15Co5Hg5R1PHUq0H66mNzDi7DDJVBs0XHkFQEWgEvUxTvWIGPNTj4AEt6FNRQDfDypgqpaJabkJDdkU=
     distributions: sdist bdist_wheel
     on:
+      python:
+        - 3.5
+        - 3.6
+        - 3.7
       tags: true
       branch: master
