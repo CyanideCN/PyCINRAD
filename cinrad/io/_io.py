@@ -8,7 +8,6 @@ from netCDF4 import Dataset
 from numpy import ndarray
 
 from cinrad.datastruct import Radial, Grid # Coding convenience
-from cinrad.io.io import StandardData
 from cinrad._typing import number_type
 
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Reflectivity',

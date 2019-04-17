@@ -47,15 +47,15 @@ def setup_axes(fig:Any, cmap:Any, norm:Any) -> tuple:
     return ax, cbar
 
 def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, elev:float):
-    ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), fontproperties=font)
-    ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , fontproperties=font)
-    ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), fontproperties=font)
-    ax.text(0, 2.16, 'Time: {}'.format(scantime.strftime('%H:%M')), fontproperties=font)
+    ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), **plot_kw)
+    ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
+    ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), **plot_kw)
+    ax.text(0, 2.16, 'Time: {}'.format(scantime.strftime('%H:%M')), **plot_kw)
     if name is None:
         name = 'Unknown'
-    ax.text(0, 2.11, 'RDA: ' + name, fontproperties=font)
-    ax.text(0, 2.06, 'Mode: Precipitation', fontproperties=font)
-    ax.text(0, 2.01, 'Elev: {:.2f}deg'.format(elev), fontproperties=font)
+    ax.text(0, 2.11, 'RDA: ' + name, **plot_kw)
+    ax.text(0, 2.06, 'Mode: Precipitation', **plot_kw)
+    ax.text(0, 2.01, 'Elev: {:.2f}deg'.format(elev), **plot_kw)
 
 def save(fpath:str):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)

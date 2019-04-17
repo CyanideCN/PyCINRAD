@@ -18,7 +18,6 @@ before_install:
   
 install:
   - python setup.py install
-  - conda install pytest
   - conda list
 
 script:

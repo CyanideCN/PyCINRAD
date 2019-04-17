@@ -165,10 +165,10 @@ class PPI(object):
         ax2.xaxis.set_visible(False)
         if self.settings['plot_labels']:
             text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, self.data.elev)
-            ax2.text(0, 2.36, prodname[dtype], fontproperties=font)
-            ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), fontproperties=font)
+            ax2.text(0, 2.36, prodname[dtype], **plot_kw)
+            ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), **plot_kw)
             if self.data.dtype == 'VEL':
-                ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), fontproperties=font)
+                ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), **plot_kw)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
@@ -279,4 +279,4 @@ class PPI(object):
         fraction = (extent[1] - extent[0]) * 0.04
         target_city = (lon > (extent[0] + fraction)) & (lon < (extent[1] - fraction)) & (lat > (extent[2] + fraction)) & (lat < (extent[3] - fraction))
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
-            self.geoax.text(stlon, stlat, nm, fontproperties=font, color='darkgrey')
+            self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey')

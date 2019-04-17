@@ -40,14 +40,14 @@ class Section:
         enp = self.data.geoinfo['enp']
         plt.title('Vertical cross-section ({})\nStation: {} Start: {} End: {} Time: {} Max: {}'.format(
                   prodname[self.dtype],self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax),
-                  fontproperties=font)
+                  **plot_kw)
         #重新绘制VCS的横坐标，分为5等分
         deltaLat = (enp[1]-stp[1])/5.0
         deltaLon = (enp[0]-stp[0])/5.0
         plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ['{:.2f}N\n{:.2f}E'.format(stp[1], stp[0]), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*1., stp[0]+deltaLon*1.),
                                     '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*2., stp[0]+deltaLon*2.), '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*3., stp[0]+deltaLon*3.),
                                 '{:.2f}N\n{:.2f}E'.format(stp[1]+deltaLat*4., stp[0]+deltaLon*4.), '{:.2f}N\n{:.2f}E'.format(enp[1], enp[0])]) #分为五等分
-        plt.ylabel('Height (km)', fontproperties=font, fontsize=23) ## 修改于2019-01-22 By WU Fulang
+        plt.ylabel('Height (km)', **plot_kw, fontsize=23) ## 修改于2019-01-22 By WU Fulang
             #plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
         #plt.ylabel('Altitude (km)')
         if self.path_customize:
@@ -90,7 +90,7 @@ class RHI:
         plt.title('Range-Height Indicator\nStation: {} Data: {} Range: {:.0f}km Azimuth: {:.0f}° Time: {}'.format(
                   self.data.name, self.data.dtype, self.data.xcor.max(), self.azimuth,
                   self.data.scantime.strftime('%Y-%m-%d %H:%M:%S')))
-        plt.ylabel('Height (km)', fontproperties=font)
+        plt.ylabel('Height (km)', **plot_kw)
         if self.path_customize:
             path_string = fpath
         else:
