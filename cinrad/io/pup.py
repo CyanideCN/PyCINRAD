@@ -4,7 +4,6 @@
 from collections import OrderedDict, defaultdict
 from typing import Union, Any
 
-from metpy.io.nexrad import Level3File
 import numpy as np
 
 from cinrad.projection import get_coordinate
@@ -12,7 +11,9 @@ from cinrad.constants import deg2rad
 from cinrad._typing import boardcast_type
 
 class _StormTrackInfo(object):
+
     def __init__(self, filepath:str):
+        from metpy.io.nexrad import Level3File
         self.handler = Level3File(filepath)
         self.info = self.get_all_sti()
         self.storm_list = self.get_all_id()

@@ -17,7 +17,7 @@ except ImportError:
         return 10 ** (r / 10)
 
     def vert_integrated_liquid(ref:np.ndarray, distance:np.ndarray, elev:GList, beam_width:float=0.99,
-                               threshold:Union[float, int]=18.) -> np.ndarray:
+                               threshold:Union[float, int]=18., density:bool=False) -> np.ndarray:
         r'''
         Calculate vertically integrated liquid (VIL) in one full scan
 
@@ -37,6 +37,8 @@ except ImportError:
         data: numpy.ndarray
             vertically integrated liquid data
         '''
+        if density:
+            raise NotImplementedError('VIL density calculation is not implemented')
         v_beam_width = beam_width * deg2rad
         elev = np.array(elev) * deg2rad
         xshape, yshape = ref[0].shape

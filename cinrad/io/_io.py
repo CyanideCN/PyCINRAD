@@ -2,33 +2,38 @@
 # Author: Puyuan Du
 
 import warnings
+from typing import Union
 
 from netCDF4 import Dataset
+from numpy import ndarray
 
 from cinrad.datastruct import Radial, Grid # Coding convenience
+from cinrad.io.io import StandardData
+from cinrad._typing import number_type
 
 prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Reflectivity',
             'ET':'Echo Tops', 'VIL':'Vertically Integrated Liquid', 'ZDR':'Differential Reflectivity',
             'PHI':'Difference Phase', 'RHO':'Correlation Coefficient'}
 
 class NetCDFWriter:
-    def __init__(self, filepath):
+    def __init__(self, filepath:str):
         self.da = Dataset(filepath, 'w', format='NETCDF4')
         self.group = dict()
 
-    def _create_group(self, groupname):
+    def _create_group(self, groupname:str):
         if groupname in self.da.groups.keys():
             return
         gp = self.da.createGroup(groupname)
         self.group[groupname] = gp
 
-    def _create_dimension(self, groupname, dimension, shape):
+    def _create_dimension(self, groupname:str, dimension:str, shape:tuple):
         gp = self.group[groupname]
         if dimension in gp.dimensions:
             return
         gp.createDimension(dimension, shape)
 
-    def _create_variable(self, groupname, varname, variable, dimension, datatype='f8'):
+    def _create_variable(self, groupname:str, varname:str, variable:ndarray, dimension:Union[tuple, str],
+                         datatype:str='f8'):
         gp = self.group[groupname]
         if varname in gp.variables.keys():
             return
@@ -42,7 +47,7 @@ class NetCDFWriter:
         gp.createVariable(varname, datatype, dimension)
         gp.variables[varname][:] = variable
 
-    def _create_attribute(self, attrname, value):
+    def _create_attribute(self, attrname:str, value:number_type):
         self.da.setncattr(attrname, value)
 
     def close(self):

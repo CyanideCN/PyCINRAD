@@ -5,6 +5,8 @@ import warnings
 import datetime
 from pathlib import Path
 import bz2
+import gzip
+
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any
 
@@ -60,6 +62,18 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
 
+def prepare_file(file):
+    if hasattr(file, 'read'):
+        return file
+    f = open(file)
+    magic = f.read(3)
+    f.close()
+    if magic.startswith(b'\x1f\x8b'):
+        return gzip.GzipFile(file, 'rb')
+    if magic.startswith(b'BZh'):
+        return bz2.BZ2File(file, 'rb')
+    return open(file, 'rb')
+
 class CinradReader(BaseRadar):
     r'''
     Class handling CINRAD radar reading
@@ -108,20 +122,9 @@ class CinradReader(BaseRadar):
         radar_type: str, optional
             type of radar
         '''
-        if hasattr(file, 'read'):
-            f = file
-            if not file_name:
-                file_name = ''
-            self.code, radartype = _detect_radartype(f, file_name, type_assert=radar_type)
-        else:
-            path = Path(file)
-            filename = path.name
-            filetype = path.suffix
-            if filetype.lower().endswith('bz2'):
-                f = bz2.open(file, 'rb')
-            else:
-                f = open(file, 'rb')
-            self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
+        f = prepare_file(file)
+        filename = Path(file).name if isinstance(file, str) else ''
+        self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
         if radar_type:
             if radartype is not radar_type:
                 warnings.warn('Contradictory information from input radar type and\
@@ -415,23 +418,15 @@ class StandardData(BaseRadar):
         file: str
             path directed to the file to read
         '''
-        if hasattr(file, 'read'):
-            self.f = file
-        else:
-            if file.lower().endswith('bz2'):
-                self.f = bz2.open(file, 'rb')
-            else:
-                self.f = open(file, 'rb')
+        self.f = prepare_file(file)
         self._parse()
         self.f.close()
-        try:
-            self._update_radar_info()
-        except RadarDecodeError:
-            self.stationlat = self.geo['lat']
-            self.stationlon = self.geo['lon']
-            self.radarheight = self.geo['height']
-            self.name = self.code
+        self.stationlat = self.geo['lat']
+        self.stationlon = self.geo['lon']
+        self.radarheight = self.geo['height']
+        self.name = self.code
         self.angleindex_r = self.avaliable_tilt('REF') # API consistency
+        del self.geo
 
     def _parse(self):
         header = np.frombuffer(self.f.read(32), SDD_header)
@@ -465,6 +460,8 @@ class StandardData(BaseRadar):
             aux[el_num]['elevation'].append(radial_header['elevation'][0])
             for _ in range(radial_header['moment_number'][0]):
                 moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
+                if moment_header[zip_type][0] == 1: # LZO compression
+                    raise NotImplementedError('LZO compressed file is not supported')
                 dtype = self.dtype_corr[moment_header['data_type'][0]]
                 data_body = np.frombuffer(self.f.read(moment_header['block_length'][0]),
                                           'u{}'.format(moment_header['bin_length'][0]))
@@ -473,7 +470,7 @@ class StandardData(BaseRadar):
                     offset = moment_header['offset'][0]
                     aux[el_num][dtype] = (scale, offset)
                 data[el_num][dtype].append(data_body.tolist())
-            if radial_header['radial_state'][0] in [4, 6]:
+            if radial_header['radial_state'][0] in [4, 6]: # End scan
                 break
         self.data = data
         self.aux = aux
@@ -514,7 +511,7 @@ class StandardData(BaseRadar):
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
-        if dtype == 'VEL':
+        if dtype in ['VEL', 'SW']:
             rf = np.ma.array(cut.data, mask=(cut.data != 1))
             rf = np.ma.hstack([rf, append])
         cut = np.ma.hstack([cut, append])
@@ -685,14 +682,7 @@ class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
     size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
     def __init__(self, file:Any):
-        if hasattr(file, 'read'):
-            f = file
-            f.seek(0)
-        else:
-            if file.lower().endswith('bz2'):
-                f = bz2.open(file)
-            else:
-                f = open(file, 'rb')
+        f = prepare_file(file)
         header = np.frombuffer(f.read(1024), swan_header_dtype)
         xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
         dtype = header['m_data_type'][0]
