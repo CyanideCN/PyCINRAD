@@ -12,3 +12,5 @@
 /cinrad/_utils.c
 /cinrad/correct/_unwrap_2d.c
 /.mypy_cache/*
+example/Read standard data.ipynb
+*.ipynb
