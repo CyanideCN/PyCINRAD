@@ -65,7 +65,7 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
 def prepare_file(file):
     if hasattr(file, 'read'):
         return file
-    f = open(file)
+    f = open(file, 'rb')
     magic = f.read(3)
     f.close()
     if magic.startswith(b'\x1f\x8b'):
@@ -452,6 +452,8 @@ class StandardData(BaseRadar):
             self.scan_type = 'PPI'
         while 1:
             radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
+            if radial_header['zip_type'][0] == 1: # LZO compression
+                raise NotImplementedError('LZO compressed file is not supported')
             el_num = radial_header['elevation_number'][0] - 1
             if el_num not in data.keys():
                 data[el_num] = defaultdict(list)
@@ -460,8 +462,6 @@ class StandardData(BaseRadar):
             aux[el_num]['elevation'].append(radial_header['elevation'][0])
             for _ in range(radial_header['moment_number'][0]):
                 moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
-                if moment_header[zip_type][0] == 1: # LZO compression
-                    raise NotImplementedError('LZO compressed file is not supported')
                 dtype = self.dtype_corr[moment_header['data_type'][0]]
                 data_body = np.frombuffer(self.f.read(moment_header['block_length'][0]),
                                           'u{}'.format(moment_header['bin_length'][0]))
