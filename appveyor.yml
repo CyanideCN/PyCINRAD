@@ -1,0 +1,59 @@
+environment:
+
+  CONDA_PATH: "C:\\Miniconda"
+
+  matrix:
+    - PYTHON_VERSION: "3.6"
+    - PYTHON_VERSION: "3.7"
+
+platform:
+    - x64
+
+install:
+    # Use the pre-installed Miniconda for the desired arch
+    - ps: if($env:PYTHON_VERSION -eq '3.6')
+            { $env:CONDA_PATH="$($env:CONDA_PATH)36" }
+    - ps: if($env:PYTHON_VERSION -eq '3.7')
+            { $env:CONDA_PATH="$($env:CONDA_PATH)37" }
+    - ps: if($env:PLATFORM -eq 'x64')
+            { $env:CONDA_PATH="$($env:CONDA_PATH)-x64" }
+    - ps: $env:path="$($env:CONDA_PATH);$($env:CONDA_PATH)\Scripts;$($env:CONDA_PATH)\Library\bin;C:\cygwin\bin;$($env:PATH)"
+    - cmd: conda config --set always_yes yes --set show_channel_urls true
+    - cmd: conda update -n base conda
+    - cmd: conda config --prepend channels conda-forge
+    - cmd: conda create -n TEST --strict-channel-priority python=$env:PYTHON_VERSION --file requirements_dev.txt
+    - cmd: source activate TEST
+    - cmd: conda info --all
+
+build: off
+
+install:
+  # We need wheel installed to build wheels
+  - cmd: python setup.py install
+
+test_script:
+  # Put your test command here.
+  # If you don't need to build C extensions on 64-bit Python 3.3 or 3.4,
+  # you can remove "build.cmd" from the front of the command, as it's
+  # only needed to support those cases.
+  # Note that you must use the environment variable %PYTHON% to refer to
+  # the interpreter you're using - Appveyor does not do anything special
+  # to put the Python version you want to use on PATH.
+  - "build.cmd %PYTHON%\\python.exe setup.py test"
+
+after_test:
+  # This step builds your wheels.
+  # Again, you only need build.cmd if you're building C extensions for
+  # 64-bit Python 3.3/3.4. And you need to use %PYTHON% to get the correct
+  # interpreter
+  - cmd: python.exe setup.py bdist_wheel
+
+artifacts:
+  # bdist_wheel puts your built wheel in the dist directory
+  - path: dist\*
+    name: packages
+
+#on_success:
+#  You can use this step to upload your artifacts to a public website.
+#  See Appveyor's documentation for more details. Or you can simply
+#  access your wheels from the Appveyor "artifacts" tab for your build.
