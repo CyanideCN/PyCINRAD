@@ -421,10 +421,13 @@ class StandardData(BaseRadar):
         self.f = prepare_file(file)
         self._parse()
         self.f.close()
-        self.stationlat = self.geo['lat']
-        self.stationlon = self.geo['lon']
-        self.radarheight = self.geo['height']
-        self.name = self.code
+        try:
+            self._update_radar_info()
+        except RadarDecodeError:
+            self.stationlat = self.geo['lat']
+            self.stationlon = self.geo['lon']
+            self.radarheight = self.geo['height']
+            self.name = self.code
         self.angleindex_r = self.avaliable_tilt('REF') # API consistency
         del self.geo
 
@@ -705,7 +708,10 @@ class SWAN(object):
         #y_reso = header['y_reso'][0]
         self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
         self.lat = np.linspace(start_lat, end_lat, ydim)
-        self.data = np.ma.array((out - 66) / 2, mask=(out==0))
+        if self.product_name == 'CR':
+            self.data = np.ma.array((out - 66) / 2, mask=(out==0))
+        else:
+            self.data = np.ma.array(out, mask=(out==0))
 
     def get_data(self) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
