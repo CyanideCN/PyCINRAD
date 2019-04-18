@@ -24,12 +24,9 @@ install:
     - cmd: conda create -n TEST --strict-channel-priority python=$env:PYTHON_VERSION --file requirements_dev.txt
     - cmd: source activate TEST
     - cmd: conda info --all
+    - cmd: python setup.py install
 
 build: off
-
-install:
-  # We need wheel installed to build wheels
-  - cmd: python setup.py install
 
 test_script:
   # Put your test command here.
