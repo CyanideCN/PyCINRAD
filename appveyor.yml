@@ -21,7 +21,7 @@ install:
     - cmd: conda config --set always_yes yes --set show_channel_urls true
     - cmd: conda update -n base conda
     - cmd: conda config --prepend channels conda-forge
-    - cmd: conda create -n TEST --strict-channel-priority --file requirements_dev.txt
+    - cmd: conda create -n TEST --strict-channel-priority python=$env:PYTHON_VERSION --file requirements_dev.txt
     - cmd: source activate TEST
     - cmd: conda info --all
     - cmd: python setup.py install
