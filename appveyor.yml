@@ -22,6 +22,7 @@ install:
     - cmd: conda update -n base conda
     - cmd: conda config --prepend channels conda-forge
     - cmd: conda create -n TEST --strict-channel-priority python=%PYTHON_VERSION% --file requirements_dev.txt
+    - cmd: conda install -c conda-forge cartopy
     - cmd: source activate TEST
     - cmd: conda info --all
     - cmd: python setup.py install
