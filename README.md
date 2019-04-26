@@ -8,6 +8,10 @@ A python package which can read CINRAD radar data, perform calculations and visu
 
 ## Installation
 
+```
+pip install cinrad
+```
+
 Python 3.5 +
 
 Cartopy
@@ -47,7 +51,10 @@ from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #Old version data
 f = StandardData(your_radar_file) #New standard data
 f.get_data(tilt, drange, dtype) #Get data
+f.get_raw(tilt, drange, dtype)
 ```
+
+The `get_raw` method returns radar records without other geographic information.
 
 #### Saving data in NetCDF format
 ```python

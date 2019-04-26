@@ -9,10 +9,7 @@ from numpy import ndarray
 
 from cinrad.datastruct import Radial, Grid # Coding convenience
 from cinrad._typing import number_type
-
-prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Reflectivity',
-            'ET':'Echo Tops', 'VIL':'Vertically Integrated Liquid', 'ZDR':'Differential Reflectivity',
-            'PHI':'Difference Phase', 'RHO':'Correlation Coefficient'}
+from cinrad._element import prodname
 
 class NetCDFWriter:
     def __init__(self, filepath:str):

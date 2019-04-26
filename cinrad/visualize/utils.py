@@ -46,7 +46,7 @@ def setup_axes(fig:Any, cmap:Any, norm:Any) -> tuple:
     cbar.outline.set_visible(False)
     return ax, cbar
 
-def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, elev:float):
+def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, task:str, elev:float):
     ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), **plot_kw)
     ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
     ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), **plot_kw)
@@ -54,7 +54,7 @@ def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, el
     if name is None:
         name = 'Unknown'
     ax.text(0, 2.11, 'RDA: ' + name, **plot_kw)
-    ax.text(0, 2.06, 'Mode: Precipitation', **plot_kw)
+    ax.text(0, 2.06, 'Task: {}'.format(task), **plot_kw)
     ax.text(0, 2.01, 'Elev: {:.2f}deg'.format(elev), **plot_kw)
 
 def save(fpath:str):
