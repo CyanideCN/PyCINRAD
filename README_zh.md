@@ -22,7 +22,11 @@ Pyresample
 
 ### 安装方法
 
-在此页面下载并执行
+```
+pip install cinrad
+```
+
+或在此页面下载并执行
 ```
 python setup.py install
 ```
@@ -50,8 +54,10 @@ from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #老版本数据
 f = StandardData(your_radar_file) #新版本标准数据
 f.get_data(tilt, drange, dtype) #获取数据
+f.get_raw(tilt, drange, dtype)
 ```
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
+`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。
 
 #### 将数据保存为NetCDF格式
 ```python
@@ -87,6 +93,8 @@ data = f.get_data()
 使用`cinrad.io`读取的数据可直接带入该模块下的函数来计算。
 
 传入一个包含每个仰角数据的list即可计算。
+
+注：当模块使用编译的C扩展的时候提供VIL密度的计算。
 
 列表生成示例：
 ```python
@@ -178,7 +186,7 @@ fig('D:\\')
 
 ## 其他
 
-回波顶高及垂直积分液态含水量算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
+回波顶高及垂直积分液态含水量（密度）算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
 
 如果你对这个模块感兴趣，欢迎加入这个模块的开发者行列！
 

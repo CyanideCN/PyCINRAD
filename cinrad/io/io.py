@@ -62,7 +62,7 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
 
-def prepare_file(file):
+def prepare_file(file:Any) -> Any:
     if hasattr(file, 'read'):
         return file
     f = open(file, 'rb')
@@ -160,11 +160,12 @@ class CinradReader(BaseRadar):
         self.scantime = start + deltday + deltsec
         self.Rreso = data['gate_length_r'][0] / 1000
         self.Vreso = data['gate_length_v'][0] / 1000
-        boundary = np.where(data['radial_num']==1)[0]
+        boundary = np.where(data['radial_num'] == 1)[0]
         self.el = data['elevation'][boundary] * con
         self.azimuth = data['azimuth'] * con * deg2rad
         dv = data['v_reso'][0]
         self.nyquist_v = data['nyquist_vel'][boundary] / 100
+        self.task_name = 'VCP{}'.format(data['vcp_mode'][0])
         f.seek(0)
         size = radar_dtype.itemsize
         b = np.append(boundary, data.shape[0] - 1)
@@ -295,7 +296,7 @@ class CinradReader(BaseRadar):
         else:
             return self.el[scans]
 
-    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+    def get_raw(self, tilt:int, drange:number_type, dtype:str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -310,7 +311,7 @@ class CinradReader(BaseRadar):
 
         Returns
         -------
-        r_obj: cinrad.datastruct.Radial
+        ret: ndarray or tuple of ndarray
         '''
         rf_flag = False
         self.tilt = tilt
@@ -336,15 +337,37 @@ class CinradReader(BaseRadar):
                 rf_flag = True
                 rf = rf.T[:int(np.round(drange / reso))]
                 rf = np.ma.vstack([rf, append])
-        #r = np.ma.array(cut, mask=np.isnan(cut))
         r = np.ma.vstack([cut, append])
         if rf_flag:
             r.mask = np.logical_or(r.mask, ~rf.mask)
             ret = (r.T, rf.T)
         else:
             ret = r.T
-        r_obj = Radial(ret, int(np.round(r.shape[0] * reso)), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                       self.stationlon, self.stationlat, nyquist_velocity=self.nyquist_v[tilt])
+        return ret
+
+    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+        r'''
+        Get radar data
+
+        Parameters
+        ----------
+        tilt: int
+            index of elevation angle
+        drange: float
+            radius of data
+        dtype: str
+            type of product (REF, VEL, etc.)
+
+        Returns
+        -------
+        r_obj: cinrad.datastruct.Radial
+        '''
+        task = getattr(self, 'task_name', None)
+        reso = self.Rreso if dtype == 'REF' else self.Vreso
+        ret = self.get_raw(tilt, drange, dtype)
+        shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
+        r_obj = Radial(ret, int(np.round(shape * reso)), self.elev, reso, self.code, self.name, self.scantime, dtype,
+                       self.stationlon, self.stationlat, nyquist_velocity=self.nyquist_v[tilt], task=task)
         x, y, z, d, a = self.projection(reso)
         r_obj.add_geoc(x, y, z)
         r_obj.add_polarc(d, a)
@@ -442,7 +465,7 @@ class StandardData(BaseRadar):
         geo['lon'] = site_config['Longitude']
         geo['height'] = site_config['ground_height']
         task = np.frombuffer(self.f.read(256), SDD_task)
-        #task_name = merge_bytes(task['task_name'][0])
+        self.task_name = merge_bytes(task['task_name'][0]).decode()
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(task['scan_start_time']))
         cut_num = task['cut_number'][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
@@ -479,7 +502,7 @@ class StandardData(BaseRadar):
         self.aux = aux
         self.el = [i.elev for i in self.scan_config]
 
-    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+    def get_raw(self, tilt:int, drange:number_type, dtype:str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -494,7 +517,7 @@ class StandardData(BaseRadar):
 
         Returns
         -------
-        r_obj: cinrad.datastruct.Radial
+        ret: ndarray or tuple of ndarray
         '''
         self.tilt = tilt if self.scan_type == 'PPI' else 0
         self.drange = drange
@@ -524,16 +547,40 @@ class StandardData(BaseRadar):
             ret = (r, rf)
         else:
             ret = r
+        return ret
+
+    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+        r'''
+        Get radar data
+
+        Parameters
+        ----------
+        tilt: int
+            index of elevation angle
+        drange: float
+            radius of data
+        dtype: str
+            type of product (REF, VEL, etc.)
+
+        Returns
+        -------
+        r_obj: cinrad.datastruct.Radial
+        '''
+        reso = self.scan_config[tilt].dop_reso / 1000
+        ret = self.get_raw(tilt, drange, dtype)
         if self.scan_type == 'PPI':
-            r_obj = Radial(ret, int(r.shape[1] * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
-                           self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd)
+            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
+            r_obj = Radial(ret, int(shape * reso), self.elev, reso, self.code, self.name, self.scantime, dtype,
+                           self.stationlon, self.stationlat, nyquist_velocity=self.scan_config[tilt].nyquist_spd,
+                           task=self.task_name)
             x, y, z, d, a = self.projection(reso)
             r_obj.add_geoc(x, y, z)
             r_obj.add_polarc(d, a)
             return r_obj
         else:
             # Manual projection
-            dist = np.linspace(reso, self.drange, cut.shape[1])
+            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
+            dist = np.linspace(reso, self.drange, ret.shape[1])
             d, e = np.meshgrid(dist, self.aux[tilt]['elevation'])
             h = height(d, e, 0)
             rhi = Slice_(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
