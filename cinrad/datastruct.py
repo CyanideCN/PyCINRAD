@@ -122,10 +122,11 @@ class Slice_:
 class Grid:
     r'''Structure for processed grid data'''
 
-    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat', 'geoflag', 'elev']
+    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat', 'geoflag', 'elev',
+                 'scan_info']
 
     def __init__(self, data:ndarray, drange:Union[float, int], reso:float, code:str, name:str,
-                 scantime:datetime, dtype:str, lon:ndarray, lat:ndarray):
+                 scantime:datetime, dtype:str, lon:ndarray, lat:ndarray, **scan_info):
         self.data = data
         self.drange = drange
         self.reso = reso
@@ -137,6 +138,7 @@ class Grid:
         self.lat = lat
         self.geoflag = True
         self.elev = 0
+        self.scan_info = scan_info
 
     def __repr__(self):
         repr_s = ('Datatype: {}\nStation name: {}\nScan time: {}\n')

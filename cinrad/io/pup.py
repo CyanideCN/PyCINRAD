@@ -10,7 +10,10 @@ from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
 from cinrad._typing import boardcast_type
 
-class _StormTrackInfo(object):
+def xy2polar(x:boardcast_type, y:boardcast_type) -> tuple:
+    return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
+
+class StormTrackInfo(object):
 
     def __init__(self, filepath:str):
         from metpy.io.nexrad import Level3File
@@ -45,16 +48,12 @@ class _StormTrackInfo(object):
                         sti_data[stid]['current storm position'] = tuple([circle_dict['x'], circle_dict['y']])
         return sti_data
 
-    @staticmethod
-    def xy2polar(x:boardcast_type, y:boardcast_type) -> tuple:
-        return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
-
     def get_all_id(self) -> list:
         return list(self.info.keys())
 
     def current(self, storm_id:str) -> tuple:
         curpos = self.info[storm_id]['current storm position']
-        dist, az = self.xy2polar(*curpos)
+        dist, az = xy2polar(*curpos)
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         return lonlat
 
@@ -72,7 +71,7 @@ class _StormTrackInfo(object):
             return
         x_pos = np.array([i[0] for i in forpos])
         y_pos = np.array([i[1] for i in forpos])
-        pol_pos = self.xy2polar(x_pos, y_pos)
+        pol_pos = xy2polar(x_pos, y_pos)
         lon = list()
         lat = list()
         for dis, azi in zip(pol_pos[0], pol_pos[1]):
@@ -80,3 +79,40 @@ class _StormTrackInfo(object):
             lon.append(pos_tup[0])
             lat.append(pos_tup[1])
         return np.array(lon), np.array(lat)
+
+class HailIndex(object):
+    def __init__(self, filepath:str):
+        from metpy.io.nexrad import Level3File
+        self.handler = Level3File(filepath)
+        self.info = self.get_all_hi()
+        self.storm_list = self.get_all_id()
+
+    def get_all_hi(self) -> OrderedDict:
+        f = self.handler
+        if not hasattr(f, 'sym_block'):
+            return OrderedDict()
+        else:
+            data_block = f.sym_block[0]
+            sti_data = OrderedDict()
+            data_dict = [i for i in data_block if isinstance(i, defaultdict)]
+            storm_id = [i for i in data_dict if i['type'] == 'Storm ID']
+            info = [i for i in data_dict if i['type'] == 'HDA']
+            for sid, inf in zip(storm_id, info):
+                stid = sid['id']
+                sti_data[stid] = defaultdict()
+                sti_data[stid]['current storm position'] = tuple([sid['x'], sid['y']])
+                sti_data[stid]['POH'] = inf['POH']
+                sti_data[stid]['POSH'] = inf['POSH']
+                sti_data[stid]['MESH'] = inf['Max Size']
+            return sti_data
+
+    def get_all_id(self) -> list:
+        return list(self.info.keys())
+
+    def get_hail_param(self, storm_id:str) -> dict:
+        out = dict(self.info[storm_id])
+        xy = out.pop('current storm position')
+        dist, az = xy2polar(*xy)
+        lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
+        out['position'] = tuple(lonlat)
+        return out

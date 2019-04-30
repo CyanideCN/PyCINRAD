@@ -13,7 +13,7 @@ from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
-from cinrad.io.pup import _StormTrackInfo
+from cinrad.io.pup import StormTrackInfo
 from cinrad._typing import number_type
 from cinrad._element import *
 
@@ -212,7 +212,7 @@ class PPI(object):
         r'''
         Add storm tracks from Nexrad Level III (PUP) STI product file
         '''
-        sti = _StormTrackInfo(filepath)
+        sti = StormTrackInfo(filepath)
         if len(sti.info.keys()) == 0:
             warnings.warn('No storm track to plot', RuntimeWarning)
             return
