@@ -60,7 +60,7 @@ def quick_cr(r_list:RList) -> Grid:
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.scantime,
-                  'CR', x, y)
+                  'CR', x, y, **i.scan_info)
     return l2_obj
 
 def quick_et(r_list:RList) -> Radial:
@@ -80,7 +80,7 @@ def quick_et(r_list:RList) -> Radial:
     i = r_list[0]
     et = echo_top(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.)
     l2_obj = Radial(np.ma.array(et, mask=(et < 2)), i.drange, 0, i.reso, i.code, i.name, i.scantime, 'ET',
-                    i.stp['lon'], i.stp['lat'])
+                    i.stp['lon'], i.stp['lat'], **i.scan_info)
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -102,7 +102,7 @@ def quick_vil(r_list:RList) -> Radial:
     i = r_list[0]
     vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double))
     l2_obj = Radial(np.ma.array(vil, mask=(vil <= 0)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
-                    'VIL', i.stp['lon'], i.stp['lat'])
+                    'VIL', i.stp['lon'], i.stp['lat'], **i.scan_info)
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -125,7 +125,7 @@ def quick_vild(r_list:RList) -> Radial:
     vil = vert_integrated_liquid(r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), density=True)
     vild = np.ma.masked_invalid(vil)
     l2_obj = Radial(np.ma.array(vild, mask=(vild <= 0.1)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
-                    'VILD', i.stp['lon'], i.stp['lat'])
+                    'VILD', i.stp['lon'], i.stp['lat'], **i.scan_info)
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
@@ -147,7 +147,7 @@ def max_potential_gust(r_list:RList) -> Radial:
     i = r_list[0]
     g = potential_maximum_gust_from_reflectivity(r_data, d, elev)
     l2_obj = Radial(np.ma.array(g, mask=(g <= 0)), i.drange, 0, i.reso, i.code, i.name, i.scantime,
-                    'GUST', i.stp['lon'], i.stp['lat'])
+                    'GUST', i.stp['lon'], i.stp['lat'], **i.scan_info)
     lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp['lon'], i.stp['lat'])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
