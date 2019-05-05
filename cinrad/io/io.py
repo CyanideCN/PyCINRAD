@@ -24,6 +24,7 @@ from cinrad._typing import number_type
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP', 'SWAN']
 
 ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
+utc_offset = datetime.timedelta(hours=8)
 
 def merge_bytes(byte_list:List[bytes]) -> bytes:
     return b''.join(byte_list)
@@ -139,10 +140,8 @@ class CinradReader(BaseRadar):
             self._SAB_handler(f, SAB=False)
         elif radartype is 'CC':
             self._CC_handler(f)
-        elif radartype is 'SC':
-            self._SC_handler(f)
-        elif radartype is 'CD':
-            raise RadarDecodeError('CD radar is not supported')
+        elif radartype in ['SC', 'CD']:
+            self._CD_handler(f)
         else:
             raise RadarDecodeError('Unrecognized data')
         self._update_radar_info()
@@ -200,7 +199,6 @@ class CinradReader(BaseRadar):
 
     def _CC_handler(self, f:Any):
         header = np.frombuffer(f.read(1024), CC_header)
-        utc_offset = datetime.timedelta(hours=8)
         self.scantime = datetime.datetime(header['ucEYear1'][0] * 100 + header['ucEYear2'][0], header['ucEMonth'][0],
                                           header['ucEDay'][0], header['ucEHour'], header['ucEMinute'],
                                           header['ucESecond']) - utc_offset
@@ -225,43 +223,34 @@ class CinradReader(BaseRadar):
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
-    def _SC_handler(self, f:Any):
-        vraw = list()
-        rraw = list()
-        blocklength = 4000
-        utc_offset = datetime.timedelta(hours=8)
-        f.seek(853)
-        self.scantime = (datetime.datetime(year=np.frombuffer(f.read(2), 'u2')[0], month=np.frombuffer(f.read(1), 'u1')[0],
-                                          day=np.frombuffer(f.read(1), 'u1')[0], hour=np.frombuffer(f.read(1), 'u1')[0],
-                                          minute=np.frombuffer(f.read(1), 'u1')[0], second=np.frombuffer(f.read(1), 'u1')[0])
-                         - utc_offset)
-        f.seek(1024)
-        self.Rreso = 0.3
-        self.Vreso = 0.3
-        elev = list()
-        count = 0
-        while count < 3240:
-            q = f.read(blocklength)
-            elev.append(np.frombuffer(q[2:4], 'u2')[0])
-            x = np.frombuffer(q[8:], 'u1').astype(float)
-            rraw.append(x[slice(None, None, 4)])
-            vraw.append(x[slice(1, None, 4)])
-            count += 1
-        rraw = np.concatenate(rraw).reshape(3240, 998)
-        vraw = np.concatenate(vraw).reshape(3240, 998)
-        r = np.ma.array(rraw, mask=(rraw == 0))
-        r1 = (r - 64) / 2
-        v = np.ma.array(vraw, mask=(vraw == 0))
-        v1 = (v - 128) / 2
-        self.el = np.array(elev[slice(359, None, 360)]) * con2
+    def _CD_handler(self, f:Any):
+        header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
+        el_num = header['obs']['stype'][0] - 100 # VOL
+        if el_num == 5:
+            self.task_name = 'VCP31'
+        elif el_num == 9:
+            self.task_name = 'VCP21'
+        elif el_num == 14:
+            self.task_name = 'VCP11'
+        self.scantime = datetime.datetime(header['obs']['syear'][0], header['obs']['smonth'][0], header['obs']['sday'][0],
+                                          header['obs']['shour'][0], header['obs']['sminute'][0],
+                                          header['obs']['ssecond'][0]) - utc_offset
+        self.nyquist_v = header['obs']['layerparam']['MaxV'][0][:el_num] / 100
+        self.Rreso = self.Vreso = 0.25
+        self.el = header['obs']['layerparam']['Swangles'][0][:el_num] / 100
         data = dict()
-        for i in range(len(self.el) - 1):
-            data[i] = dict()
-            data[i]['REF'] = r1[i * 360: (i + 1) * 360]
-            data[i]['VEL'] = v1[i * 360: (i + 1) * 360]
-            data[i]['azimuth'] = self.get_azimuth_angles(i)
+        for el in range(el_num):
+            full_scan = np.frombuffer(f.read(360 * CD_DATA.itemsize), CD_DATA)
+            raw_ref = full_scan['rec']['m_dbz'].astype(int)
+            raw_vel = full_scan['rec']['m_vel'].astype(int)
+            raw_sw = full_scan['rec']['m_sw'].astype(int)
+            data[el] = dict()
+            data[el]['REF'] = (np.ma.array(raw_ref, mask=(raw_ref == 0)) - 64) / 2
+            data[el]['VEL'] = self.nyquist_v[el] * (np.ma.array(raw_vel, mask=(raw_vel == 0)) - 128) / 128
+            data[el]['SW'] = self.nyquist_v[el] * np.ma.array(raw_sw, mask=(raw_sw == 0)) / 256
+            data[el]['RF'] = np.ma.array(raw_vel, mask=(raw_vel != 128))
         self.data = data
-        self.angleindex_r = self.angleindex_v = list(self.data.keys())
+        self.angleindex_r = self.angleindex_v = list(range(el_num))
 
     def get_nrays(self, scan:int) -> int:
         r'''Get number of radials in certain scan'''
@@ -733,7 +722,7 @@ class SWAN(object):
     size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
     def __init__(self, file:Any):
         f = prepare_file(file)
-        header = np.frombuffer(f.read(1024), swan_header_dtype)
+        header = np.frombuffer(f.read(1024), SWAN_dtype)
         xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
         dtype = header['m_data_type'][0]
         data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]

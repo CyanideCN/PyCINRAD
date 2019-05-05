@@ -5,12 +5,13 @@ import numpy as np
 
 __all__ = ['CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_task',
            'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
-           'swan_header_dtype']
+           'SWAN_dtype', 'CD_dtype', 'CD_DATA']
 
 from cinrad.io._radar_struct.CC import scan_param_dtype as CC_param, header_dtype as CC_header, data_dtype as CC_data
 from cinrad.io._radar_struct.standard_data import (generic_header_dtype as SDD_header, site_config_dtype as SDD_site,
                                                    task_config_dtype as SDD_task, cut_config_dtype as SDD_cut,
                                                    radial_header_dtype as SDD_rad_header, moment_header_dtype as SDD_mom_header)
+from cinrad.io._radar_struct.CD import radarsite_dtype as CD_site, performance_dtype as CD_perf, observation_param_dtype as CD_obs
 
 _S_HEADER = [('spare', 'u2', 7),
              ('a', 'u2'),
@@ -57,7 +58,7 @@ _CAB_DATA = [('r', 'u1', 800),
 SAB_dtype = np.dtype(_S_HEADER + _S_INFO + _SAB_DATA)
 CAB_dtype = np.dtype(_S_HEADER + _S_INFO + _CAB_DATA)
 
-swan_header = [('data_type', '12c'),
+SWAN_HEADER = [('data_type', '12c'),
                ('data_name', '38c'),
                ('name', '8c'),
                ('version', '8c'),
@@ -87,4 +88,20 @@ swan_header = [('data_type', '12c'),
                ('dimension', 'i2'),
                ('res', '168c')]
 
-swan_header_dtype = np.dtype(swan_header)
+SWAN_dtype = np.dtype(SWAN_HEADER)
+
+CD_dtype = np.dtype([('site_info', CD_site),
+                     ('performance', CD_perf),
+                     ('obs', CD_obs),
+                     ('res', '163c')])
+
+_CD_record = np.dtype([('m_dbz', 'B'),
+                       ('m_vel', 'B'),
+                       ('m_undbz', 'B'),
+                       ('m_sw', 'B')])
+
+CD_DATA = np.dtype([('s_az', 'u2'),
+                    ('s_el', 'u2'),
+                    ('e_az', 'u2'),
+                    ('e_el', 'u2'),
+                    ('rec', _CD_record, 998)])
