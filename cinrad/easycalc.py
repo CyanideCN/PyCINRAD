@@ -60,7 +60,7 @@ def quick_cr(r_list:RList) -> Grid:
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.scantime,
-                  'CR', x, y, **i.scan_info)
+                  'CR', i.stlon, i.stlat, x, y, **i.scan_info)
     return l2_obj
 
 def quick_et(r_list:RList) -> Radial:
