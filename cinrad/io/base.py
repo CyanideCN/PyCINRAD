@@ -3,6 +3,7 @@
 
 import abc
 import os
+import pickle
 
 import numpy as np
 
@@ -10,20 +11,15 @@ from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarDecodeError
 from cinrad._typing import number_type
 
-radarinfo = np.load(os.path.join(MODULE_DIR, 'data', 'RadarStation.npy'))
+with open(os.path.join(MODULE_DIR, 'data', 'RadarStation.pickle'), 'rb') as buf:
+    radarinfo = pickle.load(buf)
 
 def _get_radar_info(code:str) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
     try:
-        pos = np.where(radarinfo[0] == code)[0][0]
+        return radarinfo[code]
     except IndexError:
         raise RadarDecodeError('Invalid radar code {}'.format(code))
-    name = radarinfo[1][pos]
-    lon = radarinfo[2][pos]
-    lat = radarinfo[3][pos]
-    radartype = radarinfo[4][pos]
-    radarheight = radarinfo[5][pos]
-    return name, lon, lat, radartype, radarheight
 
 class BaseRadar(abc.ABC):
     r'''

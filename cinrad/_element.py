@@ -5,6 +5,9 @@ import numpy as np
 
 from cinrad.constants import *
 
+__all__ = ['norm_plot', 'norm_cbar', 'cmap_plot', 'cmap_cbar', 'sec_plot', 'prodname', 'unit',
+           'cbar_text']
+
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
              'ZDR':norm6, 'PHI':norm7, 'RHO':norm8, 'TREF':norm1, 'KDP':norm9, 'VILD':norm10} # Normalize object used to plot
 norm_cbar = {'REF':norm1, 'VEL':norm4, 'CR':norm1, 'ET':norm4, 'VIL':norm4,

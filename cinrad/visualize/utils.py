@@ -11,7 +11,7 @@ from cartopy.io import shapereader
 import cartopy.crs as ccrs
 import shapefile
 
-from cinrad.constants import MODULE_DIR, plot_kw
+from cinrad.constants import MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
 from cinrad._typing import GList, number_type
 
@@ -47,6 +47,7 @@ def setup_axes(fig:Any, cmap:Any, norm:Any) -> tuple:
     return ax, cbar
 
 def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, task:str, elev:float):
+    from cinrad.constants import plot_kw
     ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), **plot_kw)
     ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
     ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), **plot_kw)

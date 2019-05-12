@@ -96,6 +96,7 @@ class PPI(object):
             return c, c2
 
     def _plot(self, **kwargs):
+        from cinrad.constants import plot_kw
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内

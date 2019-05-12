@@ -8,7 +8,6 @@ from typing import Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cinrad.constants import plot_kw
 from cinrad.datastruct import Slice_
 from cinrad._element import sec_plot, norm_plot, prodname
 
@@ -22,6 +21,7 @@ class Section:
         self.path_customize = False
 
     def _plot(self, fpath:str):
+        from cinrad.constants import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor
         ycor = self.data.ycor
@@ -78,6 +78,7 @@ class RHI:
         self.path_customize = False
 
     def _plot(self, fpath:str):
+        from cinrad.constants import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor
         ycor = self.data.ycor
