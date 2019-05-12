@@ -60,3 +60,8 @@ norm7 = cmx.Normalize(260, 360)
 norm8 = cmx.Normalize(0, 0.99)
 norm9 = cmx.Normalize(-0.8, 21)
 norm10 = cmx.Normalize(0.1, 6)
+
+def set_font(font_path):
+    glb = globals()
+    font = FontProperties(fname=font_path)
+    glb['plot_kw'] = {'fontproperties':font}
