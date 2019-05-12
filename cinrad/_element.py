@@ -22,7 +22,7 @@ prodname = {'REF':'Base Reflectivity', 'VEL':'Base Velocity', 'CR':'Composite Re
             'ET':'Echo Tops', 'VIL':'V Integrated Liquid', 'ZDR':'Differential Ref.',
             'PHI':'Differential Phase', 'RHO':'Correlation Coe.', 'TREF':'Total Reflectivity',
             'KDP':'Spec. Diff. Phase', 'VILD':'VIL Density'}
-unit = {'REF':'dBz', 'VEL':'m/s', 'CR':'dBz', 'ET':'km', 'VIL':'kg/m**2', 'ZDR':'dB', 'RHI':'deg',
+unit = {'REF':'dBz', 'VEL':'m/s', 'CR':'dBz', 'ET':'km', 'VIL':'kg/m**2', 'ZDR':'dB', 'PHI':'deg',
         'RHO':'', 'TREF':'dBz', 'KDP':'deg/km', 'VILD':'g/m**3'}
 cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
                                 '-1', '-5', '-10', '-15', '-20', '-27', '-35'],
