@@ -4,6 +4,7 @@
 import abc
 import os
 import pickle
+from typing import Optional
 
 import numpy as np
 
@@ -14,8 +15,10 @@ from cinrad._typing import number_type
 with open(os.path.join(MODULE_DIR, 'data', 'RadarStation.pickle'), 'rb') as buf:
     radarinfo = pickle.load(buf)
 
-def _get_radar_info(code:str) -> tuple:
+def _get_radar_info(code:Optional[str]) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
+    if code is None:
+        return ('None', 0, 0, '', 0)
     try:
         return radarinfo[code]
     except IndexError:

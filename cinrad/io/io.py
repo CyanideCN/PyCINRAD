@@ -258,7 +258,7 @@ class CinradReader(BaseRadar):
             return len(self.data[scan]['azimuth'])
         elif self.radartype == 'CC':
             return 512
-        elif self.radartype == 'SC':
+        elif self.radartype in ['SC', 'CD']:
             return 360
 
     def get_azimuth_angles(self, scans:Optional[int]=None) -> np.ndarray:
@@ -273,7 +273,7 @@ class CinradReader(BaseRadar):
                 return np.array(np.linspace(0, 360, 512).tolist() * self.get_nscans()) * deg2rad
             else:
                 return np.array(np.linspace(0, 360, 512).tolist()) * deg2rad
-        elif self.radartype == 'SC':
+        elif self.radartype in ['SC', 'CD']:
             if scans is None:
                 return np.array(np.linspace(0, 360, 360).tolist() * self.get_nscans()) * deg2rad
             else:
