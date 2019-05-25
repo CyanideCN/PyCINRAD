@@ -17,12 +17,10 @@ with open(os.path.join(MODULE_DIR, 'data', 'RadarStation.pickle'), 'rb') as buf:
 
 def _get_radar_info(code:Optional[str]) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
-    if code is None:
-        return ('None', 0, 0, '', 0)
     try:
         return radarinfo[code]
-    except IndexError:
-        raise RadarDecodeError('Invalid radar code {}'.format(code))
+    except KeyError:
+        return ('None', 0, 0, '', 0)
 
 class BaseRadar(abc.ABC):
     r'''
@@ -34,13 +32,10 @@ class BaseRadar(abc.ABC):
     def _update_radar_info(self):
         r'''Update radar station info automatically.'''
         info = _get_radar_info(self.code)
-        if info is None:
-            warnings.warn('Auto fill radar station info failed, please set code manually', UserWarning)
-        else:
-            self.stationlon = info[1]
-            self.stationlat = info[2]
-            self.name = info[0]
-            self.radarheight = info[4]
+        self.stationlon = info[1]
+        self.stationlat = info[2]
+        self.name = info[0]
+        self.radarheight = info[4]
 
     def set_code(self, code:str):
         self.code = code
