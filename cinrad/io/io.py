@@ -8,7 +8,7 @@ import bz2
 import gzip
 
 from collections import namedtuple, defaultdict
-from typing import Union, Optional, List, Any
+from typing import Union, Optional, List, Any, Generator
 
 import numpy as np
 
@@ -382,6 +382,14 @@ class CinradReader(BaseRadar):
         ds._create_attribute('Station Name', self.name)
         ds._create_attribute('Radar Type', self.radartype)
 
+    def iter_tilt(self, drange:number_type, dtype:str) -> Generator:
+        if dtype == 'REF':
+            tlist = self.angleindex_r
+        elif dtype in ['VEL', 'SW']:
+            tlist = self.angleindex_v
+        for i in tlist:
+            yield self.get_data(i, drange, dtype)
+
 class StandardData(BaseRadar):
     r'''
     Class handling new cinrad standard data reading
@@ -433,12 +441,12 @@ class StandardData(BaseRadar):
         self.f = prepare_file(file)
         self._parse()
         self.f.close()
-        try:
-            self._update_radar_info()
-        except RadarDecodeError:
-            self.stationlat = self.geo['lat']
-            self.stationlon = self.geo['lon']
-            self.radarheight = self.geo['height']
+        self._update_radar_info()
+        if self.name == 'None':
+            # Last resort to find info
+            self.stationlat = self.geo['lat'][0]
+            self.stationlon = self.geo['lon'][0]
+            self.radarheight = self.geo['height'][0]
             self.name = self.code
         self.angleindex_r = self.avaliable_tilt('REF') # API consistency
         del self.geo
@@ -590,6 +598,10 @@ class StandardData(BaseRadar):
                 tilt.append(i)
         return tilt
 
+    def iter_tilt(self, drange:number_type, dtype:str) -> Generator:
+        for i in self.avaliable_tilt(dtype):
+            yield self.get_data(i, drange, dtype)
+
 class NexradL2Data:
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
@@ -733,6 +745,7 @@ class SWAN(object):
         else:
             out = data_body.reshape(zdim, xdim, ydim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
+        # TODO: Recognize correct product name
         self.product_name = b''.join(header['data_name'][0, :4]).decode()
         start_lon = header['start_lon'][0]
         start_lat = header['start_lat'][0]
@@ -751,5 +764,5 @@ class SWAN(object):
 
     def get_data(self) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
-        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
+        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, 0, 0, x, y)
         return grid

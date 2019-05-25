@@ -99,6 +99,8 @@ data = f.get_data()
 列表生成示例：
 ```python
 r_list = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
+# 或者
+r_list = list(f.iter_tilt(230, 'REF'))
 ```
 #### VCS
 

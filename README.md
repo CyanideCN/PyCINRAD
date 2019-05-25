@@ -22,7 +22,7 @@ Shapefile
 
 Pyresample
 
-You can download from github page and then excecute
+You can also download from github page and build from source
 
 ```
 python setup.py install
@@ -43,8 +43,6 @@ Grid type data: `cinrad.datastruct.Grid`
 ### cinrad.io
 
 Decode CINRAD radar data.
-
-Simple demonstration:
 
 ```python
 from cinrad.io import CinradReader, StandardData
@@ -75,16 +73,18 @@ data = f.get_data()
 
 ### cinrad.utils
 
-This submodule provides some useful algorithms in radar meteorology. All functions contained only accept `numpy.ndarray`. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.
+This submodule provides some useful algorithms in radar meteorology. All functions only accept `numpy.ndarray` as input data. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.
 
 ### cinrad.easycalc
 
-For directly computation of decoded data, `cinrad.easycalc` provides functions that simplify the process of calculation. For functions contained in this submodule, only a list of reflectivity data is required as the argument.
+For direct computation of decoded data, `cinrad.easycalc` provides functions that simplify the process of calculation. For functions contained in this submodule, only a list of reflectivity data is required as the argument.
 
 Code to generate the required list:
 
 ```python
 r_list = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
+# or
+r_list = list(f.iter_tilt(230, 'REF'))
 ```
 
 #### VCS
@@ -122,8 +122,6 @@ v_corrected = cinrad.correct.dealias(v)
 
 Visualize the data stored in acceptable format (`cinrad.datastruct`). It also means that you can using customized data to construct a object belongs to one of the class in `cinrad.datastruct` and then perform visualization. For further information about this method, please see the examples contained in `example` folder.
 
-Simple demonstration:
-
 ```python
 from cinrad.visualize import PPI
 fig = PPI(R) #Plot PPI
@@ -155,7 +153,7 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`style`|control the background color `black` or `white`|
 |`add_city_names`|annotate name of city on the plot|
 
-Besides args, class `PPI` has some other auxiliary plotting functions.
+Beside args, class `PPI` has some other auxiliary plotting functions.
 
 ##### PPI.plot_range_rings(self, _range, color='white', linewidth=0.5, **kwargs)
 
@@ -165,11 +163,11 @@ Plot range rings on the PPI plot.
 
 Plot VCS section under the PPI plot.
 
-This function is very similar to `vcs` argument of `PPI`, but the range of y-axis can be adjusted only by this function.
+This function is very similar to `vcs` argument of class `PPI`, but the range of y-axis can be adjusted only by this function.
 
 ##### PPI.storm_track_info(self, filepath)
 
-Plot PUP STI product on the current PPI map, including past position., current position, and forecast positions.
+Plot PUP STI product on the current PPI map, including past positions, current position, and forecast positions.
 
 ## Gallery
 
@@ -197,4 +195,4 @@ Plot PUP STI product on the current PPI map, including past position., current p
 
 If you are interested in this program, you can join the developers of this program. Any contribution is appreciated!
 
-If you have some questions or advise about this program, you can create a issue or email me at 274555447@qq.com.
+If you have questions or advise about this program, you can create a issue or email me at 274555447@qq.com.
