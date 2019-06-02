@@ -149,7 +149,7 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`highlight`|highlight area of input name|
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
-|`add_slice`|add cross-section data to ppi plot|
+|`section`|cross-section data to ppi plot|
 |`style`|control the background color `black` or `white`|
 |`add_city_names`|annotate name of city on the plot|
 

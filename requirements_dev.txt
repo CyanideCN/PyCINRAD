@@ -3,5 +3,4 @@ metpy>=0.8
 pyshp!=2.0.0, !=2.0.1
 pyresample
 matplotlib>=2.2
-netcdf4
 pytest

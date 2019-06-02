@@ -15,7 +15,7 @@ def test_vil():
 
     assert np.array_equal(vil, true_vil)
 
-def test_vil():
+def test_et():
     a = np.arange(0, 27, 1, dtype=np.double).reshape(3, 3, 3)
     b = np.broadcast_to(np.arange(0, 3), (3, 3))
     b = np.ascontiguousarray(b, dtype=np.double)

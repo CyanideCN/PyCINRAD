@@ -13,11 +13,11 @@ import shapefile
 
 from cinrad.constants import MODULE_DIR
 from cinrad.visualize.shapepatch import highlight_area
-from cinrad._typing import GList, number_type
+from cinrad._typing import Array_T, Number_T
 
 class ShpReader(shapereader.BasicReader):
     r'''Customized reader to deal with encoding issue'''
-    def __init__(self, filename, encoding='gbk'):
+    def __init__(self, filename:str, encoding:str='gbk'):
         # Validate the filename/shapefile
         self._reader = reader = shapefile.Reader(filename, encoding=encoding)
         if reader.shp is None or reader.shx is None or reader.dbf is None:
@@ -32,7 +32,7 @@ class ShpReader(shapereader.BasicReader):
 
         self._fields = self._reader.fields
 
-def setup_plot(dpi:number_type, figsize:tuple=(9, 9), style:str='black') -> Any:
+def setup_plot(dpi:Number_T, figsize:tuple=(9, 9), style:str='black') -> Any:
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis('off')
     if style == 'black':
@@ -46,7 +46,7 @@ def setup_axes(fig:Any, cmap:Any, norm:Any) -> tuple:
     cbar.outline.set_visible(False)
     return ax, cbar
 
-def text(ax:Any, drange:number_type, reso:float, scantime:datetime, name:str, task:str, elev:float):
+def text(ax:Any, drange:Number_T, reso:float, scantime:datetime, name:str, task:str, elev:float):
     from cinrad.constants import plot_kw
     ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), **plot_kw)
     ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
@@ -62,7 +62,7 @@ def save(fpath:str):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[GList]=None):
+def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[Array_T]=None):
     root = os.path.join(MODULE_DIR, 'data', 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [ShpReader(i).geometries() for i in flist]
@@ -80,14 +80,14 @@ def change_cbar_text(cbar:ColorbarBase, tick:list, text:list):
     cbar.set_ticks(tick)
     cbar.set_ticklabels(text)
 
-def draw_highlight_area(area:Union[GList, str]):
+def draw_highlight_area(area:Union[Array_T, str]):
     lines = highlight_area(area)
     ax_ = plt.gca()
     for l in lines:
         pat = ax_.add_artist(l)
         pat.set_zorder(4)
 
-def set_geoaxes(fig:Any, extent:GList) -> Any:
+def set_geoaxes(fig:Any, extent:Array_T) -> Any:
     ax = fig.add_axes([0, 0, 0.9, 0.9], projection=ccrs.PlateCarree())
     ax.background_patch.set_fill(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]

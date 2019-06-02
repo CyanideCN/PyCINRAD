@@ -14,7 +14,7 @@ from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.pup import StormTrackInfo
-from cinrad._typing import number_type
+from cinrad._typing import Number_T
 from cinrad._element import *
 
 __all__ = ['PPI']
@@ -45,12 +45,12 @@ class PPI(object):
     def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
                  cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
                  dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
-                 extent:Optional[List[number_type]]=None, add_slice:Optional[Slice_]=None,
+                 extent:Optional[List[Number_T]]=None, section:Optional[Slice_]=None,
                  style:str='black', add_city_names:bool=False, plot_labels:bool=True, **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
-                         'extent':extent, 'slice':add_slice, 'style':style, 'add_city_names':add_city_names,
+                         'extent':extent, 'slice':section, 'style':style, 'add_city_names':add_city_names,
                          'plot_labels':plot_labels}
         if fig is None:
             self.fig = setup_plot(dpi, style=style)
@@ -120,8 +120,9 @@ class PPI(object):
             draw_highlight_area(self.settings['highlight'])
         if self.settings['add_city_names']:
             self._add_city_names()
-        ax2 = self.fig.add_axes([0.92, 0.06, 0.01, 0.35]) # axes used for text which has the same x-position as
-                                                          # the colorbar axes (for matplotlib 3 compatibility)
+        # axes used for text which has the same x-position as
+        # the colorbar axes (for matplotlib 3 compatibility)
+        ax2 = self.fig.add_axes([0.92, 0.06, 0.01, 0.35])
         for sp in ax2.spines.values():
             sp.set_visible(False)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
@@ -160,7 +161,7 @@ class PPI(object):
             path_string = fpath
         save(path_string)
 
-    def plot_range_rings(self, _range:Union[int, float, list], color:str='white', linewidth:number_type=0.5,
+    def plot_range_rings(self, _range:Union[int, float, list], color:str='white', linewidth:Number_T=0.5,
                          **kwargs):
         r'''Plot range rings on PPI plot.'''
         if isinstance(_range, (int, float)):
@@ -232,7 +233,7 @@ class PPI(object):
                 #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
-    def gridlines(self, draw_labels:bool=True, linewidth:number_type=0, **kwargs):
+    def gridlines(self, draw_labels:bool=True, linewidth:Number_T=0, **kwargs):
         r'''Draw grid lines on cartopy axes'''
         liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
         liner.xlabels_top = False

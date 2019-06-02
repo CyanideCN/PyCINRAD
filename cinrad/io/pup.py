@@ -8,9 +8,9 @@ import numpy as np
 
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
-from cinrad._typing import boardcast_type
+from cinrad._typing import Boardcast_T
 
-def xy2polar(x:boardcast_type, y:boardcast_type) -> tuple:
+def xy2polar(x:Boardcast_T, y:Boardcast_T) -> tuple:
     return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
 
 class StormTrackInfo(object):

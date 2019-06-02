@@ -10,9 +10,9 @@ from matplotlib.lines import Line2D
 
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarPlotError
-from cinrad._typing import GList
+from cinrad._typing import Array_T
 
-def highlight_area(area:Union[GList, str], linecolor:str='red', **kwargs) -> List[Line2D]:
+def highlight_area(area:Union[Array_T, str], linecolor:str='red', **kwargs) -> List[Line2D]:
     r'''Return list of Line2D object for given area name'''
     fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
     shp = shapefile.Reader(fpath)

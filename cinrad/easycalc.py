@@ -14,11 +14,11 @@ from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
-from cinrad._typing import RList
+from cinrad._typing import Volume_T
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust', 'quick_vild']
 
-def _extract(r_list:RList) -> tuple:
+def _extract(r_list:Volume_T) -> tuple:
     d_list = np.array([i.drange for i in r_list])
     if d_list.mean() != d_list.max():
         raise ValueError('Input radials must have same data range')
@@ -36,11 +36,11 @@ def _nearest_ten_minute(date:datetime.datetime) -> datetime.datetime:
     minute = (date.minute // 10) * 10
     return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
 
-def is_uniform(radial_list:RList) -> bool:
+def is_uniform(radial_list:Volume_T) -> bool:
     r'''Check if all input radials have same data type'''
     return len(set([i.dtype for i in radial_list])) == 1
 
-def quick_cr(r_list:RList) -> Grid:
+def quick_cr(r_list:Volume_T) -> Grid:
     r'''
     Calculate composite reflectivity
 
@@ -63,7 +63,7 @@ def quick_cr(r_list:RList) -> Grid:
                   'CR', i.stp['lon'], i.stp['lat'], x, y, **i.scan_info)
     return l2_obj
 
-def quick_et(r_list:RList) -> Radial:
+def quick_et(r_list:Volume_T) -> Radial:
     r'''
     Calculate echo tops
 
@@ -85,7 +85,7 @@ def quick_et(r_list:RList) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vil(r_list:RList) -> Radial:
+def quick_vil(r_list:Volume_T) -> Radial:
     r'''
     Calculate vertically integrated liquid
 
@@ -107,7 +107,7 @@ def quick_vil(r_list:RList) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vild(r_list:RList) -> Radial:
+def quick_vild(r_list:Volume_T) -> Radial:
     r'''
     Calculate vertically integrated liquid density
 
@@ -130,7 +130,7 @@ def quick_vild(r_list:RList) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def max_potential_gust(r_list:RList) -> Radial:
+def max_potential_gust(r_list:Volume_T) -> Radial:
     r'''
     Estimate maximum potential descending gust by Stewart's formula
 
@@ -154,7 +154,7 @@ def max_potential_gust(r_list:RList) -> Radial:
 
 class VCS:
     r'''Class performing vertical cross-section calculation'''
-    def __init__(self, r_list:RList):
+    def __init__(self, r_list:Volume_T):
         if not is_uniform(r_list):
             raise RadarCalculationError('All input radials must have the same data type')
         self.rl = r_list

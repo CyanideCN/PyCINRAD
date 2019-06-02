@@ -9,9 +9,9 @@ from pyresample.geometry import GridDefinition
 from pyresample.kd_tree import resample_nearest
 
 from cinrad.constants import deg2rad
-from cinrad._typing import number_type
+from cinrad._typing import Number_T
 
-def resample(data:np.ndarray, distance:np.ndarray, azimuth:np.ndarray, d_reso:number_type,
+def resample(data:np.ndarray, distance:np.ndarray, azimuth:np.ndarray, d_reso:Number_T,
              a_reso:int) -> tuple:
     r'''
     Resample radar radial data which have different number of radials
