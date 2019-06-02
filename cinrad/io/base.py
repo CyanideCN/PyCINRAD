@@ -10,7 +10,7 @@ import numpy as np
 
 from cinrad.constants import MODULE_DIR
 from cinrad.error import RadarDecodeError
-from cinrad._typing import number_type
+from cinrad._typing import Number_T
 
 with open(os.path.join(MODULE_DIR, 'data', 'RadarStation.pickle'), 'rb') as buf:
     radarinfo = pickle.load(buf)
@@ -49,5 +49,5 @@ class BaseRadar(abc.ABC):
         return list(self.data[tilt].keys())
 
     @staticmethod
-    def get_range(drange:number_type, reso:number_type) -> np.ndarray:
+    def get_range(drange:Number_T, reso:Number_T) -> np.ndarray:
         return np.arange(reso, drange + reso, reso)

@@ -16,10 +16,9 @@ from cinrad.constants import deg2rad, con, con2
 from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
-from cinrad.io._io import NetCDFWriter
 from cinrad.io.base import BaseRadar
 from cinrad.io._dtype import *
-from cinrad._typing import number_type
+from cinrad._typing import Number_T
 
 __all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP', 'SWAN']
 
@@ -285,7 +284,7 @@ class CinradReader(BaseRadar):
         else:
             return self.el[scans]
 
-    def get_raw(self, tilt:int, drange:number_type, dtype:str) -> Union[np.ndarray, tuple]:
+    def get_raw(self, tilt:int, drange:Number_T, dtype:str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -334,7 +333,7 @@ class CinradReader(BaseRadar):
             ret = r.T
         return ret
 
-    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Radial:
         r'''
         Get radar data
 
@@ -372,17 +371,7 @@ class CinradReader(BaseRadar):
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def to_nc(self, file:str, tilt:Union[str, int]='all', distance:number_type=230):
-        r'''Store data in NetCDF format'''
-        ds = NetCDFWriter(file)
-        for i in range(self.get_nscans()):
-            ds.create_radial(self.get_data(i, distance, 'REF'))
-        ds._create_attribute('Time', self.scantime.strftime('%Y%m%d%H%M%S'))
-        ds._create_attribute('Station Code', self.code)
-        ds._create_attribute('Station Name', self.name)
-        ds._create_attribute('Radar Type', self.radartype)
-
-    def iter_tilt(self, drange:number_type, dtype:str) -> Generator:
+    def iter_tilt(self, drange:Number_T, dtype:str) -> Generator:
         if dtype == 'REF':
             tlist = self.angleindex_r
         elif dtype in ['VEL', 'SW']:
@@ -499,7 +488,7 @@ class StandardData(BaseRadar):
         self.aux = aux
         self.el = [i.elev for i in self.scan_config]
 
-    def get_raw(self, tilt:int, drange:number_type, dtype:str) -> Union[np.ndarray, tuple]:
+    def get_raw(self, tilt:int, drange:Number_T, dtype:str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -546,7 +535,7 @@ class StandardData(BaseRadar):
             ret = r
         return ret
 
-    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Union[Radial, Slice_]:
         r'''
         Get radar data
 
@@ -598,7 +587,7 @@ class StandardData(BaseRadar):
                 tilt.append(i)
         return tilt
 
-    def iter_tilt(self, drange:number_type, dtype:str) -> Generator:
+    def iter_tilt(self, drange:Number_T, dtype:str) -> Generator:
         for i in self.avaliable_tilt(dtype):
             yield self.get_data(i, drange, dtype)
 
@@ -621,7 +610,7 @@ class NexradL2Data:
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
 
-    def get_data(self, tilt:int, drange:number_type, dtype:str) -> Radial:
+    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Radial:
         if isinstance(dtype, str):
             self.dtype = dtype.upper().encode()
         elif isinstance(dtype, bytes):
