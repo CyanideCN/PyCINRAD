@@ -6,7 +6,6 @@ import datetime
 from pathlib import Path
 import bz2
 import gzip
-
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any, Generator
 
@@ -660,16 +659,17 @@ class PUP(BaseRadar):
         from metpy.io.nexrad import Level3File
         f = Level3File(file)
         self.dtype = self._det_product_type(f.prod_desc.prod_code)
-        self.radial_flag = self._is_radial()
+        self.radial_flag = self._is_radial(f.prod_desc.prod_code)
         data_block = f.sym_block[0][0]
-        data = np.ma.array(data_block['data']) # First element in data is mysteriously empty
+        data = np.ma.array(data_block['data'])
         data[data == 0] = np.ma.masked
         self.data = np.ma.masked_invalid(f.map_data(data))
         self.max_range = f.max_range
         if self.radial_flag:
-            self.az = np.array(data_block['start_az']) * deg2rad
-            self.rng = np.linspace(1, f.max_range, data.shape[-1])
+            self.az = np.array(data_block['start_az'] + [data_block['end_az'][-1]]) * deg2rad
+            self.rng = np.linspace(0, f.max_range, data.shape[-1] + 1)
         else:
+            # TODO: Support grid type data
             xdim, ydim = data.shape
             x = np.linspace(xdim * f.ij_to_km * -1, xdim * f.ij_to_km, xdim) / 111 + f.lon
             y = np.linspace(ydim * f.ij_to_km, ydim * f.ij_to_km * -1, ydim) / 111 + f.lat
@@ -699,8 +699,9 @@ class PUP(BaseRadar):
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
                         self.dtype, self.lon, self.lat)
 
-    def _is_radial(self) -> bool:
-        return self.dtype in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
+    @staticmethod
+    def _is_radial(code:int) -> bool:
+        return code in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
 
     def projection(self) -> tuple:
         return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
