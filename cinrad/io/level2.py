@@ -4,8 +4,6 @@
 import warnings
 import datetime
 from pathlib import Path
-import bz2
-import gzip
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any, Generator
 
@@ -15,11 +13,11 @@ from cinrad.constants import deg2rad, con, con2
 from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
-from cinrad.io.base import BaseRadar
+from cinrad.io.base import BaseRadar, prepare_file
 from cinrad.io._dtype import *
 from cinrad._typing import Number_T
 
-__all__ = ['CinradReader', 'StandardData', 'NexradL2Data', 'PUP', 'SWAN']
+__all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 
 ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
@@ -60,18 +58,6 @@ def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tup
     if radartype is None:
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
-
-def prepare_file(file:Any) -> Any:
-    if hasattr(file, 'read'):
-        return file
-    f = open(file, 'rb')
-    magic = f.read(3)
-    f.close()
-    if magic.startswith(b'\x1f\x8b'):
-        return gzip.GzipFile(file, 'rb')
-    if magic.startswith(b'BZh'):
-        return bz2.BZ2File(file, 'rb')
-    return open(file, 'rb')
 
 class CinradReader(BaseRadar):
     r'''
@@ -650,109 +636,3 @@ class NexradL2Data:
                                     h_offset=h_offset)
         hght = height(data_range[:datalength], self.elev, 0) * np.ones(azi.shape[0])[:, np.newaxis]
         return lonx, latx, hght, data_range[:datalength], azi
-
-class PUP(BaseRadar):
-    r'''
-    Class handling PUP data (Nexrad Level III data)
-    '''
-    def __init__(self, file:Any):
-        from metpy.io.nexrad import Level3File
-        f = Level3File(file)
-        self.dtype = self._det_product_type(f.prod_desc.prod_code)
-        self.radial_flag = self._is_radial(f.prod_desc.prod_code)
-        data_block = f.sym_block[0][0]
-        data = np.ma.array(data_block['data'])
-        data[data == 0] = np.ma.masked
-        self.data = np.ma.masked_invalid(f.map_data(data))
-        self.max_range = f.max_range
-        if self.radial_flag:
-            self.az = np.array(data_block['start_az'] + [data_block['end_az'][-1]]) * deg2rad
-            self.rng = np.linspace(0, f.max_range, data.shape[-1] + 1)
-        else:
-            # TODO: Support grid type data
-            xdim, ydim = data.shape
-            x = np.linspace(xdim * f.ij_to_km * -1, xdim * f.ij_to_km, xdim) / 111 + f.lon
-            y = np.linspace(ydim * f.ij_to_km, ydim * f.ij_to_km * -1, ydim) / 111 + f.lat
-            self.lon, self.lat = np.meshgrid(x, y)
-            self.reso = f.ij_to_km
-        self.stationlat = f.lat
-        self.stationlon = f.lon
-        self.el = f.metadata['el_angle']
-        self.scantime = f.metadata['vol_time']
-        o = open(file, 'rb')
-        o.seek(12)
-        code = np.frombuffer(o.read(2), '>i2')[0]
-        if code in range(0, 100):
-            cds = '0{}'.format(code)
-        else:
-            cds = str(code)
-        self.code = 'Z9' + cds
-        o.close()
-        self._update_radar_info()
-
-    def get_data(self) -> Grid:
-        if self.radial_flag:
-            lon, lat = self.projection()
-            return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
-                          self.dtype, self.stationlon, self.stationlat, lon, lat)
-        else:
-            return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
-                        self.dtype, self.lon, self.lat)
-
-    @staticmethod
-    def _is_radial(code:int) -> bool:
-        return code in range(16, 22) or self.dtype in range(22, 28) or self.dtype in range(28, 31) 
-
-    def projection(self) -> tuple:
-        return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
-
-    @staticmethod
-    def _det_product_type(spec:int) -> str:
-        if spec in range(16, 22):
-            return 'REF'
-        elif spec in range(22, 28):
-            return 'VEL'
-        elif spec in range(28, 31):
-            return 'SW'
-        elif spec == 37:
-            return 'CR'
-        else:
-            raise RadarDecodeError('Unsupported product type {}'.format(spec))
-
-class SWAN(object):
-    dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
-    size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
-    def __init__(self, file:Any):
-        f = prepare_file(file)
-        header = np.frombuffer(f.read(1024), SWAN_dtype)
-        xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
-        dtype = header['m_data_type'][0]
-        data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]
-        bittype = self.dtype_conv[dtype]
-        data_body = np.frombuffer(f.read(data_size), bittype).astype(int)
-        if zdim == 1:
-            out = data_body.reshape(xdim, ydim)
-        else:
-            out = data_body.reshape(zdim, xdim, ydim)
-        self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
-        # TODO: Recognize correct product name
-        self.product_name = b''.join(header['data_name'][0, :4]).decode()
-        start_lon = header['start_lon'][0]
-        start_lat = header['start_lat'][0]
-        center_lon = header['center_lon'][0]
-        center_lat = header['center_lat'][0]
-        end_lon = center_lon * 2 - start_lon
-        end_lat = center_lat * 2 - start_lat
-        #x_reso = header['x_reso'][0]
-        #y_reso = header['y_reso'][0]
-        self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
-        self.lat = np.linspace(start_lat, end_lat, ydim)
-        if self.product_name == 'CR':
-            self.data = np.ma.array((out - 66) / 2, mask=(out==0))
-        else:
-            self.data = np.ma.array(out, mask=(out==0))
-
-    def get_data(self) -> Grid:
-        x, y = np.meshgrid(self.lon, self.lat)
-        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, 0, 0, x, y)
-        return grid

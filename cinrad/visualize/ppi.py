@@ -13,7 +13,7 @@ from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                         change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
-from cinrad.io.pup import StormTrackInfo
+from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
 from cinrad._element import *
 

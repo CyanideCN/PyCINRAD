@@ -4,7 +4,9 @@
 import abc
 import os
 import pickle
-from typing import Optional
+from typing import Optional, Any
+import bz2
+import gzip
 
 import numpy as np
 
@@ -21,6 +23,18 @@ def _get_radar_info(code:Optional[str]) -> tuple:
         return radarinfo[code]
     except KeyError:
         return ('None', 0, 0, '', 0)
+
+def prepare_file(file:Any) -> Any:
+    if hasattr(file, 'read'):
+        return file
+    f = open(file, 'rb')
+    magic = f.read(3)
+    f.close()
+    if magic.startswith(b'\x1f\x8b'):
+        return gzip.GzipFile(file, 'rb')
+    if magic.startswith(b'BZh'):
+        return bz2.BZ2File(file, 'rb')
+    return open(file, 'rb')
 
 class BaseRadar(abc.ABC):
     r'''
