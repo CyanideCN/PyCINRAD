@@ -9,8 +9,8 @@ from typing import Union, Optional, List, Any, Generator
 
 import numpy as np
 
-from cinrad.constants import deg2rad, con, con2
-from cinrad.datastruct import Radial, Grid, Slice_
+from cinrad.constants import deg2rad, con
+from cinrad.datastruct import Radial, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io.base import BaseRadar, prepare_file
