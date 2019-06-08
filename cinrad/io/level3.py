@@ -12,7 +12,7 @@ from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
 from cinrad.io.base import BaseRadar, prepare_file
 from cinrad.io._dtype import *
-from cinrad.datastruct import Radial, Grid, Slice_
+from cinrad.datastruct import Radial, Grid
 from cinrad.error import RadarDecodeError
 
 def xy2polar(x:Boardcast_T, y:Boardcast_T) -> tuple:
