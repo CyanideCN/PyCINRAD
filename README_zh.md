@@ -59,11 +59,6 @@ f.get_raw(tilt, drange, dtype)
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
 `get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。
 
-#### 将数据保存为NetCDF格式
-```python
-f.to_nc(path_to_nc_file)
-```
-
 **关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`**
 
 #### 读取PUP数据和SWAN数据
@@ -86,6 +81,8 @@ data = f.get_data()
 `composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
 
 计算ET和VIL时，考虑到速度问题，模块提供由cython转换而来的python扩展，可以大大提升速度。如果要使用此扩展，请安装cython以及C编译器，并重新安装此模块。
+
+注：对于当反射率很强时，得到的VIL值可能会很大，这是因为该计算函数没有对强回波进行滤除，程序本身是没有问题的。
 
 ### cinrad.easycalc
 
@@ -153,7 +150,7 @@ fig('D:\\')
 ```
 
 如果读取了其他雷达的数据，转换成`cinrad.datastruct.Radial`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
-传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png	`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
+传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
 （Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
 
 #### 自定义绘图
