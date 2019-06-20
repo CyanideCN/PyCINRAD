@@ -54,11 +54,6 @@ f.get_raw(tilt, drange, dtype)
 
 The `get_raw` method returns radar records without other geographic information.
 
-#### Saving data in NetCDF format
-```python
-f.to_nc(path_to_nc_file)
-```
-
 #### Decode PUP data and SWAN data
 
 `cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI. (Only radial data are supported.) 

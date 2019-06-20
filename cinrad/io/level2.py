@@ -25,6 +25,17 @@ utc_offset = datetime.timedelta(hours=8)
 def merge_bytes(byte_list:List[bytes]) -> bytes:
     return b''.join(byte_list)
 
+def vcp(el_num:int) -> str:
+    if el_num == 5:
+        task_name = 'VCP31'
+    elif el_num == 9:
+        task_name = 'VCP21'
+    elif el_num == 14:
+        task_name = 'VCP11'
+    else:
+        task_name = 'Unknown'
+    return task_name
+
 def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tuple:
     r'''Detect radar type from records in file'''
     # Attempt to find information in file, which has higher
@@ -190,6 +201,8 @@ class CinradReader(BaseRadar):
         param = np.frombuffer(f.read(660), CC_param)
         stop_angle = np.where(param['usAngle'] < param['usAngle'][0])[0][0]
         self.el = param['usAngle'][:stop_angle] / 100
+        self.nyquist_v = param['usMaxV'][:stop_angle] / 100
+        self.task_name = vcp(len(self.el))
         f.seek(1024)
         data = np.frombuffer(f.read(), CC_data)
         r = np.ma.array(data['Z'], mask=(data['Z'] == -0x8000)) / 10
@@ -210,12 +223,7 @@ class CinradReader(BaseRadar):
     def _CD_handler(self, f:Any):
         header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
         el_num = header['obs']['stype'][0] - 100 # VOL
-        if el_num == 5:
-            self.task_name = 'VCP31'
-        elif el_num == 9:
-            self.task_name = 'VCP21'
-        elif el_num == 14:
-            self.task_name = 'VCP11'
+        self.task_name = vcp(el_num)
         self.scantime = datetime.datetime(header['obs']['syear'][0], header['obs']['smonth'][0], header['obs']['sday'][0],
                                           header['obs']['shour'][0], header['obs']['sminute'][0],
                                           header['obs']['ssecond'][0]) - utc_offset
