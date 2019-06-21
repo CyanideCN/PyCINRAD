@@ -236,48 +236,38 @@ class VCS:
             raise RadarCalculationError('Invalid input')
         return self._get_section(stp, enp, spacing)
 
-class RadarMosaic(object):
-    r'''Untested'''
-    def __init__(self, data):
-        self.data_list = list()
-        self.add_data(data)
+class GridMapper(object):
+    def __init__(self, fields, max_dist=0.1):
+        self.lon_ravel = np.hstack([i.lon.ravel() for i in fields])
+        self.lat_ravel = np.hstack([i.lat.ravel() for i in fields])
+        self.data_ravel = np.ma.hstack([i.data.ravel() for i in fields])
+        self.dist_ravel = np.hstack([np.broadcast_to(i.dist, i.lon.shape).ravel() for i in fields])
+        self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
+        self.md = max_dist
 
-    def _check_time(self):
-        d_list = [_nearest_ten_minute(i.scantime) for i in self.data_list]
-        d_list_stamp = [time.mktime(i.timetuple()) for i in d_list]
-        if np.average(d_list_stamp) != d_list_stamp[0]:
-            raise RadarCalculationError('Input radar data have inconsistent time')
+    def _process_grid(self, x_step, y_step):
+        x_lower = np.round_(self.lon_ravel.min(), 2)
+        x_upper = np.round_(self.lon_ravel.max(), 2)
+        y_lower = np.round_(self.lat_ravel.min(), 2)
+        y_upper = np.round_(self.lat_ravel.max(), 2)
+        x_grid = np.arange(x_lower, x_upper + x_step, x_step)
+        y_grid = np.arange(y_lower, y_upper + x_step, x_step)
+        return np.meshgrid(x_grid, y_grid)
 
-    def add_data(self, data):
-        if isinstance(data, Radial):
-            self.data_list.append(data)
-        elif isinstance(data, (list, tuple)):
-            for i in data:
-                self.data_list.append(i)
-        self._check_time()
+    def _map_points(self, x, y):
+        _MAX_RETURN = 5
+        _fill_value = -1e5
+        xdim, ydim = x.shape
+        _, idx = self.tree.query(np.dstack((x.ravel(), y.ravel()))[0], distance_upper_bound=self.md, k=_MAX_RETURN)
+        idx_all = idx.ravel()
+        data_indexing = np.append(self.data_ravel, _fill_value)
+        dist_indexing = np.append(self.dist_ravel, 0)
+        target_rad = np.ma.masked_equal(data_indexing[idx_all], _fill_value)
+        weight = dist_indexing[idx_all]
+        inp = target_rad.reshape(xdim, ydim, _MAX_RETURN)
+        wgt = target_rad.reshape(xdim, ydim, _MAX_RETURN)
+        return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def gen_longitude(self, extent=None, points=1000):
-        if extent:
-            return np.linspace(extent[0], extent[1], points)
-        else:
-            left_coor = np.min([np.min(i.lon) for i in self.data_list])# - 0.5
-            right_coor = np.max([np.max(i.lon) for i in self.data_list])# + 0.5
-            return np.linspace(left_coor, right_coor, points)
-
-    def gen_latitude(self, extent=None, points=1000):
-        if extent:
-            return np.linspace(extent[0], extent[1], points)
-        else:
-            bottom_coor = np.min([np.min(i.lat) for i in self.data_list])# - 0.5
-            top_coor = np.max([np.max(i.lat) for i in self.data_list])# + 0.5
-            return np.linspace(bottom_coor, top_coor, points)
-
-    def merge(self):
-        lon = self.gen_longitude()
-        lat = self.gen_latitude()
-        data_tmp = list()
-        for i in self.data_list:
-            data, x, y = grid_2d(i.data, i.lon, i.lat, x_out=lon, y_out=lat)
-            data_tmp.append(np.ma.array(data, mask=(data == 0)))
-        out_data = np.ma.average(data_tmp, axis=0)
-        return x, y, out_data
+    def __call__(self, x_step, y_step):
+        x, y = self._process_grid(x_step, y_step)
+        return x, y, self._map_points(x, y)
