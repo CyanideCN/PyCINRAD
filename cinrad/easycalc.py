@@ -7,6 +7,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 from xarray import DataArray
+from pykdtree.kdtree import KDTree
 
 from cinrad.utils import *
 from cinrad.datastruct import Radial, Grid, Slice_
@@ -265,7 +266,7 @@ class GridMapper(object):
         target_rad = np.ma.masked_equal(data_indexing[idx_all], _fill_value)
         weight = dist_indexing[idx_all]
         inp = target_rad.reshape(xdim, ydim, _MAX_RETURN)
-        wgt = target_rad.reshape(xdim, ydim, _MAX_RETURN)
+        wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
     def __call__(self, x_step, y_step):
