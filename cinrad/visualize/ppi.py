@@ -10,7 +10,7 @@ from typing import Union, Optional, Any, List
 import numpy as np
 
 from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
-                                        change_cbar_text, draw_highlight_area, set_geoaxes)
+                                    change_cbar_text, draw_highlight_area, set_geoaxes)
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
@@ -240,6 +240,7 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
+        from cinrad.constants import MODULE_DIR, plot_kw
         with open(os.path.join(MODULE_DIR, 'data', 'chinaCity.json'), encoding='utf-8') as j:
             js = json.load(j)
         name = np.concatenate([[j['name'] for j in i['children']] for i in js])

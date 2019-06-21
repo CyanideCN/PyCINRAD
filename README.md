@@ -6,6 +6,8 @@ A python package which can read CINRAD radar data, perform calculations and visu
 
 [中文说明](https://github.com/CyanideCN/PyCINRAD/blob/master/README_zh.md)
 
+**`example` folder contains detailed examples!**
+
 ## Installation
 
 ```

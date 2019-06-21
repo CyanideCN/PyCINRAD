@@ -58,8 +58,8 @@ class BaseRadar(abc.ABC):
     def get_nscans(self) -> int:
         return len(self.el)
 
-    def avaliable_product(self, tilt:int) -> list:
-        r'''Get all avaliable products in given tilt'''
+    def available_product(self, tilt:int) -> list:
+        r'''Get all available products in given tilt'''
         return list(self.data[tilt].keys())
 
     @staticmethod

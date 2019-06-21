@@ -430,7 +430,7 @@ class StandardData(BaseRadar):
             self.stationlon = self.geo['lon'][0]
             self.radarheight = self.geo['height'][0]
             self.name = self.code
-        self.angleindex_r = self.avaliable_tilt('REF') # API consistency
+        self.angleindex_r = self.available_tilt('REF') # API consistency
         del self.geo
 
     def _parse(self):
@@ -572,8 +572,8 @@ class StandardData(BaseRadar):
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def avaliable_tilt(self, product:str) -> List[int]:
-        r'''Get all avaliable tilts for given product'''
+    def available_tilt(self, product:str) -> List[int]:
+        r'''Get all available tilts for given product'''
         tilt = list()
         for i in list(self.data.keys()):
             if product in self.data[i].keys():
@@ -581,7 +581,7 @@ class StandardData(BaseRadar):
         return tilt
 
     def iter_tilt(self, drange:Number_T, dtype:str) -> Generator:
-        for i in self.avaliable_tilt(dtype):
+        for i in self.available_tilt(dtype):
             yield self.get_data(i, drange, dtype)
 
 class NexradL2Data:

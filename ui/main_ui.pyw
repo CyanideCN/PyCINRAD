@@ -71,7 +71,7 @@ class RadarUI(Ui_MainWindow):
         info = '站名:{}\n扫描时间:{}'
         self.basic_info_string = info.format(self.cinrad.name, self.cinrad.scantime.strftime('%Y-%m-%d %H:%M:%SZ'))
         self.label_3.setText(self.basic_info_string)
-        # Extract avaliable tilts and display in menu
+        # Extract available tilts and display in menu
         self.comboBox.addItems(['仰角{}-{:.2f}°'.format(i[0], i[1]) for i in enumerate(self.cinrad.el)])
 
     def _flush(self):
@@ -88,7 +88,7 @@ class RadarUI(Ui_MainWindow):
         for i in self.button_table.values():
             i.setEnabled(False)
         if hasattr(self, 'cinrad'):
-            ap = self.cinrad.avaliable_product(self.tilt)
+            ap = self.cinrad.available_product(self.tilt)
             av = self.button_table.keys()
             for p in ap:
                 if p in av:
