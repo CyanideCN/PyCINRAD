@@ -14,8 +14,8 @@ from cinrad._typing import Array_T
 
 def highlight_area(area:Union[Array_T, str], linecolor:str='red', **kwargs) -> List[Line2D]:
     r'''Return list of Line2D object for given area name'''
-    fpath = os.path.join(MODULE_DIR, 'shapefile', 'City')
-    shp = shapefile.Reader(fpath)
+    fpath = os.path.join(MODULE_DIR, 'data', 'shapefile', 'City')
+    shp = shapefile.Reader(fpath, encoding='gbk')
     rec = shp.shapeRecords()
     lines = list()
     if isinstance(area, str):
@@ -23,7 +23,7 @@ def highlight_area(area:Union[Array_T, str], linecolor:str='red', **kwargs) -> L
     for i in area:
         if not isinstance(i, str):
             raise RadarPlotError('Area name should be str')
-        name = np.array([i.record[2].decode('GBK') for i in rec])
+        name = np.array([i.record[2] for i in rec])
         target = np.array(rec)[(name == i).nonzero()[0]]
         for j in target:
             pts = j.shape.points

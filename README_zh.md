@@ -6,6 +6,8 @@ A python package which handles CINRAD radar data reading and plotting.
 
 读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
+**`example`文件夹里有详细的使用示例！**
+
 ## 安装
 
 ### 安装要求
@@ -58,8 +60,6 @@ f.get_raw(tilt, drange, dtype)
 ```
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
 `get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。
-
-**关于最新的标准数据格式请参考`example`里的`Read standard data.ipynb`**
 
 #### 读取PUP数据和SWAN数据
 
