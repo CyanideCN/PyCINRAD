@@ -239,6 +239,23 @@ class VCS:
 
 class GridMapper(object):
     def __init__(self, fields, max_dist=0.1):
+        # Process data type
+        if len(set([i.dtype for i in fields])) > 1:
+            raise RadarCalculationError('All input data should have same data type')
+        self.dtype = fields[0].dtype
+        # Process time
+        t_arr = np.array([time.mktime(i.scantime.timetuple()) for i in fields])
+        if (t_arr.max() - t_arr.min()) / 60 > 10:
+            raise RadarCalculationError('Time difference of input data should not exceed 10 minutes')
+        mean_time = t_arr.mean()
+        mean_dtime = datetime.datetime(*time.localtime(int(mean_time))[:6])
+        time_increment = 10
+        time_rest = mean_dtime.minute % time_increment
+        if time_rest > time_increment / 2:
+            mean_dtime += datetime.timedelta(minutes=(time_increment - time_rest))
+        else:
+            mean_dtime -= datetime.timedelta(minutes=time_rest)
+        self.scan_time = mean_dtime
         self.lon_ravel = np.hstack([i.lon.ravel() for i in fields])
         self.lat_ravel = np.hstack([i.lat.ravel() for i in fields])
         self.data_ravel = np.ma.hstack([i.data.ravel() for i in fields])
@@ -257,18 +274,20 @@ class GridMapper(object):
 
     def _map_points(self, x, y):
         _MAX_RETURN = 5
-        _fill_value = -1e5
+        _FILL_VALUE = -1e5
         xdim, ydim = x.shape
         _, idx = self.tree.query(np.dstack((x.ravel(), y.ravel()))[0], distance_upper_bound=self.md, k=_MAX_RETURN)
         idx_all = idx.ravel()
-        data_indexing = np.append(self.data_ravel, _fill_value)
+        data_indexing = np.append(self.data_ravel, _FILL_VALUE)
         dist_indexing = np.append(self.dist_ravel, 0)
-        target_rad = np.ma.masked_equal(data_indexing[idx_all], _fill_value)
+        target_rad = np.ma.masked_equal(data_indexing[idx_all], _FILL_VALUE)
         weight = dist_indexing[idx_all]
         inp = target_rad.reshape(xdim, ydim, _MAX_RETURN)
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def __call__(self, x_step, y_step):
-        x, y = self._process_grid(x_step, y_step)
-        return x, y, self._map_points(x, y)
+    def __call__(self, step):
+        x, y = self._process_grid(step, step)
+        grid = self._map_points(x, y)
+        grid = np.ma.masked_outside(grid, 0.1, 100)
+        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, 0, 0, x, y)
