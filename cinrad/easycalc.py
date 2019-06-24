@@ -7,6 +7,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 from xarray import DataArray
+from pykdtree.kdtree import KDTree
 
 from cinrad.utils import *
 from cinrad.datastruct import Radial, Grid, Slice_
@@ -236,48 +237,57 @@ class VCS:
             raise RadarCalculationError('Invalid input')
         return self._get_section(stp, enp, spacing)
 
-class RadarMosaic(object):
-    r'''Untested'''
-    def __init__(self, data):
-        self.data_list = list()
-        self.add_data(data)
-
-    def _check_time(self):
-        d_list = [_nearest_ten_minute(i.scantime) for i in self.data_list]
-        d_list_stamp = [time.mktime(i.timetuple()) for i in d_list]
-        if np.average(d_list_stamp) != d_list_stamp[0]:
-            raise RadarCalculationError('Input radar data have inconsistent time')
-
-    def add_data(self, data):
-        if isinstance(data, Radial):
-            self.data_list.append(data)
-        elif isinstance(data, (list, tuple)):
-            for i in data:
-                self.data_list.append(i)
-        self._check_time()
-
-    def gen_longitude(self, extent=None, points=1000):
-        if extent:
-            return np.linspace(extent[0], extent[1], points)
+class GridMapper(object):
+    def __init__(self, fields:Volume_T, max_dist:Number_T=0.1):
+        # Process data type
+        if len(set([i.dtype for i in fields])) > 1:
+            raise RadarCalculationError('All input data should have same data type')
+        self.dtype = fields[0].dtype
+        # Process time
+        t_arr = np.array([time.mktime(i.scantime.timetuple()) for i in fields])
+        if (t_arr.max() - t_arr.min()) / 60 > 10:
+            raise RadarCalculationError('Time difference of input data should not exceed 10 minutes')
+        mean_time = t_arr.mean()
+        mean_dtime = datetime.datetime(*time.localtime(int(mean_time))[:6])
+        time_increment = 10
+        time_rest = mean_dtime.minute % time_increment
+        if time_rest > time_increment / 2:
+            mean_dtime += datetime.timedelta(minutes=(time_increment - time_rest))
         else:
-            left_coor = np.min([np.min(i.lon) for i in self.data_list])# - 0.5
-            right_coor = np.max([np.max(i.lon) for i in self.data_list])# + 0.5
-            return np.linspace(left_coor, right_coor, points)
+            mean_dtime -= datetime.timedelta(minutes=time_rest)
+        self.scan_time = mean_dtime
+        self.lon_ravel = np.hstack([i.lon.ravel() for i in fields])
+        self.lat_ravel = np.hstack([i.lat.ravel() for i in fields])
+        self.data_ravel = np.ma.hstack([i.data.ravel() for i in fields])
+        self.dist_ravel = np.hstack([np.broadcast_to(i.dist, i.lon.shape).ravel() for i in fields])
+        self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
+        self.md = max_dist
 
-    def gen_latitude(self, extent=None, points=1000):
-        if extent:
-            return np.linspace(extent[0], extent[1], points)
-        else:
-            bottom_coor = np.min([np.min(i.lat) for i in self.data_list])# - 0.5
-            top_coor = np.max([np.max(i.lat) for i in self.data_list])# + 0.5
-            return np.linspace(bottom_coor, top_coor, points)
+    def _process_grid(self, x_step:Number_T, y_step:Number_T) -> Tuple[np.ndarray]:
+        x_lower = np.round_(self.lon_ravel.min(), 2)
+        x_upper = np.round_(self.lon_ravel.max(), 2)
+        y_lower = np.round_(self.lat_ravel.min(), 2)
+        y_upper = np.round_(self.lat_ravel.max(), 2)
+        x_grid = np.arange(x_lower, x_upper + x_step, x_step)
+        y_grid = np.arange(y_lower, y_upper + x_step, x_step)
+        return np.meshgrid(x_grid, y_grid)
 
-    def merge(self):
-        lon = self.gen_longitude()
-        lat = self.gen_latitude()
-        data_tmp = list()
-        for i in self.data_list:
-            data, x, y = grid_2d(i.data, i.lon, i.lat, x_out=lon, y_out=lat)
-            data_tmp.append(np.ma.array(data, mask=(data == 0)))
-        out_data = np.ma.average(data_tmp, axis=0)
-        return x, y, out_data
+    def _map_points(self, x:Number_T, y:Number_T) -> np.ma.MaskedArray:
+        _MAX_RETURN = 5
+        _FILL_VALUE = -1e5
+        xdim, ydim = x.shape
+        _, idx = self.tree.query(np.dstack((x.ravel(), y.ravel()))[0], distance_upper_bound=self.md, k=_MAX_RETURN)
+        idx_all = idx.ravel()
+        data_indexing = np.append(self.data_ravel, _FILL_VALUE)
+        dist_indexing = np.append(self.dist_ravel, 0)
+        target_rad = np.ma.masked_equal(data_indexing[idx_all], _FILL_VALUE)
+        weight = dist_indexing[idx_all]
+        inp = target_rad.reshape(xdim, ydim, _MAX_RETURN)
+        wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
+        return np.ma.average(inp, weights=1 / wgt, axis=2)
+
+    def __call__(self, step:Number_T) -> Grid:
+        x, y = self._process_grid(step, step)
+        grid = self._map_points(x, y)
+        grid = np.ma.masked_outside(grid, 0.1, 100)
+        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, 0, 0, x, y)
