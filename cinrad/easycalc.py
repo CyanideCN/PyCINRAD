@@ -238,7 +238,7 @@ class VCS:
         return self._get_section(stp, enp, spacing)
 
 class GridMapper(object):
-    def __init__(self, fields, max_dist=0.1):
+    def __init__(self, fields:Volume_T, max_dist:Number_T=0.1):
         # Process data type
         if len(set([i.dtype for i in fields])) > 1:
             raise RadarCalculationError('All input data should have same data type')
@@ -263,7 +263,7 @@ class GridMapper(object):
         self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
         self.md = max_dist
 
-    def _process_grid(self, x_step, y_step):
+    def _process_grid(self, x_step:Number_T, y_step:Number_T) -> Tuple[np.ndarray]:
         x_lower = np.round_(self.lon_ravel.min(), 2)
         x_upper = np.round_(self.lon_ravel.max(), 2)
         y_lower = np.round_(self.lat_ravel.min(), 2)
@@ -272,7 +272,7 @@ class GridMapper(object):
         y_grid = np.arange(y_lower, y_upper + x_step, x_step)
         return np.meshgrid(x_grid, y_grid)
 
-    def _map_points(self, x, y):
+    def _map_points(self, x:Number_T, y:Number_T) -> np.ma.MaskedArray:
         _MAX_RETURN = 5
         _FILL_VALUE = -1e5
         xdim, ydim = x.shape
@@ -286,7 +286,7 @@ class GridMapper(object):
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def __call__(self, step):
+    def __call__(self, step:Number_T) -> Grid:
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
