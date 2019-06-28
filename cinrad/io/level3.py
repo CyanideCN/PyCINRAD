@@ -37,6 +37,7 @@ class PUP(BaseRadar):
             self.rng = np.linspace(0, f.max_range, data.shape[-1] + 1)
         else:
             # TODO: Support grid type data
+            raise NotImplementedError('Grid-type data is not supported')
             xdim, ydim = data.shape
             x = np.linspace(xdim * f.ij_to_km * -1, xdim * f.ij_to_km, xdim) / 111 + f.lon
             y = np.linspace(ydim * f.ij_to_km, ydim * f.ij_to_km * -1, ydim) / 111 + f.lat
@@ -58,13 +59,13 @@ class PUP(BaseRadar):
         self._update_radar_info()
 
     def get_data(self) -> Union[Grid, Radial]:
-        lon, lat = self.projection()
         if self.radial_flag:
+            lon, lat = self.projection()
             return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
                           self.dtype, self.stationlon, self.stationlat, lon, lat)
         else:
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
-                        self.dtype, self.lon, self.lat, lon, lat)
+                        self.dtype, self.lon, self.lat)
 
     @staticmethod
     def _is_radial(code:int) -> bool:
@@ -121,7 +122,7 @@ class SWAN(object):
 
     def get_data(self) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
-        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, 0, 0, x, y)
+        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
         return grid
 
 class StormTrackInfo(object):

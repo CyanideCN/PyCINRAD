@@ -134,7 +134,7 @@ class PPI(object):
             # Make VCP21 the default scanning strategy
             task = self.data.scan_info.pop('task', 'VCP21')
             text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, task, self.data.elev)
-            ax2.text(0, 2.36, ' ' * 32, **plot_kw) # Ensure consistent figure size
+            ax2.text(0, 2.36, ' ' * 35) # Ensure consistent figure size
             ax2.text(0, 2.36, prodname[dtype], **plot_kw)
             ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), **plot_kw)
             if self.data.dtype == 'VEL':

@@ -33,10 +33,6 @@ def _extract(r_list:Volume_T) -> tuple:
     data = np.concatenate(r_data).reshape(len(r_list), r_data[0].shape[0], r_data[0].shape[1])
     return data, d, a, np.array(elev)
 
-def _nearest_ten_minute(date:datetime.datetime) -> datetime.datetime:
-    minute = (date.minute // 10) * 10
-    return datetime.datetime(date.year, date.month, date.day, date.hour, minute)
-
 def is_uniform(radial_list:Volume_T) -> bool:
     r'''Check if all input radials have same data type'''
     return len(set([i.dtype for i in radial_list])) == 1
@@ -61,7 +57,7 @@ def quick_cr(r_list:Volume_T) -> Grid:
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.scantime,
-                  'CR', i.stp['lon'], i.stp['lat'], x, y, **i.scan_info)
+                  'CR', x, y, **i.scan_info)
     return l2_obj
 
 def quick_et(r_list:Volume_T) -> Radial:
@@ -290,4 +286,4 @@ class GridMapper(object):
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, 0, 0, x, y)
+        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, x, y)

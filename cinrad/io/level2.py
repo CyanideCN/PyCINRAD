@@ -174,11 +174,11 @@ class CinradReader(BaseRadar):
                           ('res', 'u1', size - 128 - rnum - vnum * 2)]
             da = np.frombuffer(f.read(bidx * size), dtype=np.dtype(temp_dtype))
             out_data[idx] = dict()
-            r = (np.ma.array(da['ref'], mask=(da['ref'] == 0)) - 2) / 2 - 32
+            r = (np.ma.masked_equal(da['ref'], 0) - 2) / 2 - 32
             r[r == 95.5] = 0
             out_data[idx]['REF'] = r
-            v = np.ma.array(da['vel'], mask=(da['vel'] < 2))
-            sw = np.ma.array(da['sw'], mask=(da['sw'] < 2))
+            v = np.ma.masked_less(da['vel'], 2)
+            sw = np.ma.masked_less(da['sw'], 2)
             if dv == 2:
                 out_data[idx]['VEL'] = (v - 2) / 2 - 63.5
                 out_data[idx]['SW'] = (sw - 2) / 2 - 63.5
@@ -186,7 +186,7 @@ class CinradReader(BaseRadar):
                 out_data[idx]['VEL'] = v - 2 - 127
                 out_data[idx]['SW'] = sw - 2 - 127
             out_data[idx]['azimuth'] = self.azimuth[b[idx]:b[idx + 1]]
-            out_data[idx]['RF'] = np.ma.array(da['vel'], mask=(da['vel'] != 1))
+            out_data[idx]['RF'] = np.ma.masked_not_equal(da['vel'], 1)
         angleindex = np.arange(0, data['el_num'][-1], 1)
         self.angleindex_r = np.delete(angleindex, [1, 3])
         self.angleindex_v = np.delete(angleindex, [0, 2])
@@ -205,9 +205,9 @@ class CinradReader(BaseRadar):
         self.task_name = vcp(len(self.el))
         f.seek(1024)
         data = np.frombuffer(f.read(), CC_data)
-        r = np.ma.array(data['Z'], mask=(data['Z'] == -0x8000)) / 10
-        v = np.ma.array(data['V'], mask=(data['V'] == -0x8000)) / 10
-        w = np.ma.array(data['W'], mask=(data['W'] == -0x8000)) / 10
+        r = np.ma.masked_equal(data['Z'], -0x8000) / 10
+        v = np.ma.masked_equal(data['V'], -0x8000) / 10
+        w = np.ma.masked_equal(data['W'], -0x8000) / 10
         self.Rreso = 0.3
         self.Vreso = 0.3
         data = dict()
@@ -233,14 +233,15 @@ class CinradReader(BaseRadar):
         data = dict()
         for el in range(el_num):
             full_scan = np.frombuffer(f.read(360 * CD_DATA.itemsize), CD_DATA)
+            # Avoid uint8 arithmetic overflow
             raw_ref = full_scan['rec']['m_dbz'].astype(int)
             raw_vel = full_scan['rec']['m_vel'].astype(int)
             raw_sw = full_scan['rec']['m_sw'].astype(int)
             data[el] = dict()
-            data[el]['REF'] = (np.ma.array(raw_ref, mask=(raw_ref == 0)) - 64) / 2
-            data[el]['VEL'] = self.nyquist_v[el] * (np.ma.array(raw_vel, mask=(raw_vel == 0)) - 128) / 128
-            data[el]['SW'] = self.nyquist_v[el] * np.ma.array(raw_sw, mask=(raw_sw == 0)) / 256
-            data[el]['RF'] = np.ma.array(raw_vel, mask=(raw_vel != 128))
+            data[el]['REF'] = (np.ma.masked_equal(raw_ref, 0) - 64) / 2
+            data[el]['VEL'] = self.nyquist_v[el] * (np.ma.masked_equal(raw_vel, 0) - 128) / 128
+            data[el]['SW'] = self.nyquist_v[el] * np.ma.masked_equal(raw_sw, 0) / 256
+            data[el]['RF'] = np.ma.masked_not_equal(raw_vel, 128)
         self.data = data
         self.angleindex_r = self.angleindex_v = list(range(el_num))
 
@@ -424,11 +425,13 @@ class StandardData(BaseRadar):
         self._parse()
         self.f.close()
         self._update_radar_info()
+        # In standard data, station information stored in file
+        # has higher priority
+        self.stationlat = self.geo['lat'][0]
+        self.stationlon = self.geo['lon'][0]
+        self.radarheight = self.geo['height'][0]
         if self.name == 'None':
             # Last resort to find info
-            self.stationlat = self.geo['lat'][0]
-            self.stationlon = self.geo['lon'][0]
-            self.radarheight = self.geo['height'][0]
             self.name = self.code
         self.angleindex_r = self.available_tilt('REF') # API consistency
         del self.geo
@@ -511,13 +514,13 @@ class StandardData(BaseRadar):
             raise RadarDecodeError('Invalid product name')
         if raw.size == 0:
             warnings.warn('Empty data', RuntimeWarning)
-        data = np.ma.array(raw, mask=(raw <= 5))
+        data = np.ma.masked_less_equal(raw, 5)
         reso = self.scan_config[tilt].dop_reso / 1000
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
         if dtype in ['VEL', 'SW']:
-            rf = np.ma.array(cut.data, mask=(cut.data != 1))
+            rf = np.ma.masked_not_equal(cut.data, 1)
             rf = np.ma.hstack([rf, append])
         cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
@@ -584,7 +587,7 @@ class StandardData(BaseRadar):
         for i in self.available_tilt(dtype):
             yield self.get_data(i, drange, dtype)
 
-class NexradL2Data:
+class NexradL2Data(object):
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
     '''
@@ -623,7 +626,7 @@ class NexradL2Data:
         else:
             raise RadarDecodeError('Unsupported data type {}'.format(self.dtype.decode()))
         cut = raw[:, :int(drange / self.reso)]
-        masked = np.ma.array(cut, mask=np.isnan(cut))
+        masked = np.ma.masked_invalid(cut)
         self.tilt = tilt
         self.drange = drange
         self.elev = self.el[tilt]
