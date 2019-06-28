@@ -164,6 +164,9 @@ class PPI(object):
     def plot_range_rings(self, _range:Union[int, float, list], color:str='white', linewidth:Number_T=0.5,
                          **kwargs):
         r'''Plot range rings on PPI plot.'''
+        if isinstance(self.data, Grid):
+            warnings.warn('Plotting range rings can only work on cinrad.datastruct.Radial object', RuntimeWarning)
+            return
         if isinstance(_range, (int, float)):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
