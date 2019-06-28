@@ -44,11 +44,8 @@ vil_cmap = _cmap('VIL')['cmap']
 vil_cbar = _cmap('VIL_reverse')['cmap']
 rf_cmap = cmx.ListedColormap('#660066', '#FFFFFF')
 
-if os.path.exists('C:\\WINDOWS\\Fonts\\msyh.ttc'):
-    font = FontProperties(fname='C:\\WINDOWS\\Fonts\\msyh.ttc')
-    plot_kw = {'fontproperties':font}
-else:
-    plot_kw = {}
+font = FontProperties(fname=os.path.join(MODULE_DIR, 'data', 'font', 'NotoSansHans-Regular.otf'))
+plot_kw = {'fontproperties':font}
 
 norm1 = cmx.Normalize(0, 75)
 norm2 = cmx.Normalize(-35, 27)

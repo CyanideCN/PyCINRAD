@@ -1,4 +1,3 @@
-
 cdef extern from "unwrap_2d_ljmu.c":
     void unwrap2D(double* wrapped_image,
                   double* unwrapped_image,
