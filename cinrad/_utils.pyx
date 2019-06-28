@@ -55,7 +55,7 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
                 h_lower = height_single(dist / 1000, elev[pos_s])
                 h_higher = height_single(dist / 1000, elev[pos_e])
                 VIL[i][j] = m1 / (h_higher - h_lower)
-    return VIL
+    return np.asarray(VIL)
 
 @cython.boundscheck(False)
 def echo_top(double[:, :, :] ref, double[:, :] distance, double[:] elev, double radarheight, threshold=18.):
@@ -95,4 +95,4 @@ def echo_top(double[:, :, :] ref, double[:, :] distance, double[:] elev, double 
                     w1 = (z1 - threshold) / (z1 - z2)
                     w2 = 1 - w1
                     et[i][j] = w1 * h2 + w2 * h1
-    return et
+    return np.asarray(et)
