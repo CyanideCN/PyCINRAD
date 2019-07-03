@@ -268,7 +268,7 @@ class GridMapper(object):
         y_grid = np.arange(y_lower, y_upper + x_step, x_step)
         return np.meshgrid(x_grid, y_grid)
 
-    def _map_points(self, x:Number_T, y:Number_T) -> np.ma.MaskedArray:
+    def _map_points(self, x:np.ndarray, y:np.ndarray) -> np.ma.MaskedArray:
         _MAX_RETURN = 5
         _FILL_VALUE = -1e5
         xdim, ydim = x.shape

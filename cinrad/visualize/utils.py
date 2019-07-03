@@ -3,17 +3,19 @@
 
 import os
 from datetime import datetime
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, List
 
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
+from matplotlib.lines import Line2D
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 import shapefile
 
 from cinrad.constants import MODULE_DIR
-from cinrad.visualize.shapepatch import highlight_area
 from cinrad._typing import Array_T, Number_T
+from cinrad.error import RadarPlotError
 
 class ShpReader(shapereader.BasicReader):
     r'''Customized reader to deal with encoding issue'''
@@ -62,7 +64,9 @@ def save(fpath:str):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
     plt.close('all')
 
-def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[Array_T]=None):
+def add_shp(ax:Any, proj:ccrs.Projection, coastline:bool=False, style:str='black',
+            extent:Optional[Array_T]=None):
+    shp_crs = ccrs.PlateCarree()
     root = os.path.join(MODULE_DIR, 'data', 'shapefile')
     flist = [os.path.join(root, i) for i in ['County', 'City', 'Province']]
     shps = [ShpReader(i).geometries() for i in flist]
@@ -70,15 +74,35 @@ def add_shp(ax:Any, coastline:bool=False, style:str='black', extent:Optional[Arr
         line_colors = ['grey', 'lightgrey', 'white']
     elif style == 'white':
         line_colors = ['lightgrey', 'grey', 'black']
-    ax.add_geometries(shps[0], ccrs.PlateCarree(), edgecolor=line_colors[0], facecolor='None', zorder=3, linewidth=0.5)
-    ax.add_geometries(shps[1], ccrs.PlateCarree(), edgecolor=line_colors[1], facecolor='None', zorder=3, linewidth=0.7)
-    ax.add_geometries(shps[2], ccrs.PlateCarree(), edgecolor=line_colors[2], facecolor='None', zorder=3, linewidth=1)
+    ax.add_geometries(shps[0], shp_crs, edgecolor=line_colors[0], facecolor='None', zorder=3, linewidth=0.5)
+    ax.add_geometries(shps[1], shp_crs, edgecolor=line_colors[1], facecolor='None', zorder=3, linewidth=0.7)
+    ax.add_geometries(shps[2], shp_crs, edgecolor=line_colors[2], facecolor='None', zorder=3, linewidth=1)
     if coastline:
         ax.coastlines(resolution='10m', color=line_colors[2], zorder=3, linewidth=1)
 
 def change_cbar_text(cbar:ColorbarBase, tick:list, text:list):
     cbar.set_ticks(tick)
     cbar.set_ticklabels(text)
+
+def highlight_area(area:Union[Array_T, str], linecolor:str='red', **kwargs) -> List[Line2D]:
+    r'''Return list of Line2D object for given area name'''
+    fpath = os.path.join(MODULE_DIR, 'data', 'shapefile', 'City')
+    shp = shapefile.Reader(fpath, encoding='gbk')
+    rec = shp.shapeRecords()
+    lines = list()
+    if isinstance(area, str):
+        area = [area]
+    for i in area:
+        if not isinstance(i, str):
+            raise RadarPlotError('Area name should be str')
+        name = np.array([i.record[2] for i in rec])
+        target = np.array(rec)[(name == i).nonzero()[0]]
+        for j in target:
+            pts = j.shape.points
+            x = [i[0] for i in pts]
+            y = [i[1] for i in pts]
+            lines.append(Line2D(x, y, color=linecolor))
+    return lines
 
 def draw_highlight_area(area:Union[Array_T, str]):
     lines = highlight_area(area)
@@ -87,9 +111,9 @@ def draw_highlight_area(area:Union[Array_T, str]):
         pat = ax_.add_artist(l)
         pat.set_zorder(4)
 
-def set_geoaxes(fig:Any, extent:Array_T) -> Any:
-    ax = fig.add_axes([0, 0, 0.9, 0.9], projection=ccrs.PlateCarree())
+def set_geoaxes(fig:Any, proj:ccrs.Projection, extent:Array_T) -> Any:
+    ax = fig.add_axes([0, 0, 0.9, 0.9], projection=proj)
     ax.background_patch.set_fill(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
-    ax.set_extent([x_min, x_max, y_min, y_max], ccrs.PlateCarree())
+    ax.set_extent([x_min, x_max, y_min, y_max], crs=ccrs.PlateCarree())
     return ax

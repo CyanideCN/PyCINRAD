@@ -100,6 +100,10 @@ fig = Section(sec)
 fig('D:\\')
 ```
 
+#### Radar mosaic
+
+`cinrad.easycalc.GridMapper` can merge different radar scans into a cartesian grid.
+
 ### cinrad.correct
 
 This submodule provides algorithms to correct raw radar fields.

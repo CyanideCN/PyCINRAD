@@ -8,6 +8,7 @@ import json
 from typing import Union, Optional, Any, List
 
 import numpy as np
+import cartopy.crs as ccrs
 
 from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                     change_cbar_text, draw_highlight_area, set_geoaxes)
@@ -98,10 +99,15 @@ class PPI(object):
     def _plot(self, **kwargs):
         from cinrad.constants import plot_kw
         dtype = self.data.dtype
+        data_crs = ccrs.PlateCarree()
         lon, lat, var = _prepare(self.data, dtype)
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
-        self.geoax = set_geoaxes(self.fig, extent=self.settings['extent'])
+        if isinstance(self.data, Radial):
+            proj = ccrs.AzimuthalEquidistant(central_longitude=self.data.stp['lon'], central_latitude=self.data.stp['lat'])
+        elif isinstance(self.data, Grid):
+            proj = ccrs.PlateCarree()
+        self.geoax = set_geoaxes(self.fig, proj, extent=self.settings['extent'])
         if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             rf = var[1]
             var = var[0]
@@ -109,12 +115,12 @@ class PPI(object):
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, transform=data_crs, **kwargs)
         else:
-            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, **kwargs)
+            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=data_crs, **kwargs)
             if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
-                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], **kwargs)
-        add_shp(self.geoax, coastline=self.settings['coastline'], style=self.settings['style'],
+                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=data_crs, **kwargs)
+        add_shp(self.geoax, proj, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
@@ -189,12 +195,13 @@ class PPI(object):
         x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
         self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
 
-    def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None):
+    def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None, linecolor:Optional[str]=None):
         r'''Plot cross section data below the PPI plot.'''
-        if self.settings['style'] == 'black':
-            linecolor = 'white'
-        elif self.settings['style'] == 'white':
-            linecolor = 'black'
+        if not linecolor:
+            if self.settings['style'] == 'black':
+                linecolor = 'white'
+            elif self.settings['style'] == 'white':
+                linecolor = 'black'
         self.settings['slice'] = data
         ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
         ax2.yaxis.set_ticks_position('right')

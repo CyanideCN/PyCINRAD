@@ -116,6 +116,10 @@ fig = Section(sec)
 fig('D:\\')
 ```
 
+#### 雷达拼图
+
+`cinrad.easycalc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图。
+
 ### cinrad.correct
 
 提供雷达原数据的校正。
