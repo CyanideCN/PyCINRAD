@@ -62,6 +62,6 @@ def get_coordinate(distance:Boardcast_T, azimuth:Boardcast_T,
         deltah = np.sin(azimuth) * distance * np.cos(elev * deg2rad)
     deltalat = deltav / 111
     actuallat = deltalat + centerlat
-    deltalon = deltah / 111
+    deltalon = deltah / (111 * np.cos(actuallat * deg2rad))
     actuallon = deltalon + centerlon
     return actuallon, actuallat
