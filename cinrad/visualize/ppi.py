@@ -12,6 +12,7 @@ import cartopy.crs as ccrs
 
 from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                     change_cbar_text, draw_highlight_area, set_geoaxes)
+from cinrad.projection import get_coordinate
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
@@ -43,6 +44,9 @@ class PPI(object):
         cartopy axes plotting georeferenced data
     fig: matplotlib.figure.Figure
     '''
+
+    data_crs = ccrs.PlateCarree()
+
     def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
                  cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
                  dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
@@ -99,7 +103,6 @@ class PPI(object):
     def _plot(self, **kwargs):
         from cinrad.constants import plot_kw
         dtype = self.data.dtype
-        data_crs = ccrs.PlateCarree()
         lon, lat, var = _prepare(self.data, dtype)
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
@@ -115,11 +118,11 @@ class PPI(object):
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.data.dtype == 'CR':
-            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, transform=data_crs, **kwargs)
+            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
         else:
-            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=data_crs, **kwargs)
+            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
             if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
-                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=data_crs, **kwargs)
+                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=self.data_crs, **kwargs)
         add_shp(self.geoax, proj, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:
@@ -173,27 +176,14 @@ class PPI(object):
         if isinstance(self.data, Grid):
             warnings.warn('Plotting range rings can only work on cinrad.datastruct.Radial object', RuntimeWarning)
             return
+        slon, slat = self.data.stp['lon'], self.data.stp['lat']
         if isinstance(_range, (int, float)):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
         for d in _range:
-            radius = d / 111 # 1 degree = 111 km
-            x, y = np.cos(theta) * radius + self.data.stp['lon'], np.sin(theta) * radius + self.data.stp['lat']
+            x, y = get_coordinate(d, theta, 0, slon, slat, h_offset=False)
             #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
-            self.geoax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
-            # add numbers for circle
-            xText1, yText1 = -1 * radius + self.data.stp['lon'], self.data.stp['lat']
-            xText2, yText2 = radius + self.data.stp['lon'], self.data.stp['lat']
-            self.geoax.text(xText1, yText1,'{}'.format(d), fontsize=8)
-            self.geoax.text(xText2, yText2,'{}'.format(d), fontsize=8)
-        # add lines of 0 and 90 degree
-        lenRadius = np.max(_range)
-        x1, y1 = -1 * lenRadius + self.data.stp['lon'], self.data.stp['lat']
-        x2, y2 = lenRadius + self.data.stp['lon'], self.data.stp['lat']
-        self.geoax.plot([x1, x2], [y1, y2], color=color, linewidth=linewidth, **kwargs)
-        x3, y3 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(0.5 * np.pi) * lenRadius + self.data.stp['lat']
-        x4, y4 = np.cos(0.5 * np.pi) * lenRadius + self.data.stp['lon'], np.sin(1.5 * np.pi) * lenRadius + self.data.stp['lat']
-        self.geoax.plot([x3, x4], [y3, y4], color=color, linewidth=linewidth, **kwargs)
+            self.geoax.plot(x, y, color=color, linewidth=linewidth, transform=self.data_crs, **kwargs)
 
     def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None, linecolor:Optional[str]=None):
         r'''Plot cross section data below the PPI plot.'''
@@ -218,7 +208,8 @@ class PPI(object):
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title('Start: {}N {}E'.format(stp[1], stp[0]) + ' End: {}N {}E'.format(enp[1], enp[0]))
-        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color=linecolor, zorder=5)
+        self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color=linecolor, transform=self.data_crs,
+                        zorder=5)
 
     def storm_track_info(self, filepath:str):
         r'''
@@ -236,16 +227,16 @@ class PPI(object):
                 fcs = sti.track(st, 'forecast')
                 current = sti.current(st)
                 if past:
-                    self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5)
+                    self.geoax.plot(*past, marker='.', color='white', zorder=4, markersize=5, transform=self.data_crs)
                 if fcs:
-                    self.geoax.plot(*fcs, marker='+', color='white', zorder=4, markersize=5)
-                self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey')
+                    self.geoax.plot(*fcs, marker='+', color='white', zorder=4, markersize=5, transform=self.data_crs)
+                self.geoax.scatter(*current, marker='o', s=15, zorder=5, color='lightgrey', transform=self.data_crs)
                 #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
     def gridlines(self, draw_labels:bool=True, linewidth:Number_T=0, **kwargs):
         r'''Draw grid lines on cartopy axes'''
-        liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, **kwargs)
+        liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, transform=self.data_crs, **kwargs)
         liner.xlabels_top = False
         liner.ylabels_right = False
 
@@ -256,8 +247,8 @@ class PPI(object):
         name = np.concatenate([[j['name'] for j in i['children']] for i in js])
         lon = np.concatenate([[j['log'] for j in i['children']] for i in js]).astype(float)
         lat = np.concatenate([[j['lat'] for j in i['children']] for i in js]).astype(float)
-        extent = self.geoax.get_extent()
+        extent = self.settings['extent']
         fraction = (extent[1] - extent[0]) * 0.04
         target_city = (lon > (extent[0] + fraction)) & (lon < (extent[1] - fraction)) & (lat > (extent[2] + fraction)) & (lat < (extent[3] - fraction))
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
-            self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey')
+            self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey', transform=self.data_crs)
