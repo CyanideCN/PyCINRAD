@@ -7,4 +7,4 @@ from . import correct
 
 from .constants import set_font
 
-__version__ = '1.4'
+__version__ = '1.4.1'

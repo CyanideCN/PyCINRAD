@@ -69,7 +69,7 @@ class PUP(BaseRadar):
 
     @staticmethod
     def _is_radial(code:int) -> bool:
-        return code in range(16, 22) or code in range(22, 28) or code in range(28, 31)
+        return code in range(16, 31)
 
     def projection(self) -> tuple:
         return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
