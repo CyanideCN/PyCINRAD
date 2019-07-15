@@ -47,6 +47,8 @@ class PUP(BaseRadar):
         self.stationlon = f.lon
         self.el = f.metadata['el_angle']
         self.scantime = f.metadata['vol_time']
+        # Because metpy interface doesn't provide station codes,
+        # it's necessary to reopen it and read the code.
         o = open(file, 'rb')
         o.seek(12)
         code = np.frombuffer(o.read(2), '>i2')[0]
@@ -61,7 +63,7 @@ class PUP(BaseRadar):
     def get_data(self) -> Union[Grid, Radial]:
         if self.radial_flag:
             lon, lat = self.projection()
-            return Radial(self.data, self.max_range, self.el, 1, self.code, self.name, self.scantime,
+            return Radial(self.data, self.max_range, self.el, self.reso, self.code, self.name, self.scantime,
                           self.dtype, self.stationlon, self.stationlat, lon, lat)
         else:
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
@@ -98,9 +100,12 @@ class SWAN(object):
         data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]
         bittype = self.dtype_conv[dtype]
         data_body = np.frombuffer(f.read(data_size), bittype).astype(int)
+        # Convert data to i4 to avoid overflow in later calculation
         if zdim == 1:
+            # 2D data
             out = data_body.reshape(xdim, ydim)
         else:
+            # 3D data
             out = data_body.reshape(zdim, xdim, ydim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
         # TODO: Recognize correct product name
@@ -118,11 +123,12 @@ class SWAN(object):
         if self.product_name == 'CR':
             self.data = np.ma.array((out - 66) / 2, mask=(out==0))
         else:
+            # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.array(out, mask=(out==0))
 
     def get_data(self) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
-        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, x, y)
+        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, 0, 0, x, y)
         return grid
 
 class StormTrackInfo(object):
@@ -223,7 +229,7 @@ class HailIndex(object):
 
     def get_hail_param(self, storm_id:str) -> dict:
         out = dict(self.info[storm_id])
-        xy = out.pop('current storm position')
+        xy = out.get('current storm position')
         dist, az = xy2polar(*xy)
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         out['position'] = tuple(lonlat)

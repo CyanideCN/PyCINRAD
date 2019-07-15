@@ -52,9 +52,13 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
                 mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
                 VIL[i][j] = m1 + mb + mt
             elif density == True:
-                h_lower = height_single(dist / 1000, elev[pos_s])
-                h_higher = height_single(dist / 1000, elev[pos_e])
-                VIL[i][j] = m1 / (h_higher - h_lower)
+                if pos_s == pos_e:
+                    # If there's only one gate satisfying threshold, assigning VILD as zero
+                    VIL[i][j] = 0
+                else:
+                    h_lower = height_single(dist / 1000, elev[pos_s])
+                    h_higher = height_single(dist / 1000, elev[pos_e])
+                    VIL[i][j] = m1 / (h_higher - h_lower)
     return np.asarray(VIL)
 
 @cython.boundscheck(False)

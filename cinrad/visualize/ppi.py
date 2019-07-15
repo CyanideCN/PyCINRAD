@@ -45,6 +45,8 @@ class PPI(object):
     fig: matplotlib.figure.Figure
     '''
 
+    # The CRS of data is believed to be PlateCarree.
+    # i.e., the coordinates are longitude and latitude.
     data_crs = ccrs.PlateCarree()
 
     def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
@@ -65,6 +67,7 @@ class PPI(object):
 
     def __call__(self, fpath:Optional[str]=None):
         if not fpath:
+            # When the path is not specified, store the picture in home dir.
             fpath = os.path.join(str(Path.home()), 'PyCINRAD')
         else:
             if fpath.upper().endswith('.PNG'):
@@ -106,9 +109,12 @@ class PPI(object):
         lon, lat, var = _prepare(self.data, dtype)
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings['extent'] = [lon.min(), lon.max(), lat.min(), lat.max()]
-        if isinstance(self.data, Radial):
+        # When plot single radar, azimuthal equidistant projection is used.
+        # The data which has code like 'Z9XXX' is considered as single radar.
+        code = self.data.code
+        if isinstance(self.data, Radial) or (code.startswith('Z') and code[1:].isnumeric()):
             proj = ccrs.AzimuthalEquidistant(central_longitude=self.data.stp['lon'], central_latitude=self.data.stp['lat'])
-        elif isinstance(self.data, Grid):
+        else:
             proj = ccrs.PlateCarree()
         self.geoax = set_geoaxes(self.fig, proj, extent=self.settings['extent'])
         if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
@@ -117,12 +123,9 @@ class PPI(object):
         popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
-        if self.data.dtype == 'CR':
-            self.geoax.contourf(lon, lat, var, 128, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
-        else:
-            self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
-            if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
-                self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=self.data_crs, **kwargs)
+        self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
+        if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
+            self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=self.data_crs, **kwargs)
         add_shp(self.geoax, proj, coastline=self.settings['coastline'], style=self.settings['style'],
                 extent=self.settings['extent'])
         if self.settings['highlight']:
@@ -141,7 +144,7 @@ class PPI(object):
         ax2.xaxis.set_visible(False)
         if self.settings['plot_labels']:
             # Make VCP21 the default scanning strategy
-            task = self.data.scan_info.pop('task', 'VCP21')
+            task = self.data.scan_info.get('task', 'VCP21')
             text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, task, self.data.elev)
             ax2.text(0, 2.36, ' ' * 35) # Ensure consistent figure size
             ax2.text(0, 2.36, prodname[dtype], **plot_kw)

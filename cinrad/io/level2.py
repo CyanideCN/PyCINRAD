@@ -26,6 +26,7 @@ def merge_bytes(byte_list:List[bytes]) -> bytes:
     return b''.join(byte_list)
 
 def vcp(el_num:int) -> str:
+    r'''Determine volume coverage pattern by number of scans.'''
     if el_num == 5:
         task_name = 'VCP31'
     elif el_num == 9:
@@ -167,6 +168,12 @@ class CinradReader(BaseRadar):
         gnv = data['gate_num_v'][boundary]
         out_data = dict()
         for bidx, rnum, vnum, idx in zip(np.diff(b), gnr, gnv, range(len(b))):
+            # `bidx`: number of data blocks (i.e. radials)
+            # `rnum`: number of reflectivity gates.
+            # `vnum`: number of velocity gates.
+            # `idx`: number of scans.
+
+            # Construct a temporary dtype to parse data more efficiently
             temp_dtype = [('header', 'u1', 128),
                           ('ref', 'u1', rnum),
                           ('vel', 'u1', vnum),
@@ -305,6 +312,11 @@ class CinradReader(BaseRadar):
         self.elev = self.el[tilt]
         try:
             data = np.ma.array(self.data[tilt][dtype])
+            # The structure of `out_data`:
+            # The key of `out_data` is the number of scan counting from zero (int).
+            # The value of `out_data` is also dictionary, the key of it are the abbreviations of
+            # product name, such as `REF`, `VEL`.
+            # The value of this sub-dictionary is the data stored in np.ma.MaskedArray.
         except KeyError:
             raise RadarDecodeError('Invalid product name')
         cut = data.T[:int(np.round(drange / reso))]
@@ -426,7 +438,7 @@ class StandardData(BaseRadar):
         self.f.close()
         self._update_radar_info()
         # In standard data, station information stored in file
-        # has higher priority
+        # has higher priority, so we override some information.
         self.stationlat = self.geo['lat'][0]
         self.stationlon = self.geo['lon'][0]
         self.radarheight = self.geo['height'][0]
@@ -452,12 +464,16 @@ class StandardData(BaseRadar):
         cut_num = task['cut_number'][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         self.scan_config = [ScanConfig(*i) for i in scan_config]
+        # TODO: improve repr
         data = dict()
+        # `aux` stores some auxiliary information, including azimuth angles, elevation angles,
+        # and scale and offset of data.
         aux = dict()
         if task['scan_type'] == 2: # Single-layer RHI
             self.scan_type = 'RHI'
         else:
             self.scan_type = 'PPI'
+        # There are actually some other scan types, however, they are not currently supported.
         while 1:
             radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
             if radial_header['zip_type'][0] == 1: # LZO compression
@@ -477,6 +493,9 @@ class StandardData(BaseRadar):
                     scale = moment_header['scale'][0]
                     offset = moment_header['offset'][0]
                     aux[el_num][dtype] = (scale, offset)
+                # In `StandardData`, the `data` dictionary stores raw data instead of data
+                # calibrated by scale and offset.
+                # The calibration process is moved to `get_raw` part.
                 data[el_num][dtype].append(data_body.tolist())
             if radial_header['radial_state'][0] in [4, 6]: # End scan
                 break
@@ -501,6 +520,7 @@ class StandardData(BaseRadar):
         -------
         ret: ndarray or tuple of ndarray
         '''
+        # The scan number is set to zero in RHI mode.
         self.tilt = tilt if self.scan_type == 'PPI' else 0
         self.drange = drange
         if self.scan_type == 'RHI':
@@ -514,12 +534,16 @@ class StandardData(BaseRadar):
             raise RadarDecodeError('Invalid product name')
         if raw.size == 0:
             warnings.warn('Empty data', RuntimeWarning)
+        # The number below 6 is used as reserved codes, which are used to indicate other
+        # information instead of real data, so they should be masked.
         data = np.ma.masked_less_equal(raw, 5)
         reso = self.scan_config[tilt].dop_reso / 1000
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
         if dtype in ['VEL', 'SW']:
+            # The reserved code 1 indicates folded velocity.
+            # These region will be shaded by color of `RF`.
             rf = np.ma.masked_not_equal(cut.data, 1)
             rf = np.ma.hstack([rf, append])
         cut = np.ma.hstack([cut, append])
@@ -527,6 +551,7 @@ class StandardData(BaseRadar):
         r = (cut - offset) / scale
         if dtype in ['VEL', 'SW']:
             ret = (r, rf)
+            # RF data is separately packed into the data.
         else:
             ret = r
         return ret

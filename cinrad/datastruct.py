@@ -102,6 +102,14 @@ class Radial(object):
         if hasattr(self, 'dist'):
             r.add_polarc(dc(self.dist), dc(self.az))
         return r
+'''
+    def cut_range(self, range_:Union[float, int]):
+        r = dc(self)
+        r.drange = range_
+        data = r.data
+        if isinstance(data, tuple):
+            # Velocity product
+'''
 
 class Slice_(object):
     r'''Structure for slice data'''
@@ -122,11 +130,12 @@ class Slice_(object):
 class Grid(object):
     r'''Structure for processed grid data'''
 
-    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'lon', 'lat', 'geoflag', 'elev',
-                 'scan_info']
+    __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'stp', 'lon',
+                 'lat', 'geoflag', 'elev', 'scan_info']
 
     def __init__(self, data:ndarray, drange:Union[float, int], reso:float, code:str, name:str,
-                 scantime:datetime, dtype:str, lon:ndarray, lat:ndarray, **scan_info):
+                 scantime:datetime, dtype:str, stlon:Union[float, int], stlat:Union[float, int],
+                 lon:ndarray, lat:ndarray, **scan_info):
         self.data = data
         self.drange = drange
         self.reso = reso
@@ -134,6 +143,7 @@ class Grid(object):
         self.name = name
         self.scantime = scantime
         self.dtype = dtype
+        self.stp = {'lon':stlon, 'lat':stlat}
         self.lon = lon
         self.lat = lat
         self.geoflag = True

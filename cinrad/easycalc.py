@@ -56,8 +56,8 @@ def quick_cr(r_list:Volume_T) -> Grid:
         r_data.append(r)
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
-    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, 1, i.code, i.name, i.scantime,
-                  'CR', x, y, **i.scan_info)
+    l2_obj = Grid(np.ma.array(cr, mask=(cr <= 0)), i.drange, i.reso, i.code, i.name, i.scantime,
+                  'CR', i.stp['lon'], i.stp['lat'], x, y, **i.scan_info)
     return l2_obj
 
 def quick_et(r_list:Volume_T) -> Radial:
