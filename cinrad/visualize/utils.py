@@ -51,7 +51,11 @@ def setup_axes(fig:Any, cmap:Any, norm:Any) -> tuple:
 def text(ax:Any, drange:Number_T, reso:float, scantime:datetime, name:str, task:str, elev:float):
     from cinrad.constants import plot_kw
     ax.text(0, 2.31, 'Range: {:.0f}km'.format(drange), **plot_kw)
-    ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
+    if reso < 0.1:
+        # Change the unit from km to m for better formatting
+        ax.text(0, 2.26, 'Resolution: {:.0f}m'.format(reso * 1000) , **plot_kw)
+    else:
+        ax.text(0, 2.26, 'Resolution: {:.2f}km'.format(reso) , **plot_kw)
     ax.text(0, 2.21, 'Date: {}'.format(scantime.strftime('%Y.%m.%d')), **plot_kw)
     ax.text(0, 2.16, 'Time: {}'.format(scantime.strftime('%H:%M')), **plot_kw)
     if name is None:

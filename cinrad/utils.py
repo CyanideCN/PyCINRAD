@@ -12,6 +12,7 @@ from cinrad._typing import Array_T, Number_T
 try:
     from cinrad._utils import *
 except ImportError:
+    # When the C-extension doesn't exist, define the functions in Python.
 
     def r2z(r:np.ndarray) -> np.ndarray:
         return 10 ** (r / 10)
