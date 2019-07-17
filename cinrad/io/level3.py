@@ -67,7 +67,7 @@ class PUP(BaseRadar):
                           self.dtype, self.stationlon, self.stationlat, lon, lat)
         else:
             return Grid(self.data, self.max_range, self.reso, self.code, self.name, self.scantime,
-                        self.dtype, self.lon, self.lat)
+                        self.dtype, self.stationlon, self.stationlat, self.lon, self.lat)
 
     @staticmethod
     def _is_radial(code:int) -> bool:

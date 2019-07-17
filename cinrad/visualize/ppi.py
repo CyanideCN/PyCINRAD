@@ -144,7 +144,7 @@ class PPI(object):
         ax2.xaxis.set_visible(False)
         if self.settings['plot_labels']:
             # Make VCP21 the default scanning strategy
-            task = self.data.scan_info.get('task', 'VCP21')
+            task = self.data.scan_info.pop('task', 'VCP21')
             text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, task, self.data.elev)
             ax2.text(0, 2.36, ' ' * 35) # Ensure consistent figure size
             ax2.text(0, 2.36, prodname[dtype], **plot_kw)
@@ -254,4 +254,5 @@ class PPI(object):
         fraction = (extent[1] - extent[0]) * 0.04
         target_city = (lon > (extent[0] + fraction)) & (lon < (extent[1] - fraction)) & (lat > (extent[2] + fraction)) & (lat < (extent[3] - fraction))
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
-            self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey', transform=self.data_crs)
+            self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey', transform=self.data_crs, horizontalalignment='center',
+                            verticalalignment='center')

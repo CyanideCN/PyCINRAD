@@ -286,4 +286,4 @@ class GridMapper(object):
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, x, y)
+        return Grid(grid, np.nan, step, 'RADMAP', 'RADMAP', self.scan_time, self.dtype, 0, 0, x, y)
