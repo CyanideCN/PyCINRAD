@@ -9,6 +9,7 @@ from typing import Union, Optional, Any, List
 
 import numpy as np
 import cartopy.crs as ccrs
+from cartopy.mpl.geoaxes import GeoAxes
 
 from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                     change_cbar_text, draw_highlight_area, set_geoaxes)
@@ -21,7 +22,7 @@ from cinrad._element import *
 
 __all__ = ['PPI']
 
-def _prepare(data:Radial, datatype:str) -> tuple:
+def _prepare(data: Radial, datatype: str) -> tuple:
     if not data.geoflag:
         raise RadarPlotError('Geographic information should be contained in data')
     else:
@@ -49,11 +50,22 @@ class PPI(object):
     # i.e., the coordinates are longitude and latitude.
     data_crs = ccrs.PlateCarree()
 
-    def __init__(self, data:Union[Radial, Grid], fig:Optional[Any]=None, norm:Optional[Any]=None,
-                 cmap:Optional[Any]=None, nlabel:Optional[int]=None, label:Optional[List[str]]=None,
-                 dpi:int=350, highlight:Optional[Union[str, List[str]]]=None, coastline:bool=False,
-                 extent:Optional[List[Number_T]]=None, section:Optional[Slice_]=None,
-                 style:str='black', add_city_names:bool=False, plot_labels:bool=True, **kwargs):
+    def __init__(self,
+                 data: Union[Radial, Grid],
+                 fig: Optional[Any] = None,
+                 norm: Optional[Any] = None,
+                 cmap: Optional[Any] = None,
+                 nlabel: Optional[int] = None,
+                 label: Optional[List[str]] = None,
+                 dpi: Number_T = 350,
+                 highlight: Optional[Union[str, List[str]]] = None,
+                 coastline: bool = False,
+                 extent: Optional[List[Number_T]] = None,
+                 section: Optional[Slice_] = None,
+                 style: str = 'black',
+                 add_city_names: bool = False,
+                 plot_labels: bool = True,
+                 **kwargs):
         self.data = data
         self.settings = {'cmap':cmap, 'norm':norm, 'nlabel':nlabel, 'label':label,
                          'highlight':highlight, 'coastline':coastline, 'path_customize':False,
@@ -65,7 +77,7 @@ class PPI(object):
             self.fig = fig
         self._plot(**kwargs)
 
-    def __call__(self, fpath:Optional[str]=None):
+    def __call__(self, fpath: Optional[str] = None):
         if not fpath:
             # When the path is not specified, store the picture in home dir.
             fpath = os.path.join(str(Path.home()), 'PyCINRAD')
@@ -116,7 +128,7 @@ class PPI(object):
             proj = ccrs.AzimuthalEquidistant(central_longitude=self.data.stp['lon'], central_latitude=self.data.stp['lat'])
         else:
             proj = ccrs.PlateCarree()
-        self.geoax = set_geoaxes(self.fig, proj, extent=self.settings['extent'])
+        self.geoax: GeoAxes = set_geoaxes(self.fig, proj, extent=self.settings['extent'])
         if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             rf = var[1]
             var = var[0]
@@ -126,8 +138,9 @@ class PPI(object):
         self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
         if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             self.geoax.pcolormesh(lon, lat, rf, norm=norm_plot['RF'], cmap=cmap_plot['RF'], transform=self.data_crs, **kwargs)
+        self._autoscale()
         add_shp(self.geoax, proj, coastline=self.settings['coastline'], style=self.settings['style'],
-                extent=self.settings['extent'])
+                extent=self.geoax.get_extent(self.data_crs))
         if self.settings['highlight']:
             draw_highlight_area(self.settings['highlight'])
         if self.settings['add_city_names']:
@@ -154,7 +167,7 @@ class PPI(object):
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
-    def _save(self, fpath:str):
+    def _save(self, fpath: str):
         if not self.settings['path_customize']:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
@@ -173,12 +186,9 @@ class PPI(object):
             path_string = fpath
         save(path_string)
 
-    def plot_range_rings(self, _range:Union[int, float, list], color:str='white', linewidth:Number_T=0.5,
+    def plot_range_rings(self, _range: Union[int, float, list], color: str = 'white', linewidth: Number_T = 0.5,
                          **kwargs):
         r'''Plot range rings on PPI plot.'''
-        if isinstance(self.data, Grid):
-            warnings.warn('Plotting range rings can only work on cinrad.datastruct.Radial object', RuntimeWarning)
-            return
         slon, slat = self.data.stp['lon'], self.data.stp['lat']
         if isinstance(_range, (int, float)):
             _range = [_range]
@@ -188,7 +198,7 @@ class PPI(object):
             #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             self.geoax.plot(x, y, color=color, linewidth=linewidth, transform=self.data_crs, **kwargs)
 
-    def plot_cross_section(self, data:Slice_, ymax:Optional[int]=None, linecolor:Optional[str]=None):
+    def plot_cross_section(self, data: Slice_, ymax: Optional[int] = None, linecolor: Optional[str] = None):
         r'''Plot cross section data below the PPI plot.'''
         if not linecolor:
             if self.settings['style'] == 'black':
@@ -200,7 +210,8 @@ class PPI(object):
         ax2.yaxis.set_ticks_position('right')
         ax2.set_xticks([])
         sl = data.data
-        sl[sl == 0] = -1
+        if data.dtype == 'REF':
+            sl[sl == 0] = -1
         xcor = data.xcor
         ycor = data.ycor
         stp = data.geoinfo['stp']
@@ -214,7 +225,7 @@ class PPI(object):
         self.geoax.plot([stp[0], enp[0]], [stp[1], enp[1]], marker='x', color=linecolor, transform=self.data_crs,
                         zorder=5)
 
-    def storm_track_info(self, filepath:str):
+    def storm_track_info(self, filepath: str):
         r'''
         Add storm tracks from Nexrad Level III (PUP) STI product file
         '''
@@ -237,8 +248,16 @@ class PPI(object):
                 #if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
-    def gridlines(self, draw_labels:bool=True, linewidth:Number_T=0, **kwargs):
+    def gridlines(self, draw_labels: bool = True, linewidth: Number_T = 0, **kwargs):
         r'''Draw grid lines on cartopy axes'''
+        if not isinstance(self.geoax.projection, ccrs.PlateCarree):
+            # Some workaround about the issue that cartopy version lower than 0.18 cannot
+            # draw ticks on AzimuthalEquidistant plot
+            from cartopy import __version__
+            ver = tuple([int(i) for i in __version__.split('.')])
+            if ver <= (0, 17, 0):
+                warnings.warn('Cartopy older than 0.18 cannot draw ticks on AzimuthalEquidistant plot.', RuntimeWarning)
+                return
         liner = self.geoax.gridlines(draw_labels=draw_labels, linewidth=linewidth, transform=self.data_crs, **kwargs)
         liner.xlabels_top = False
         liner.ylabels_right = False
@@ -256,3 +275,23 @@ class PPI(object):
         for nm, stlon, stlat in zip(name[target_city], lon[target_city], lat[target_city]):
             self.geoax.text(stlon, stlat, nm, **plot_kw, color='darkgrey', transform=self.data_crs, horizontalalignment='center',
                             verticalalignment='center')
+
+    def _autoscale(self):
+        llon, ulon, llat, ulat = self.geoax.get_extent()
+        lon_delta = ulon - llon
+        lat_delta = ulat - llat
+        if lon_delta == lat_delta:
+            return
+        if lon_delta > lat_delta:
+            # The long axis is x-axis
+            lat_center = (ulat + llat) / 2
+            lat_extend = lon_delta / 2
+            llat = lat_center - lat_extend
+            ulat = lat_center + lat_extend
+        elif lon_delta < lat_delta:
+            # The long axis is y-axis
+            lon_center = (ulon + llon) / 2
+            lon_extend = lat_delta / 2
+            llon = lon_center - lon_extend
+            llat = lat_center + lat_extend
+        self.geoax.set_extent([llon, ulon, llat, ulat], self.geoax.projection)

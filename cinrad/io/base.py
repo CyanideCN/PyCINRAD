@@ -17,14 +17,14 @@ from cinrad._typing import Number_T
 with open(os.path.join(MODULE_DIR, 'data', 'RadarStation.pickle'), 'rb') as buf:
     radarinfo = pickle.load(buf)
 
-def _get_radar_info(code:Optional[str]) -> tuple:
+def _get_radar_info(code: Optional[str]) -> tuple:
     r'''Get radar station info from the station database according to the station code.'''
     try:
         return radarinfo[code]
     except KeyError:
         return ('None', 0, 0, '', 0)
 
-def prepare_file(file:Any) -> Any:
+def prepare_file(file: Any) -> Any:
     if hasattr(file, 'read'):
         return file
     f = open(file, 'rb')
@@ -51,17 +51,17 @@ class BaseRadar(abc.ABC):
         self.name = info[0]
         self.radarheight = info[4]
 
-    def set_code(self, code:str):
+    def set_code(self, code: str):
         self.code = code
         self._update_radar_info()
 
     def get_nscans(self) -> int:
         return len(self.el)
 
-    def available_product(self, tilt:int) -> list:
+    def available_product(self, tilt: int) -> list:
         r'''Get all available products in given tilt'''
         return list(self.data[tilt].keys())
 
     @staticmethod
-    def get_range(drange:Number_T, reso:Number_T) -> np.ndarray:
+    def get_range(drange: Number_T, reso: Number_T) -> np.ndarray:
         return np.arange(reso, drange + reso, reso)

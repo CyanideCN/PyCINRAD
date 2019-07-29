@@ -17,8 +17,8 @@ except ImportError:
     def r2z(r:np.ndarray) -> np.ndarray:
         return 10 ** (r / 10)
 
-    def vert_integrated_liquid(ref:np.ndarray, distance:np.ndarray, elev:Array_T, beam_width:float=0.99,
-                               threshold:Union[float, int]=18., density:bool=False) -> np.ndarray:
+    def vert_integrated_liquid(ref: np.ndarray, distance: np.ndarray, elev: Array_T, beam_width: float = 0.99,
+                               threshold: Union[float, int] = 18., density: bool = False) -> np.ndarray:
         r'''
         Calculate vertically integrated liquid (VIL) in one full scan
 
@@ -48,8 +48,8 @@ except ImportError:
         vil = _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold)
         return vil
 
-    def _vil_iter(xshape:int, yshape:int, ref:np.ndarray, distance:np.ndarray, elev:Array_T,
-                  hi_arr:np.ndarray, threshold:Number_T) -> np.ndarray:
+    def _vil_iter(xshape: int, yshape: int, ref: np.ndarray, distance: np.ndarray, elev: Array_T,
+                  hi_arr: np.ndarray, threshold: Number_T) -> np.ndarray:
         #r = np.clip(ref, None, 55) #reduce the influence of hails
         r = ref
         z = r2z(r)
@@ -75,8 +75,8 @@ except ImportError:
                 VIL[i][j] = m1 + mb + mt
         return VIL
 
-    def echo_top(ref:np.ndarray, distance:np.ndarray, elev:Array_T, radarheight:Number_T,
-                 threshold:Number_T=18.) -> np.ndarray:
+    def echo_top(ref: np.ndarray, distance: np.ndarray, elev: Array_T, radarheight: Number_T,
+                 threshold: Number_T = 18.) -> np.ndarray:
         r'''
         Calculate height of echo tops (ET) in one full scan
 
@@ -134,18 +134,18 @@ except ImportError:
                         et[i][j] = w1 * h2 + w2 * h1
         return et
 
-def potential_maximum_gust(et:np.ndarray, vil:np.ndarray) -> np.ndarray:
+def potential_maximum_gust(et: np.ndarray, vil: np.ndarray) -> np.ndarray:
     r'''
     Estimate the potential maximum gust with a descending downdraft by Stewart's formula
     '''
     return np.sqrt(20.628571 * vil - 2.3810964e-6 * et ** 2)
 
-def potential_maximum_gust_from_reflectivity(ref:np.ndarray, distance:np.ndarray, elev:Array_T) -> np.ndarray:
+def potential_maximum_gust_from_reflectivity(ref: np.ndarray, distance: np.ndarray, elev: Array_T) -> np.ndarray:
     et = echo_top(ref, distance, elev, 0)
     vil = vert_integrated_liquid(ref, distance, elev)
     return potential_maximum_gust(et, vil)
 
-def lanczos_differentiator(winlen:int):
+def lanczos_differentiator(winlen: int):
     # Copyright (c) 2011-2018, wradlib developers.
     m = (winlen - 1) / 2
     denom = m * (m + 1.) * (2 * m + 1.)
@@ -153,7 +153,7 @@ def lanczos_differentiator(winlen:int):
     f = 3 * k / denom
     return np.r_[f[::-1], [0], -f]
 
-def kdp_from_phidp(phidp, winlen=7, dr=1., method=None):
+def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: bool = None) -> np.ndarray:
     from scipy.stats import linregress
     from scipy.ndimage.filters import convolve1d
     # Copyright (c) 2011-2018, wradlib developers.

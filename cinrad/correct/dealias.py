@@ -7,7 +7,7 @@ except ImportError:
           'Install Cython and then re-install cinrad.')
 from cinrad.datastruct import Radial
 
-def dealias_unwrap_2d(vdata:np.ma.MaskedArray, nyquist_vel:float) -> np.ndarray:
+def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarray:
     """ Dealias using 2D phase unwrapping (sweep-by-sweep). """
     scaled_sweep = vdata.data * np.pi / nyquist_vel
     sweep_mask = vdata.mask
@@ -17,7 +17,7 @@ def dealias_unwrap_2d(vdata:np.ma.MaskedArray, nyquist_vel:float) -> np.ndarray:
     unwrap_2d(wrapped, mask, unwrapped, [True, False])
     return unwrapped * nyquist_vel / np.pi
 
-def dealias(v_data:Radial) -> Radial:
+def dealias(v_data: Radial) -> Radial:
     v_field = v_data.data[0]
     nyq = v_data.scan_info.get('nyquist_velocity')
     out_data = dealias_unwrap_2d(v_field, nyq)
