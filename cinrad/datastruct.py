@@ -12,9 +12,22 @@ class Radial(object):
     __slots__ = ['data', 'drange', 'elev', 'reso', 'code', 'name', 'scantime', 'dtype', 'include_rf',
                     'lon', 'lat', 'height', 'a_reso', 'stp', 'geoflag', 'dist', 'az', 'scan_info']
 
-    def __init__(self, data:ndarray, drange:Union[float, int], elev:float, reso:float, code:str, name:str,
-                 scantime:datetime, dtype:str, stlon:float, stlat:float, lon:Optional[ndarray]=None,
-                 lat:Optional[ndarray]=None, height:Optional[ndarray]=None, a_reso:Optional[int]=None, **scan_info):
+    def __init__(self,
+                 data: ndarray,
+                 drange: Union[float, int],
+                 elev: float,
+                 reso: float,
+                 code: str,
+                 name: str,
+                 scantime: datetime,
+                 dtype: str,
+                 stlon: float,
+                 stlat: float,
+                 lon:Optional[ndarray] = None,
+                 lat:Optional[ndarray] = None,
+                 height:Optional[ndarray] = None,
+                 a_reso:Optional[int] = None,
+                 **scan_info):
         r'''
         Parameters
         ----------
@@ -80,7 +93,7 @@ class Radial(object):
         return repr_s.format(
             self.dtype.upper(), self.name, self.scantime, self.elev, self.drange)
 
-    def add_geoc(self, lon:ndarray, lat:ndarray, height:ndarray):
+    def add_geoc(self, lon: ndarray, lat: ndarray, height: ndarray):
         if not lon.shape == lat.shape == height.shape:
             raise ValueError('Coordinate sizes are incompatible')
         self.lon = lon
@@ -88,11 +101,11 @@ class Radial(object):
         self.height = height
         self.geoflag = True
 
-    def add_polarc(self, distance:ndarray, azimuth:ndarray):
+    def add_polarc(self, distance: ndarray, azimuth: ndarray):
         self.dist = distance
         self.az = azimuth
 
-    def __deepcopy__(self, memo:Any):
+    def __deepcopy__(self, memo: Any):
         r'''Used if copy.deepcopy is called'''
         r = Radial(dc(self.data), dc(self.drange), dc(self.elev), dc(self.reso), dc(self.code),
                    dc(self.name), dc(self.scantime), dc(self.dtype), dc(self.stp['lon']), dc(self.stp['lat']),
@@ -102,22 +115,15 @@ class Radial(object):
         if hasattr(self, 'dist'):
             r.add_polarc(dc(self.dist), dc(self.az))
         return r
-'''
-    def cut_range(self, range_:Union[float, int]):
-        r = dc(self)
-        r.drange = range_
-        data = r.data
-        if isinstance(data, tuple):
-            # Velocity product
-'''
 
 class Slice_(object):
     r'''Structure for slice data'''
 
     __slots__ = ['data', 'xcor', 'ycor', 'scantime', 'dtype', 'code', 'name', 'geoinfo']
 
-    def __init__(self, data:ndarray, xcor:ndarray, ycor:ndarray, scantime:datetime, code:str,
-                 name:str, dtype:str, **geoinfo):
+    def __init__(self, data: ndarray, xcor: ndarray, ycor: ndarray,
+                 scantime: datetime, code: str, name: str,
+                 dtype: str, **geoinfo):
         self.data = data
         self.xcor = xcor
         self.ycor = ycor
@@ -133,9 +139,19 @@ class Grid(object):
     __slots__ = ['data', 'drange', 'reso', 'code', 'name', 'scantime', 'dtype', 'stp', 'lon',
                  'lat', 'geoflag', 'elev', 'scan_info']
 
-    def __init__(self, data:ndarray, drange:Union[float, int], reso:float, code:str, name:str,
-                 scantime:datetime, dtype:str, stlon:Union[float, int], stlat:Union[float, int],
-                 lon:ndarray, lat:ndarray, **scan_info):
+    def __init__(self,
+                 data: ndarray,
+                 drange: Union[float, int],
+                 reso: float,
+                 code: str,
+                 name: str,
+                 scantime: datetime,
+                 dtype: str,
+                 stlon: Union[float, int],
+                 stlat: Union[float, int],
+                 lon: ndarray,
+                 lat: ndarray,
+                 **scan_info):
         self.data = data
         self.drange = drange
         self.reso = reso

@@ -19,7 +19,7 @@ from cinrad._typing import Volume_T
 
 __all__ = ['quick_cr', 'quick_et', 'quick_vil', 'VCS', 'max_potential_gust', 'quick_vild']
 
-def _extract(r_list:Volume_T) -> tuple:
+def _extract(r_list: Volume_T) -> tuple:
     d_list = np.array([i.drange for i in r_list])
     if d_list.mean() != d_list.max():
         raise ValueError('Input radials must have same data range')
@@ -33,11 +33,11 @@ def _extract(r_list:Volume_T) -> tuple:
     data = np.concatenate(r_data).reshape(len(r_list), r_data[0].shape[0], r_data[0].shape[1])
     return data, d, a, np.array(elev)
 
-def is_uniform(radial_list:Volume_T) -> bool:
+def is_uniform(radial_list: Volume_T) -> bool:
     r'''Check if all input radials have same data type'''
     return len(set([i.dtype for i in radial_list])) == 1
 
-def quick_cr(r_list:Volume_T) -> Grid:
+def quick_cr(r_list: Volume_T) -> Grid:
     r'''
     Calculate composite reflectivity
 
@@ -60,7 +60,7 @@ def quick_cr(r_list:Volume_T) -> Grid:
                   'CR', i.stp['lon'], i.stp['lat'], x, y, **i.scan_info)
     return l2_obj
 
-def quick_et(r_list:Volume_T) -> Radial:
+def quick_et(r_list: Volume_T) -> Radial:
     r'''
     Calculate echo tops
 
@@ -82,7 +82,7 @@ def quick_et(r_list:Volume_T) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vil(r_list:Volume_T) -> Radial:
+def quick_vil(r_list: Volume_T) -> Radial:
     r'''
     Calculate vertically integrated liquid
 
@@ -104,7 +104,7 @@ def quick_vil(r_list:Volume_T) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def quick_vild(r_list:Volume_T) -> Radial:
+def quick_vild(r_list: Volume_T) -> Radial:
     r'''
     Calculate vertically integrated liquid density
 
@@ -127,7 +127,7 @@ def quick_vild(r_list:Volume_T) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-def max_potential_gust(r_list:Volume_T) -> Radial:
+def max_potential_gust(r_list: Volume_T) -> Radial:
     r'''
     Estimate maximum potential descending gust by Stewart's formula
 
@@ -149,9 +149,9 @@ def max_potential_gust(r_list:Volume_T) -> Radial:
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
-class VCS:
+class VCS(object):
     r'''Class performing vertical cross-section calculation'''
-    def __init__(self, r_list:Volume_T):
+    def __init__(self, r_list: Volume_T):
         if not is_uniform(r_list):
             raise RadarCalculationError('All input radials must have the same data type')
         self.rl = r_list
@@ -178,7 +178,7 @@ class VCS:
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
-    def _get_section(self, stp:Tuple[float, float], enp:Tuple[float, float], spacing:int) -> Slice_:
+    def _get_section(self, stp: Tuple[float, float], enp: Tuple[float, float], spacing: int) -> Slice_:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -200,9 +200,12 @@ class VCS:
                     enp_s=enp_s, stp=stp, enp=enp)
         return sl
 
-    def get_section(self, start_polar:Optional[Tuple[float, float]]=None, end_polar:Optional[Tuple[float, float]]=None,
-                    start_cart:Optional[Tuple[float, float]]=None, end_cart:Optional[Tuple[float, float]]=None,
-                    spacing=100) -> Slice_:
+    def get_section(self,
+                    start_polar: Optional[Tuple[float, float]] = None,
+                    end_polar: Optional[Tuple[float, float]] = None,
+                    start_cart: Optional[Tuple[float, float]] = None,
+                    end_cart: Optional[Tuple[float, float]] = None,
+                    spacing: int = 100) -> Slice_:
         r'''
         Get cross-section data from input points
 
@@ -234,7 +237,7 @@ class VCS:
         return self._get_section(stp, enp, spacing)
 
 class GridMapper(object):
-    def __init__(self, fields:Volume_T, max_dist:Number_T=0.1):
+    def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
         # Process data type
         if len(set([i.dtype for i in fields])) > 1:
             raise RadarCalculationError('All input data should have same data type')
@@ -259,7 +262,7 @@ class GridMapper(object):
         self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
         self.md = max_dist
 
-    def _process_grid(self, x_step:Number_T, y_step:Number_T) -> Tuple[np.ndarray]:
+    def _process_grid(self, x_step: Number_T, y_step: Number_T) -> Tuple[np.ndarray]:
         x_lower = np.round_(self.lon_ravel.min(), 2)
         x_upper = np.round_(self.lon_ravel.max(), 2)
         y_lower = np.round_(self.lat_ravel.min(), 2)
@@ -268,7 +271,7 @@ class GridMapper(object):
         y_grid = np.arange(y_lower, y_upper + x_step, x_step)
         return np.meshgrid(x_grid, y_grid)
 
-    def _map_points(self, x:np.ndarray, y:np.ndarray) -> np.ma.MaskedArray:
+    def _map_points(self, x: np.ndarray, y: np.ndarray) -> np.ma.MaskedArray:
         _MAX_RETURN = 5
         _FILL_VALUE = -1e5
         xdim, ydim = x.shape
@@ -282,7 +285,7 @@ class GridMapper(object):
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def __call__(self, step:Number_T) -> Grid:
+    def __call__(self, step: Number_T) -> Grid:
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)

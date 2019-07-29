@@ -11,8 +11,8 @@ from pyresample.kd_tree import resample_nearest
 from cinrad.constants import deg2rad
 from cinrad._typing import Number_T
 
-def resample(data:np.ndarray, distance:np.ndarray, azimuth:np.ndarray, d_reso:Number_T,
-             a_reso:int) -> tuple:
+def resample(data: np.ndarray, distance: np.ndarray, azimuth: np.ndarray, d_reso: Number_T,
+             a_reso: int) -> tuple:
     r'''
     Resample radar radial data which have different number of radials
     in one scan into that of 360 radials
@@ -44,8 +44,8 @@ def resample(data:np.ndarray, distance:np.ndarray, azimuth:np.ndarray, d_reso:Nu
     r = griddata((d.flatten(), t.flatten()), data.flatten(), (dist, theta), method='nearest')
     return r, dist, theta
 
-def grid_2d(data:np.ndarray, x:np.ndarray, y:np.ndarray, x_out:Optional[np.ndarray]=None,
-            y_out:Optional[np.ndarray]=None, resolution:Tuple[int, int]=(1000, 1000)) -> tuple:
+def grid_2d(data: np.ndarray, x: np.ndarray, y: np.ndarray, x_out: Optional[np.ndarray] = None,
+            y_out: Optional[np.ndarray] = None, resolution: Tuple[int, int] = (1000, 1000)) -> tuple:
     r'''
     Interpolate data in polar coordinates into geographic coordinates
 

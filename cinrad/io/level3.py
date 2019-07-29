@@ -4,6 +4,8 @@
 from collections import OrderedDict, defaultdict
 from typing import Union, Any
 import datetime
+import os
+import glob
 
 import numpy as np
 
@@ -15,14 +17,14 @@ from cinrad.io._dtype import *
 from cinrad.datastruct import Radial, Grid
 from cinrad.error import RadarDecodeError
 
-def xy2polar(x:Boardcast_T, y:Boardcast_T) -> tuple:
+def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
     return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
 
 class PUP(BaseRadar):
     r'''
     Class handling PUP data (Nexrad Level III data)
     '''
-    def __init__(self, file:Any):
+    def __init__(self, file: Any):
         from metpy.io.nexrad import Level3File
         f = Level3File(file)
         self.dtype = self._det_product_type(f.prod_desc.prod_code)
@@ -70,14 +72,14 @@ class PUP(BaseRadar):
                         self.dtype, self.stationlon, self.stationlat, self.lon, self.lat)
 
     @staticmethod
-    def _is_radial(code:int) -> bool:
+    def _is_radial(code: int) -> bool:
         return code in range(16, 31)
 
     def projection(self) -> tuple:
         return get_coordinate(self.rng, self.az, self.el, self.stationlon, self.stationlat, h_offset=False)
 
     @staticmethod
-    def _det_product_type(spec:int) -> str:
+    def _det_product_type(spec: int) -> str:
         if spec in range(16, 22):
             return 'REF'
         elif spec in range(22, 28):
@@ -92,7 +94,7 @@ class PUP(BaseRadar):
 class SWAN(object):
     dtype_conv = {0:'B', 1:'b', 2:'u2', 3:'i2', 4:'u2'}
     size_conv = {0:1, 1:1, 2:2, 3:2, 4:2}
-    def __init__(self, file:Any):
+    def __init__(self, file: Any):
         f = prepare_file(file)
         header = np.frombuffer(f.read(1024), SWAN_dtype)
         xdim, ydim, zdim = header['x_grid_num'][0], header['y_grid_num'][0], header['z_grid_num'][0]
@@ -133,7 +135,7 @@ class SWAN(object):
 
 class StormTrackInfo(object):
 
-    def __init__(self, filepath:str):
+    def __init__(self, filepath: str):
         from metpy.io.nexrad import Level3File
         self.handler = Level3File(filepath)
         self.info = self.get_all_sti()
@@ -169,13 +171,13 @@ class StormTrackInfo(object):
     def get_all_id(self) -> list:
         return list(self.info.keys())
 
-    def current(self, storm_id:str) -> tuple:
+    def current(self, storm_id: str) -> tuple:
         curpos = self.info[storm_id]['current storm position']
         dist, az = xy2polar(*curpos)
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         return lonlat
 
-    def track(self, storm_id:str, tracktype:str) -> Union[tuple, Any]:
+    def track(self, storm_id: str, tracktype: str) -> Any:
         if tracktype == 'forecast':
             key = 'forecast storm position'
         elif tracktype == 'past':
@@ -199,7 +201,7 @@ class StormTrackInfo(object):
         return np.array(lon), np.array(lat)
 
 class HailIndex(object):
-    def __init__(self, filepath:str):
+    def __init__(self, filepath: str):
         from metpy.io.nexrad import Level3File
         self.handler = Level3File(filepath)
         self.info = self.get_all_hi()
@@ -227,10 +229,29 @@ class HailIndex(object):
     def get_all_id(self) -> list:
         return list(self.info.keys())
 
-    def get_hail_param(self, storm_id:str) -> dict:
+    def get_hail_param(self, storm_id: str) -> dict:
         out = dict(self.info[storm_id])
         xy = out.get('current storm position')
         dist, az = xy2polar(*xy)
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         out['position'] = tuple(lonlat)
         return out
+
+class PUPFileLoader(object):
+    r'''
+    A class behaves like data classes in `level2` by gathering
+    data from different elevations in single volume scan.
+    '''
+    def __init__(self, fpath: str):
+        path, name = os.path.split(fpath)
+        name_seg = name.split('.')
+        # Ensure standard naming format
+        assert len(name_seg) == 5
+        date, time_, eli, pid, rid = name_seg
+        all_file = glob.glob(os.path.join(path, '.'.join([date , time_ , '*' , pid , rid])))
+        self._f = os.path.join(path, '.'.join([date , time_ , '*' , pid , rid]))
+        self._file = [PUP(i) for i in all_file]
+
+    @staticmethod
+    def load(file):
+        pass

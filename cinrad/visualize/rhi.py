@@ -14,13 +14,13 @@ from cinrad._element import sec_plot, norm_plot, prodname
 __all__ = ['Section', 'RHI']
 
 class Section:
-    def __init__(self, data:Slice_, hlim:int=15):
+    def __init__(self, data: Slice_, hlim: int = 15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
         self.path_customize = False
 
-    def _plot(self, fpath:str):
+    def _plot(self, fpath: str):
         from cinrad.constants import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor
@@ -70,14 +70,14 @@ class Section:
         return self._plot(fpath)
 
 class RHI:
-    def __init__(self, data:Slice_, hlim:int=15):
+    def __init__(self, data: Slice_, hlim: int = 15):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
         self.azimuth = data.geoinfo['azimuth']
         self.path_customize = False
 
-    def _plot(self, fpath:str):
+    def _plot(self, fpath: str):
         from cinrad.constants import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor

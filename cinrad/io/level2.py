@@ -22,10 +22,10 @@ __all__ = ['CinradReader', 'StandardData', 'NexradL2Data']
 ScanConfig = namedtuple('ScanConfig', SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
 
-def merge_bytes(byte_list:List[bytes]) -> bytes:
+def merge_bytes(byte_list: List[bytes]) -> bytes:
     return b''.join(byte_list)
 
-def vcp(el_num:int) -> str:
+def vcp(el_num: int) -> str:
     r'''Determine volume coverage pattern by number of scans.'''
     if el_num == 5:
         task_name = 'VCP31'
@@ -37,7 +37,7 @@ def vcp(el_num:int) -> str:
         task_name = 'Unknown'
     return task_name
 
-def _detect_radartype(f:Any, filename:str, type_assert:Optional[str]=None) ->tuple:
+def _detect_radartype(f: Any, filename: str, type_assert: Optional[str] = None) -> tuple:
     r'''Detect radar type from records in file'''
     # Attempt to find information in file, which has higher
     # priority compared with information obtained from file name
@@ -110,7 +110,7 @@ class CinradReader(BaseRadar):
     tilt: int
         current selected tilt
     '''
-    def __init__(self, file:Any, radar_type:Optional[str]=None, file_name:Optional[str]=None):
+    def __init__(self, file: Any, radar_type: Optional[str] = None, file_name: Optional[str] = None):
         r'''
         Parameters
         ----------
@@ -143,7 +143,7 @@ class CinradReader(BaseRadar):
         self._update_radar_info()
         f.close()
 
-    def _SAB_handler(self, f:Any, SAB:bool=True):
+    def _SAB_handler(self, f: Any, SAB: bool = True):
         if SAB:
             radar_dtype = SAB_dtype
         else:
@@ -199,7 +199,7 @@ class CinradReader(BaseRadar):
         self.angleindex_v = np.delete(angleindex, [0, 2])
         self.data = out_data
 
-    def _CC_handler(self, f:Any):
+    def _CC_handler(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
         self.scantime = datetime.datetime(header['ucEYear1'][0] * 100 + header['ucEYear2'][0], header['ucEMonth'][0],
                                           header['ucEDay'][0], header['ucEHour'], header['ucEMinute'],
@@ -227,7 +227,7 @@ class CinradReader(BaseRadar):
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
-    def _CD_handler(self, f:Any):
+    def _CD_handler(self, f: Any):
         header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
         el_num = header['obs']['stype'][0] - 100 # VOL
         self.task_name = vcp(el_num)
@@ -252,7 +252,7 @@ class CinradReader(BaseRadar):
         self.data = data
         self.angleindex_r = self.angleindex_v = list(range(el_num))
 
-    def get_nrays(self, scan:int) -> int:
+    def get_nrays(self, scan: int) -> int:
         r'''Get number of radials in certain scan'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             return len(self.data[scan]['azimuth'])
@@ -261,7 +261,7 @@ class CinradReader(BaseRadar):
         elif self.radartype in ['SC', 'CD']:
             return 360
 
-    def get_azimuth_angles(self, scans:Optional[int]=None) -> np.ndarray:
+    def get_azimuth_angles(self, scans: Optional[int] = None) -> np.ndarray:
         r'''Get index of input azimuth angle (radian)'''
         if self.radartype in ['SA', 'SB', 'CA', 'CB']:
             if scans is None:
@@ -279,13 +279,13 @@ class CinradReader(BaseRadar):
             else:
                 return np.array(np.linspace(0, 360, 360).tolist()) * deg2rad
 
-    def get_elevation_angles(self, scans:Optional[int]=None) -> Union[np.ndarray, float]:
+    def get_elevation_angles(self, scans: Optional[int] = None) -> Union[np.ndarray, float]:
         if scans is None:
             return self.el
         else:
             return self.el[scans]
 
-    def get_raw(self, tilt:int, drange:Number_T, dtype:str) -> Union[np.ndarray, tuple]:
+    def get_raw(self, tilt: int, drange: Number_T, dtype: str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -339,7 +339,7 @@ class CinradReader(BaseRadar):
             ret = r.T
         return ret
 
-    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Radial:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> Radial:
         r'''
         Get radar data
 
@@ -369,7 +369,7 @@ class CinradReader(BaseRadar):
             r_obj.a_reso = 512
         return r_obj
 
-    def projection(self, reso:float, h_offset:bool=False) -> tuple:
+    def projection(self, reso: float, h_offset: bool = False) -> tuple:
         r'''Calculate the geographic coordinates of the requested data range.'''
         theta = self.get_azimuth_angles(self.tilt)
         r = self.get_range(self.drange, reso)
@@ -377,7 +377,7 @@ class CinradReader(BaseRadar):
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def iter_tilt(self, drange:Number_T, dtype:str) -> Generator:
+    def iter_tilt(self, drange: Number_T, dtype: str) -> Generator:
         if dtype == 'REF':
             tlist = self.angleindex_r
         elif dtype in ['VEL', 'SW']:
@@ -426,7 +426,7 @@ class StandardData(BaseRadar):
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
 
-    def __init__(self, file:Any):
+    def __init__(self, file: Any):
         r'''
         Parameters
         ----------
@@ -472,12 +472,19 @@ class StandardData(BaseRadar):
         if task['scan_type'] == 2: # Single-layer RHI
             self.scan_type = 'RHI'
         else:
+            # There are actually some other scan types, however, they are not currently supported.
             self.scan_type = 'PPI'
-        # There are actually some other scan types, however, they are not currently supported.
+        # Some attributes that are used only for converting to pyart.core.Radar instances
+        self._time_radial = list()
+        self._sweep_start_ray_index = list()
+        self._sweep_end_ray_index = list()
+        # Time for each radial
+        radial_count = 0
         while 1:
             radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
             if radial_header['zip_type'][0] == 1: # LZO compression
                 raise NotImplementedError('LZO compressed file is not supported')
+            self._time_radial.append(radial_header['seconds'][0] + radial_header['microseconds'][0])
             el_num = radial_header['elevation_number'][0] - 1
             if el_num not in data.keys():
                 data[el_num] = defaultdict(list)
@@ -497,13 +504,20 @@ class StandardData(BaseRadar):
                 # calibrated by scale and offset.
                 # The calibration process is moved to `get_raw` part.
                 data[el_num][dtype].append(data_body.tolist())
-            if radial_header['radial_state'][0] in [4, 6]: # End scan
+            radial_state = radial_header['radial_state'][0]
+            if radial_state in [0, 3]:
+                # Start of tilt or volume scan
+                self._sweep_start_ray_index.append(radial_count)
+            elif radial_state in [2, 4]:
+                self._sweep_end_ray_index.append(radial_count)
+            radial_count += 1
+            if radial_state in [4, 6]: # End scan
                 break
         self.data = data
         self.aux = aux
         self.el = [i.elev for i in self.scan_config]
 
-    def get_raw(self, tilt:int, drange:Number_T, dtype:str) -> Union[np.ndarray, tuple]:
+    def get_raw(self, tilt: int, drange: Number_T, dtype: str) -> Union[np.ndarray, tuple]:
         r'''
         Get radar raw data
 
@@ -528,16 +542,21 @@ class StandardData(BaseRadar):
             if drange > max_range:
                 drange = max_range
         self.elev = self.el[tilt]
+        reso = self.scan_config[tilt].dop_reso / 1000
         try:
             raw = np.array(self.data[tilt][dtype])
         except KeyError:
             raise RadarDecodeError('Invalid product name')
         if raw.size == 0:
             warnings.warn('Empty data', RuntimeWarning)
+            # Calculate size equivalent
+            nrays = len(self.aux[tilt]['azimuth'])
+            ngates = int(drange / reso)
+            out = np.zeros((nrays, ngates)) * np.ma.masked
+            return out
         # The number below 6 is used as reserved codes, which are used to indicate other
         # information instead of real data, so they should be masked.
         data = np.ma.masked_less_equal(raw, 5)
-        reso = self.scan_config[tilt].dop_reso / 1000
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
@@ -556,7 +575,7 @@ class StandardData(BaseRadar):
             ret = r
         return ret
 
-    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Union[Radial, Slice_]:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> Union[Radial, Slice_]:
         r'''
         Get radar data
 
@@ -593,14 +612,14 @@ class StandardData(BaseRadar):
             rhi = Slice_(ret, d, h, self.scantime, self.code, self.name, dtype, azimuth=self.aux[tilt]['azimuth'][0])
             return rhi
 
-    def projection(self, reso:float) -> tuple:
+    def projection(self, reso: float) -> tuple:
         r = np.arange(reso, self.drange + reso, reso)
         theta = np.array(self.aux[self.tilt]['azimuth']) * deg2rad
         lonx, latx = get_coordinate(r, theta, self.elev, self.stationlon, self.stationlat)
         hght = height(r, self.elev, self.radarheight) * np.ones(theta.shape[0])[:, np.newaxis]
         return lonx, latx, hght, r, theta
 
-    def available_tilt(self, product:str) -> List[int]:
+    def available_tilt(self, product: str) -> List[int]:
         r'''Get all available tilts for given product'''
         tilt = list()
         for i in list(self.data.keys()):
@@ -608,7 +627,7 @@ class StandardData(BaseRadar):
                 tilt.append(i)
         return tilt
 
-    def iter_tilt(self, drange:Number_T, dtype:str) -> Generator:
+    def iter_tilt(self, drange: Number_T, dtype: str) -> Generator:
         for i in self.available_tilt(dtype):
             yield self.get_data(i, drange, dtype)
 
@@ -616,7 +635,7 @@ class NexradL2Data(object):
     r'''
     Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
     '''
-    def __init__(self, file:Any):
+    def __init__(self, file: Any):
         r'''
         Parameters
         ----------
@@ -631,7 +650,7 @@ class NexradL2Data(object):
         self.stationlon = self.f.sweeps[0][0][1].lon
         self.stationlat = self.f.sweeps[0][0][1].lat
 
-    def get_data(self, tilt:int, drange:Number_T, dtype:str) -> Radial:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> Radial:
         if isinstance(dtype, str):
             self.dtype = dtype.upper().encode()
         elif isinstance(dtype, bytes):
@@ -661,7 +680,7 @@ class NexradL2Data(object):
         radial.add_polarc(d, a)
         return radial
 
-    def projection(self, reso:float, h_offset:bool=False) -> tuple:
+    def projection(self, reso: float, h_offset: bool = False) -> tuple:
         header = self.f.sweeps[self.tilt][0][4][self.dtype][0]
         gatenum = header.num_gates
         firstgate = header.first_gate
