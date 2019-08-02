@@ -127,3 +127,42 @@ moment_header = [("data_type", "i4"),
 
 moment_header_dtype = np.dtype(moment_header)
 
+product_header = [("product_type", "i4"),
+                  ("product_name", "32c"),
+                  ("product_gentime", "i4"),
+                  ("scan_start_time", "i4"),
+                  ("data_start_time", "i4"),
+                  ("data_end_time", "i4"),
+                  ("proj_type", "i4"),
+                  ("dtype_1", "i4"),
+                  ("dtype_2", "i4"),
+                  ("res", "64c")]
+
+product_header_dtype = np.dtype(product_header)
+
+l3_radial_header = [("dtype", "i4"),
+                    ("scale", "i4"),
+                    ("offset", "i4"),
+                    ("bin_length", "i2"),
+                    ("flags", "i2"),
+                    ("reso", "i4"),
+                    ("start_range", "i4"),
+                    ("max_range", "i4"),
+                    ("nradial", "i4"),
+                    ("max_val", "int"),
+                    ("range_of_max", "i4"),
+                    ("az_of_max", "f4"),
+                    ("min_val", "i4"),
+                    ("range_of_min", "i4"),
+                    ("az_of_min", "f4"),
+                    ("res", "8c")]
+
+l3_radial_header_dtype = np.dtype(l3_radial_header)
+
+l3_radial_block = [("start_az", "f4"),
+                   ("angular_reso", "f4"),
+                   ("nbins", "i4"),
+                   ("res", "20c")]
+
+l3_radial_block_dtype = np.dtype(l3_radial_block)
+
