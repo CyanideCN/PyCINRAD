@@ -6,6 +6,7 @@ from typing import Union, Any
 import datetime
 import os
 import glob
+from io import BytesIO
 
 import numpy as np
 
@@ -237,21 +238,92 @@ class HailIndex(object):
         out['position'] = tuple(lonlat)
         return out
 
-class PUPFileLoader(object):
-    r'''
-    A class behaves like data classes in `level2` by gathering
-    data from different elevations in single volume scan.
-    '''
-    def __init__(self, fpath: str):
-        path, name = os.path.split(fpath)
-        name_seg = name.split('.')
-        # Ensure standard naming format
-        assert len(name_seg) == 5
-        date, time_, eli, pid, rid = name_seg
-        all_file = glob.glob(os.path.join(path, '.'.join([date , time_ , '*' , pid , rid])))
-        self._f = os.path.join(path, '.'.join([date , time_ , '*' , pid , rid]))
-        self._file = [PUP(i) for i in all_file]
+class ProductParams(object):
+    def __init__(self, ptype, param_bytes):
+        self.buf = BytesIO(param_bytes)
+        self.params = dict()
+        map_func = {1:self._ppi,
+                    2:self._rhi}
+        map_func[ptype]()
 
-    @staticmethod
-    def load(file):
-        pass
+    def _ppi(self):
+        elev = np.frombuffer(self.buf.read(4), 'f4')[0]
+        self.params['elevation'] = elev
+
+    def _rhi(self):
+        azi = np.frombuffer(self.buf.read(4), 'f4')[0]
+        top = np.frombuffer(self.buf.read(4), 'f4')[0]
+        bot = np.frombuffer(self.buf.read(4), 'f4')[0]
+        self.params['azimuth'] = azi
+        self.params['top'] = top
+        self.params['bottom'] = bot
+
+class StandardPUP(BaseRadar):
+
+    dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
+                  9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
+                  17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 71:'RR', 72:'HGT',
+                  73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS', 77:'CTR'}
+
+    def __init__(self, file):
+        self.f = prepare_file(file)
+        self._parse()
+        self._update_radar_info()
+        self.stationlat = self.geo['lat'][0]
+        self.stationlon = self.geo['lon'][0]
+        self.radarheight = self.geo['height'][0]
+        if self.name == 'None':
+            self.name = self.code
+
+    def _parse(self):
+        header = np.frombuffer(self.f.read(32), SDD_header)
+        if header['magic_number'] != 0x4D545352:
+            raise RadarDecodeError('Invalid standard data')
+        site_config = np.frombuffer(self.f.read(128), SDD_site)
+        self.code = b''.join(site_config['site_code'][0]).decode().replace('\x00', '')
+        self.geo = geo = dict()
+        geo['lat'] = site_config['Latitude']
+        geo['lon'] = site_config['Longitude']
+        geo['height'] = site_config['ground_height']
+        task = np.frombuffer(self.f.read(256), SDD_task)
+        self.task_name = b''.join(task['task_name'][0]).decode().replace('\x00', '')
+        cut_num = task['cut_number'][0]
+        scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
+        ph = np.frombuffer(self.f.read(128), SDD_pheader)
+        ptype = ph['product_type'][0]
+        self.scantime = datetime.datetime(*time.gmtime(ph['scan_start_time'])[:6])
+        self.dtype = self.dtype_corr[ph['dtype_1'][0]]
+        params = ProductParams(ptype, self.f.read(64)).params
+
+        radial_header = np.frombuffer(self.f.read(64), L3_radial)
+        bin_length = radial_header['bin_length'][0]
+        scale = radial_header['scale'][0]
+        offset = radial_header['offset'][0]
+        self.reso = radial_header['reso'][0] / 1000
+        self.start_range = radial_header['start_range'][0] / 1000
+        self.end_range = radial_header['max_range'][0] / 1000
+        data = list()
+        azi = list()
+        while True:
+            buf = self.f.read(32)
+            if not buf:
+                break
+            data_block = np.frombuffer(buf, L3_rblock)
+            start_a = data_block['start_az'][0]
+            nbins = data_block['nbins'][0]
+            raw = np.frombuffer(self.f.read(bin_length * nbins), 'u{}'.format(bin_length))
+            data.append(raw)
+            azi.append(start_a)
+        raw = np.vstack(data).astype(int)
+        raw = np.ma.masked_less_equal(raw, 5)
+        self.data = (raw - offset) / scale
+        self.el = params['elevation']
+        self.azi = np.deg2rad(azi)
+
+    def get_data(self):
+        dist = np.arange(self.start_range, self.end_range, self.reso)
+        lon, lat = get_coordinate(dist, self.azi, self.el, self.stationlon, self.stationlat)
+        hgt = height(dist, self.el, self.radarheight)
+        radial = Radial(self.data, self.end_range, self.el, self.reso, self.code, self.name, self.scantime,
+                        self.dtype, self.stationlon, self.stationlat, lon, lat, height, task=self.task_name)
+        return radial

@@ -10,7 +10,9 @@ __all__ = ['CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_ta
 from cinrad.io._radar_struct.CC import scan_param_dtype as CC_param, header_dtype as CC_header, data_dtype as CC_data
 from cinrad.io._radar_struct.standard_data import (generic_header_dtype as SDD_header, site_config_dtype as SDD_site,
                                                    task_config_dtype as SDD_task, cut_config_dtype as SDD_cut,
-                                                   radial_header_dtype as SDD_rad_header, moment_header_dtype as SDD_mom_header)
+                                                   radial_header_dtype as SDD_rad_header, moment_header_dtype as SDD_mom_header,
+                                                   product_header_dtype as SDD_pheader, l3_radial_header_dtype as L3_radial,
+                                                   l3_radial_block_dtype as L3_rblock)
 from cinrad.io._radar_struct.CD import radarsite_dtype as CD_site, performance_dtype as CD_perf, observation_param_dtype as CD_obs
 
 _S_HEADER = [('spare', 'u2', 7),
