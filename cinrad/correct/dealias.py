@@ -1,10 +1,16 @@
+# -*- coding: utf-8 -*-
+# Author: Puyuan Du
+
 import copy
+import warnings
+
 import numpy as np
+
 try:
     from cinrad.correct._unwrap_2d import unwrap_2d
 except ImportError:
-    print('Cython is not installed, velocity dealias function cannot be used. ' +
-          'Install Cython and then re-install cinrad.')
+    warnings.warn('Cython is not installed, velocity dealias function cannot be used. ' +
+                  'Install Cython and then re-install cinrad.', RuntimeWarning)
 from cinrad.datastruct import Radial
 
 def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarray:

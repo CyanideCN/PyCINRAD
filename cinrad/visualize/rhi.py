@@ -9,36 +9,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from cinrad.datastruct import Slice_
-from cinrad._element import sec_plot, norm_plot, prodname
+from cinrad.visualize.utils import sec_plot, norm_plot, prodname
 
 __all__ = ['Section', 'RHI']
 
-class Section:
-    def __init__(self, data: Slice_, hlim: int = 15):
+class Section(object):
+    def __init__(self, data: Slice_, hlim: int = 15, interpolate: bool = True):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
+        self.interp = interpolate
         self.path_customize = False
 
     def _plot(self, fpath: str):
-        from cinrad.constants import plot_kw
+        from cinrad.visualize.utils import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor
         ycor = self.data.ycor
-        rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
+        rmax = rhi.max()
         plt.style.use('dark_background')
         #plt.figure(figsize=(10, 4), dpi=200)
         plt.figure(figsize=(10, 8), dpi=600)  ## 修改于2019-01-22 By WU Fulang
         plt.tick_params(labelsize=20) #坐标轴字体大小
         plt.grid(True, linewidth=0.50, linestyle="-.", color='white') ## 修改于2019-01-22 By WU Fulang
         #plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
-        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        if self.interp:
+            plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        else:
+            plt.pcolormesh(xcor, ycor, rhi, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
         plt.ylim(0, self.hlim)
         stps = self.data.geoinfo['stp_s']
         enps = self.data.geoinfo['enp_s']
         stp = self.data.geoinfo['stp']
         enp = self.data.geoinfo['enp']
-        plt.title('Vertical cross-section ({})\nStation: {} Start: {} End: {} Time: {} Max: {}'.format(
+        plt.title('Vertical cross-section ({})\nStation: {} Start: {} End: {} Time: {} Max: {:.1f}'.format(
                   prodname[self.dtype],self.data.name, stps, enps, self.data.scantime.strftime('%Y.%m.%d %H:%M'), rmax),
                   **plot_kw)
         #重新绘制VCS的横坐标，分为5等分
@@ -69,24 +73,28 @@ class Section:
                     fpath += os.path.sep
         return self._plot(fpath)
 
-class RHI:
-    def __init__(self, data: Slice_, hlim: int = 15):
+class RHI(object):
+    def __init__(self, data: Slice_, hlim: int = 15, interpolate: bool = True):
         self.data = data
         self.dtype = data.dtype
         self.hlim = hlim
+        self.interp = interpolate
         self.azimuth = data.geoinfo['azimuth']
         self.path_customize = False
 
     def _plot(self, fpath: str):
-        from cinrad.constants import plot_kw
+        from cinrad.visualize.utils import plot_kw
         rhi = self.data.data
         xcor = self.data.xcor
         ycor = self.data.ycor
-        rmax = np.round_(np.max(rhi[np.logical_not(np.isnan(rhi))]), 1)
+        rmax = rhi.max()
         plt.style.use('dark_background')
         plt.figure(figsize=(10, 5), dpi=300)
         plt.grid(True, linewidth=0.5, linestyle="-.", color='white')
-        plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        if interpolate:
+            plt.contourf(xcor, ycor, rhi, 128, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
+        else:
+            plt.pcolormesh(xcor, ycor, rhi, cmap=sec_plot[self.data.dtype], norm=norm_plot[self.data.dtype])
         plt.ylim(0, self.hlim)
         plt.title('Range-Height Indicator\nStation: {} Data: {} Range: {:.0f}km Azimuth: {:.0f}° Time: {}'.format(
                   self.data.name, self.data.dtype, self.data.xcor.max(), self.azimuth,

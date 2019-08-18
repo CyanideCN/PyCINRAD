@@ -1,6 +1,6 @@
 from glob import glob
 
-def replace_dtype(s:str):
+def replace_dtype(s: str) -> str:
     s = s.replace('ulong', 'u4')
     s = s.replace('ushort', 'u2')
     s = s.replace('long', 'i4')

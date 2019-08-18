@@ -7,7 +7,9 @@ import ast
 import matplotlib.colors as mclr
 import numpy as np
 
-_cmapdir_ = os.path.join(os.path.split(__file__)[0], 'data', 'colormap')
+from cinrad.constants import MODULE_DIR
+
+_cmapdir_ = os.path.join(MODULE_DIR, 'data', 'colormap')
 
 LAST_COLOR = 0
 CONTROL_COLOR = 1

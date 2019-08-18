@@ -5,7 +5,7 @@ import numpy as np
 
 __all__ = ['CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_task',
            'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
-           'SWAN_dtype', 'CD_dtype', 'CD_DATA']
+           'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock']
 
 from cinrad.io._radar_struct.CC import scan_param_dtype as CC_param, header_dtype as CC_header, data_dtype as CC_data
 from cinrad.io._radar_struct.standard_data import (generic_header_dtype as SDD_header, site_config_dtype as SDD_site,
