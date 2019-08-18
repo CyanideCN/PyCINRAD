@@ -13,7 +13,7 @@ from cinrad.constants import deg2rad, con
 from cinrad.datastruct import Radial, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
-from cinrad.io.base import BaseRadar, prepare_file
+from cinrad.io.base import RadarBase, prepare_file
 from cinrad.io._dtype import *
 from cinrad._typing import Number_T
 
@@ -71,7 +71,7 @@ def _detect_radartype(f: Any, filename: str, type_assert: Optional[str] = None) 
         raise RadarDecodeError('Radar type undefined')
     return code, radartype
 
-class CinradReader(BaseRadar):
+class CinradReader(RadarBase):
     r'''
     Class handling CINRAD radar reading
 
@@ -385,7 +385,7 @@ class CinradReader(BaseRadar):
         for i in tlist:
             yield self.get_data(i, drange, dtype)
 
-class StandardData(BaseRadar):
+class StandardData(RadarBase):
     r'''
     Class handling new cinrad standard data reading
 

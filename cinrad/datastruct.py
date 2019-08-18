@@ -88,8 +88,8 @@ class Radial(object):
             self.geoflag = True
 
     def __repr__(self):
-        repr_s = ('Datatype: {}\nStation name: {}\nScan time: {}\nElevation angle: '
-        + '{}\nRange: {}')
+        repr_s = ('<Datatype: {} Station name: {} Scan time: {} Elevation angle: '
+        + '{:.2f} Range: {}>')
         return repr_s.format(
             self.dtype.upper(), self.name, self.scantime, self.elev, self.drange)
 

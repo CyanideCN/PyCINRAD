@@ -37,7 +37,7 @@ def is_uniform(radial_list: Volume_T) -> bool:
     r'''Check if all input radials have same data type'''
     return len(set([i.dtype for i in radial_list])) == 1
 
-def quick_cr(r_list: Volume_T) -> Grid:
+def quick_cr(r_list: Volume_T, resolution: Optional[tuple] = None) -> Grid:
     r'''
     Calculate composite reflectivity
 
@@ -52,7 +52,7 @@ def quick_cr(r_list: Volume_T) -> Grid:
     '''
     r_data = list()
     for i in r_list:
-        r, x, y = grid_2d(i.data, i.lon, i.lat)
+        r, x, y = grid_2d(i.data, i.lon, i.lat, resolution=resolution)
         r_data.append(r)
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
@@ -154,8 +154,16 @@ class VCS(object):
     def __init__(self, r_list: Volume_T):
         if not is_uniform(r_list):
             raise RadarCalculationError('All input radials must have the same data type')
-        self.rl = r_list
-        self.el = [i.elev for i in r_list]
+        el = [i.elev for i in r_list]
+        if len(el) != len(set(el)):
+            self.rl = list()
+            el_list = list()
+            for data in r_list:
+                if data.elev not in el_list:
+                    self.rl.append(data)
+                    el_list.append(data.elev)
+        else:
+            self.rl = r_list
         self.x, self.y, self.h, self.r = self._geocoor()
 
     def _geocoor(self) -> tuple:
@@ -171,10 +179,7 @@ class VCS(object):
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
-        for radial, elev in zip(self.rl, self.el):
-            hgh = height(radial.dist, elev, 0)
-            hgh_radial = np.asarray(hgh.tolist() * radial.data.shape[0]).reshape(radial.data.shape)
-            hgh_grid, x, y = grid_2d(hgh_radial, radial.lon, radial.lat)
+            hgh_grid, x, y = grid_2d(i.height, i.lon, i.lat)
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
@@ -192,7 +197,7 @@ class VCS(object):
             h_sec.append(h_section)
         r = np.asarray(r_sec)
         h = np.asarray(h_sec)
-        r[np.isnan(r)] = 0
+        r = np.ma.masked_invalid(r)
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
         stp_s = '{}N, {}E'.format(stp[1], stp[0])
         enp_s = '{}N, {}E'.format(enp[1], enp[0])
@@ -205,7 +210,7 @@ class VCS(object):
                     end_polar: Optional[Tuple[float, float]] = None,
                     start_cart: Optional[Tuple[float, float]] = None,
                     end_cart: Optional[Tuple[float, float]] = None,
-                    spacing: int = 100) -> Slice_:
+                    spacing: int = 500) -> Slice_:
         r'''
         Get cross-section data from input points
 

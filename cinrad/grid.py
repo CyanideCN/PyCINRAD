@@ -45,7 +45,7 @@ def resample(data: np.ndarray, distance: np.ndarray, azimuth: np.ndarray, d_reso
     return r, dist, theta
 
 def grid_2d(data: np.ndarray, x: np.ndarray, y: np.ndarray, x_out: Optional[np.ndarray] = None,
-            y_out: Optional[np.ndarray] = None, resolution: Tuple[int, int] = (1000, 1000)) -> tuple:
+            y_out: Optional[np.ndarray] = None, resolution: Tuple[int, int] = None) -> tuple:
     r'''
     Interpolate data in polar coordinates into geographic coordinates
 
@@ -68,6 +68,7 @@ def grid_2d(data: np.ndarray, x: np.ndarray, y: np.ndarray, x_out: Optional[np.n
     y_cor: numpy.ndarray
         interpolated latitude in grid
     '''
+    resolution = (1000, 1000) if not resolution else resolution
     odf = GridDefinition(x, y)
     r_x, r_y = resolution
     if isinstance(x_out, type(None)):

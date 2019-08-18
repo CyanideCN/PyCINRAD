@@ -1,12 +1,10 @@
-﻿/test.py
-/cinrad/pyartconv.py
+/test.py
 /dist
 /cinrad.egg-info
 /build
 *.pyc
 /.vs
 .idea/*
-/shapefile/*
 *.ui
 /.vscode
 /cinrad/_utils.c

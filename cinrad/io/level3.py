@@ -13,7 +13,7 @@ import numpy as np
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
-from cinrad.io.base import BaseRadar, prepare_file
+from cinrad.io.base import RadarBase, prepare_file
 from cinrad.io._dtype import *
 from cinrad.datastruct import Radial, Grid
 from cinrad.error import RadarDecodeError
@@ -21,7 +21,7 @@ from cinrad.error import RadarDecodeError
 def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
     return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
 
-class PUP(BaseRadar):
+class PUP(RadarBase):
     r'''
     Class handling PUP data (Nexrad Level III data)
     '''
@@ -38,6 +38,7 @@ class PUP(BaseRadar):
         if self.radial_flag:
             self.az = np.array(data_block['start_az'] + [data_block['end_az'][-1]]) * deg2rad
             self.rng = np.linspace(0, f.max_range, data.shape[-1] + 1)
+            self.reso = self.max_range / data.shape[1]
         else:
             # TODO: Support grid type data
             raise NotImplementedError('Grid-type data is not supported')
@@ -109,10 +110,10 @@ class SWAN(object):
             out = data_body.reshape(xdim, ydim)
         else:
             # 3D data
-            out = data_body.reshape(zdim, xdim, ydim)
+            out = data_body.reshape(zdim, ydim, xdim)
         self.data_time = datetime.datetime(header['year'], header['month'], header['day'], header['hour'], header['minute'])
         # TODO: Recognize correct product name
-        self.product_name = b''.join(header['data_name'][0, :4]).decode()
+        self.product_name = b''.join(header['data_name']).decode().replace('\x00', '')
         start_lon = header['start_lon'][0]
         start_lat = header['start_lat'][0]
         center_lon = header['center_lon'][0]
@@ -123,15 +124,22 @@ class SWAN(object):
         #y_reso = header['y_reso'][0]
         self.lon = np.linspace(start_lon, end_lon, xdim) # For shape compatibility
         self.lat = np.linspace(start_lat, end_lat, ydim)
-        if self.product_name == 'CR':
-            self.data = np.ma.array((out - 66) / 2, mask=(out==0))
+        if self.product_name in ['CR', '3DREF']:
+            self.data = (np.ma.masked_equal(out, 0) - 66) / 2
         else:
             # Leave data unchanged because the scale and offset are unclear
-            self.data = np.ma.array(out, mask=(out==0))
+            self.data = np.ma.masked_equal(out, 0)
 
-    def get_data(self) -> Grid:
+    def get_data(self, level=0) -> Grid:
         x, y = np.meshgrid(self.lon, self.lat)
-        grid = Grid(self.data, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, self.product_name, 0, 0, x, y)
+        dtype = self.product_name
+        if self.data.ndim == 2:
+            ret = self.data
+        else:
+            ret = self.data[level]
+            if self.product_name == '3DREF':
+                dtype = 'CR'
+        grid = Grid(ret, np.nan, np.nan, 'SWAN', 'SWAN', self.data_time, dtype, 0, 0, x, y)
         return grid
 
 class StormTrackInfo(object):
@@ -178,7 +186,7 @@ class StormTrackInfo(object):
         lonlat = get_coordinate(dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False)
         return lonlat
 
-    def track(self, storm_id: str, tracktype: str) -> Any:
+    def track(self, storm_id: str, tracktype: str) -> tuple:
         if tracktype == 'forecast':
             key = 'forecast storm position'
         elif tracktype == 'past':
@@ -238,13 +246,14 @@ class HailIndex(object):
         out['position'] = tuple(lonlat)
         return out
 
-class ProductParams(object):
-    def __init__(self, ptype, param_bytes):
+class _ProductParams(object):
+    def __init__(self, ptype: int, param_bytes: bytes):
         self.buf = BytesIO(param_bytes)
         self.params = dict()
         map_func = {1:self._ppi,
                     2:self._rhi}
         map_func[ptype]()
+        self.buf.close()
 
     def _ppi(self):
         elev = np.frombuffer(self.buf.read(4), 'f4')[0]
@@ -258,7 +267,10 @@ class ProductParams(object):
         self.params['top'] = top
         self.params['bottom'] = bot
 
-class StandardPUP(BaseRadar):
+def get_product_param(ptype: int, param_bytes: bytes) -> dict:
+    return _ProductParams(ptype, param_bytes).params
+
+class StandardPUP(RadarBase):
 
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
@@ -274,6 +286,8 @@ class StandardPUP(BaseRadar):
         self.radarheight = self.geo['height'][0]
         if self.name == 'None':
             self.name = self.code
+        del self.geo
+        self.f.close()
 
     def _parse(self):
         header = np.frombuffer(self.f.read(32), SDD_header)
@@ -293,7 +307,7 @@ class StandardPUP(BaseRadar):
         ptype = ph['product_type'][0]
         self.scantime = datetime.datetime(*time.gmtime(ph['scan_start_time'])[:6])
         self.dtype = self.dtype_corr[ph['dtype_1'][0]]
-        params = ProductParams(ptype, self.f.read(64)).params
+        params = get_product_param(ptype, self.f.read(64))
 
         radial_header = np.frombuffer(self.f.read(64), L3_radial)
         bin_length = radial_header['bin_length'][0]

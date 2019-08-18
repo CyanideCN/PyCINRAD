@@ -36,7 +36,7 @@ def prepare_file(file: Any) -> Any:
         return bz2.BZ2File(file, 'rb')
     return open(file, 'rb')
 
-class BaseRadar(abc.ABC):
+class RadarBase(abc.ABC):
     r'''
     Base class for readers in `cinrad.io`.
     Only used when subclassed

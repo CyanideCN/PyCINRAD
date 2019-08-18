@@ -13,12 +13,12 @@ from cartopy.mpl.geoaxes import GeoAxes
 
 from cinrad.visualize.utils import (add_shp, save, setup_axes, setup_plot, text,
                                     change_cbar_text, draw_highlight_area, set_geoaxes)
+from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
-from cinrad._element import *
 
 __all__ = ['PPI']
 
@@ -116,7 +116,7 @@ class PPI(object):
             return c, c2
 
     def _plot(self, **kwargs):
-        from cinrad.constants import plot_kw
+        from cinrad.visualize.utils import plot_kw
         dtype = self.data.dtype
         lon, lat, var = _prepare(self.data, dtype)
         if self.settings['extent'] == None: #增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
@@ -132,7 +132,6 @@ class PPI(object):
         if self.data.dtype in ['VEL', 'SW'] and self.data.include_rf:
             rf = var[1]
             var = var[0]
-        popnan = var[np.logical_not(np.isnan(var))]
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
@@ -161,9 +160,9 @@ class PPI(object):
             text(ax2, self.data.drange, self.data.reso, self.data.scantime, self.data.name, task, self.data.elev)
             ax2.text(0, 2.36, ' ' * 35) # Ensure consistent figure size
             ax2.text(0, 2.36, prodname[dtype], **plot_kw)
-            ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(np.max(popnan), unit[dtype]), **plot_kw)
+            ax2.text(0, 1.96, 'Max: {:.1f}{}'.format(var.max(), unit[dtype]), **plot_kw)
             if self.data.dtype == 'VEL':
-                ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(np.min(popnan), unit[dtype]), **plot_kw)
+                ax2.text(0, 1.91, 'Min: {:.1f}{}'.format(var.min(), unit[dtype]), **plot_kw)
         if self.settings['slice']:
             self.plot_cross_section(self.settings['slice'])
 
@@ -198,7 +197,8 @@ class PPI(object):
             #self.ax.plot(x, y, color=color, linewidth=linewidth, **kwargs)
             self.geoax.plot(x, y, color=color, linewidth=linewidth, transform=self.data_crs, **kwargs)
 
-    def plot_cross_section(self, data: Slice_, ymax: Optional[int] = None, linecolor: Optional[str] = None):
+    def plot_cross_section(self, data: Slice_, ymax: Optional[int] = None, linecolor: Optional[str] = None,
+                           interpolate: bool = True):
         r'''Plot cross section data below the PPI plot.'''
         if not linecolor:
             if self.settings['style'] == 'black':
@@ -210,13 +210,14 @@ class PPI(object):
         ax2.yaxis.set_ticks_position('right')
         ax2.set_xticks([])
         sl = data.data
-        if data.dtype == 'REF':
-            sl[sl == 0] = -1
         xcor = data.xcor
         ycor = data.ycor
         stp = data.geoinfo['stp']
         enp = data.geoinfo['enp']
-        ax2.contourf(xcor, ycor, sl, 128, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
+        if interpolate:
+            ax2.contourf(xcor, ycor, sl, 256, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
+        else:
+            ax2.pcolormesh(xcor, ycor, sl, cmap=sec_plot[data.dtype], norm=norm_plot[data.dtype])
         if ymax:
             ax2.set_ylim(0, ymax)
         else:
@@ -263,7 +264,7 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
-        from cinrad.constants import MODULE_DIR, plot_kw
+        from cinrad.visualize.utils import MODULE_DIR, plot_kw
         with open(os.path.join(MODULE_DIR, 'data', 'chinaCity.json'), encoding='utf-8') as j:
             js = json.load(j)
         name = np.concatenate([[j['name'] for j in i['children']] for i in js])
@@ -293,5 +294,5 @@ class PPI(object):
             lon_center = (ulon + llon) / 2
             lon_extend = lat_delta / 2
             llon = lon_center - lon_extend
-            llat = lat_center + lat_extend
+            ulon = lon_center + lon_extend
         self.geoax.set_extent([llon, ulon, llat, ulat], self.geoax.projection)
