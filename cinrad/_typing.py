@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# Author: Puyuan Du
 from typing import List, Union
 from numpy  import ndarray
 

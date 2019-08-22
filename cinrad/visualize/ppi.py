@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Du puyuan
+# Author: Puyuan Du
 
 import os
 from pathlib import Path
