@@ -16,7 +16,7 @@ data_pth = join('cinrad', 'data')
 
 setup(
     name = 'cinrad',
-    version = '1.4.1',
+    version = '1.4.2',
     description = 'Decode CINRAD radar data and visualize',
     long_description = 'Decode CINRAD radar data and visualize',
     license = 'GPL Licence',
