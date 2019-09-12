@@ -14,6 +14,7 @@ import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
+from cartopy.mpl.geoaxes import GeoAxes
 import shapefile
 
 from cinrad.visualize.gpf import _cmap
@@ -149,6 +150,8 @@ def text(ax: Any, drange: Number_T, reso: float, scantime: datetime, name: str, 
 
 def save(fpath: str):
     plt.savefig(fpath, bbox_inches='tight', pad_inches=0)
+    # TODO: remove bbox_inches kwargs since this will influence 
+    # the size of figure a little bit
     plt.close('all')
 
 @lru_cache(maxsize=2)
@@ -203,7 +206,7 @@ def draw_highlight_area(area: Union[Array_T, str]):
         pat = ax_.add_artist(l)
         pat.set_zorder(4)
 
-def set_geoaxes(fig: Any, proj: ccrs.Projection, extent: Array_T) -> Any:
+def set_geoaxes(fig: Any, proj: ccrs.Projection, extent: Array_T) -> GeoAxes:
     ax = fig.add_axes([0, 0, 0.9, 0.9], projection=proj)
     ax.background_patch.set_fill(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]

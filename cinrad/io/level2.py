@@ -407,10 +407,6 @@ class StandardData(RadarBase):
         height of this radar
     name: str
         name of this radar
-    Rreso: float
-        radial resolution of reflectivity data
-    Vreso: float
-        radial resolution of velocity data
     a_reso: int
         number of radials in one scan
     el: np.ndarray
@@ -503,7 +499,7 @@ class StandardData(RadarBase):
                 # In `StandardData`, the `data` dictionary stores raw data instead of data
                 # calibrated by scale and offset.
                 # The calibration process is moved to `get_raw` part.
-                data[el_num][dtype].append(data_body.tolist())
+                data[el_num][dtype].append(data_body)
             radial_state = radial_header['radial_state'][0]
             if radial_state in [0, 3]:
                 # Start of tilt or volume scan
@@ -554,9 +550,9 @@ class StandardData(RadarBase):
             ngates = int(drange / reso)
             out = np.zeros((nrays, ngates)) * np.ma.masked
             return out
-        # The number below 6 is used as reserved codes, which are used to indicate other
+        # Data below 5 are used as reserved codes, which are used to indicate other
         # information instead of real data, so they should be masked.
-        data = np.ma.masked_less_equal(raw, 5)
+        data = np.ma.masked_less(raw, 5)
         cut = data[:, :int(drange / reso)]
         shape_diff = np.round(drange / reso) - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
