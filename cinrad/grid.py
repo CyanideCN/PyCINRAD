@@ -11,9 +11,15 @@ from pyresample.kd_tree import resample_nearest
 from cinrad.constants import deg2rad
 from cinrad._typing import Number_T
 
-def resample(data: np.ndarray, distance: np.ndarray, azimuth: np.ndarray, d_reso: Number_T,
-             a_reso: int) -> tuple:
-    r'''
+
+def resample(
+    data: np.ndarray,
+    distance: np.ndarray,
+    azimuth: np.ndarray,
+    d_reso: Number_T,
+    a_reso: int,
+) -> tuple:
+    r"""
     Resample radar radial data which have different number of radials
     in one scan into that of 360 radials
 
@@ -34,19 +40,28 @@ def resample(data: np.ndarray, distance: np.ndarray, azimuth: np.ndarray, d_reso
         resampled distance
     theta: numpy.ndarray
         resampled azimuth
-    '''
-    #Target grid
+    """
+    # Target grid
     Rrange = np.arange(d_reso, distance.max() + d_reso, d_reso)
     Trange = np.linspace(0, 360, a_reso + 1) * deg2rad
     dist, theta = np.meshgrid(Rrange, Trange)
-    #Original grid
+    # Original grid
     d, t = np.meshgrid(distance, azimuth)
-    r = griddata((d.flatten(), t.flatten()), data.flatten(), (dist, theta), method='nearest')
+    r = griddata(
+        (d.flatten(), t.flatten()), data.flatten(), (dist, theta), method="nearest"
+    )
     return r, dist, theta
 
-def grid_2d(data: np.ndarray, x: np.ndarray, y: np.ndarray, x_out: Optional[np.ndarray] = None,
-            y_out: Optional[np.ndarray] = None, resolution: Tuple[int, int] = None) -> tuple:
-    r'''
+
+def grid_2d(
+    data: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    x_out: Optional[np.ndarray] = None,
+    y_out: Optional[np.ndarray] = None,
+    resolution: Tuple[int, int] = None,
+) -> tuple:
+    r"""
     Interpolate data in polar coordinates into geographic coordinates
 
     Parameters
@@ -67,7 +82,7 @@ def grid_2d(data: np.ndarray, x: np.ndarray, y: np.ndarray, x_out: Optional[np.n
         interpolated longitude in grid
     y_cor: numpy.ndarray
         interpolated latitude in grid
-    '''
+    """
     resolution = (1000, 1000) if not resolution else resolution
     odf = GridDefinition(x, y)
     r_x, r_y = resolution

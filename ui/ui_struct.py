@@ -8,6 +8,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -58,13 +59,17 @@ class Ui_MainWindow(object):
         self.radioButton_9.setObjectName("radioButton_9")
         self.label_3 = QtWidgets.QLabel(self.centralwidget)
         self.label_3.setGeometry(QtCore.QRect(10, 360, 121, 211))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_3.sizePolicy().hasHeightForWidth())
         self.label_3.setSizePolicy(sizePolicy)
         self.label_3.setText("")
-        self.label_3.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
+        self.label_3.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
         self.label_3.setWordWrap(True)
         self.label_3.setObjectName("label_3")
         self.comboBox = QtWidgets.QComboBox(self.centralwidget)
@@ -121,6 +126,7 @@ class Ui_MainWindow(object):
         self.menu.setTitle(_translate("MainWindow", "文件"))
         self.actionOpen.setText(_translate("MainWindow", "Open"))
         self.actionClose.setText(_translate("MainWindow", "Close"))
-        self.actionBase_Reflectivity.setText(_translate("MainWindow", "Base Reflectivity"))
+        self.actionBase_Reflectivity.setText(
+            _translate("MainWindow", "Base Reflectivity")
+        )
         self.actionBase_Velocity.setText(_translate("MainWindow", "Base Velocity"))
-

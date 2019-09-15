@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 from typing import List, Union
-from numpy  import ndarray
+from numpy import ndarray
 
 from cinrad.datastruct import Radial
 

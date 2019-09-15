@@ -7,9 +7,11 @@ import numpy as np
 from cinrad.constants import deg2rad, rm
 from cinrad._typing import Boardcast_T, Number_T
 
-def height(distance: Boardcast_T, elevation: Union[int ,float],
-           radarheight: Number_T) -> np.ndarray:
-    r'''
+
+def height(
+    distance: Boardcast_T, elevation: Union[int, float], radarheight: Number_T
+) -> np.ndarray:
+    r"""
     Calculate height of radar beam considering atmospheric refraction.
 
     Parameters
@@ -24,13 +26,23 @@ def height(distance: Boardcast_T, elevation: Union[int ,float],
     Returns
     -------
     height
-    '''
-    return distance * np.sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight / 1000
+    """
+    return (
+        distance * np.sin(elevation * deg2rad)
+        + distance ** 2 / (2 * rm)
+        + radarheight / 1000
+    )
 
-def get_coordinate(distance: Boardcast_T, azimuth: Boardcast_T,
-                   elevation: Number_T, centerlon: Number_T, centerlat: Number_T,
-                   h_offset: bool = True) -> tuple:
-    r'''
+
+def get_coordinate(
+    distance: Boardcast_T,
+    azimuth: Boardcast_T,
+    elevation: Number_T,
+    centerlon: Number_T,
+    centerlat: Number_T,
+    h_offset: bool = True,
+) -> tuple:
+    r"""
     Convert polar coordinates to geographic coordinates with the given radar station position.
 
     Parameters
@@ -52,7 +64,7 @@ def get_coordinate(distance: Boardcast_T, azimuth: Boardcast_T,
         longitude value
     actuallat: float or numpy.ndarray
         latitude value
-    '''
+    """
     elev = elevation if h_offset else 0
     if isinstance(azimuth, np.ndarray):
         deltav = np.cos(azimuth[:, np.newaxis]) * distance * np.cos(elev * deg2rad)
