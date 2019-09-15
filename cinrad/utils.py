@@ -14,12 +14,18 @@ try:
 except ImportError:
     # When the C-extension doesn't exist, define the functions in Python.
 
-    def r2z(r:np.ndarray) -> np.ndarray:
+    def r2z(r: np.ndarray) -> np.ndarray:
         return 10 ** (r / 10)
 
-    def vert_integrated_liquid(ref: np.ndarray, distance: np.ndarray, elev: Array_T, beam_width: float = 0.99,
-                               threshold: Union[float, int] = 18., density: bool = False) -> np.ndarray:
-        r'''
+    def vert_integrated_liquid(
+        ref: np.ndarray,
+        distance: np.ndarray,
+        elev: Array_T,
+        beam_width: float = 0.99,
+        threshold: Union[float, int] = 18.0,
+        density: bool = False,
+    ) -> np.ndarray:
+        r"""
         Calculate vertically integrated liquid (VIL) in one full scan
 
         Parameters
@@ -37,9 +43,9 @@ except ImportError:
         -------
         data: numpy.ndarray
             vertically integrated liquid data
-        '''
+        """
         if density:
-            raise NotImplementedError('VIL density calculation is not implemented')
+            raise NotImplementedError("VIL density calculation is not implemented")
         v_beam_width = beam_width * deg2rad
         elev = np.array(elev) * deg2rad
         xshape, yshape = ref[0].shape
@@ -48,9 +54,16 @@ except ImportError:
         vil = _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold)
         return vil
 
-    def _vil_iter(xshape: int, yshape: int, ref: np.ndarray, distance: np.ndarray, elev: Array_T,
-                  hi_arr: np.ndarray, threshold: Number_T) -> np.ndarray:
-        #r = np.clip(ref, None, 55) #reduce the influence of hails
+    def _vil_iter(
+        xshape: int,
+        yshape: int,
+        ref: np.ndarray,
+        distance: np.ndarray,
+        elev: Array_T,
+        hi_arr: np.ndarray,
+        threshold: Number_T,
+    ) -> np.ndarray:
+        # r = np.clip(ref, None, 55) #reduce the influence of hails
         r = ref
         z = r2z(r)
         VIL = np.zeros((xshape, yshape))
@@ -75,9 +88,14 @@ except ImportError:
                 VIL[i][j] = m1 + mb + mt
         return VIL
 
-    def echo_top(ref: np.ndarray, distance: np.ndarray, elev: Array_T, radarheight: Number_T,
-                 threshold: Number_T = 18.) -> np.ndarray:
-        r'''
+    def echo_top(
+        ref: np.ndarray,
+        distance: np.ndarray,
+        elev: Array_T,
+        radarheight: Number_T,
+        threshold: Number_T = 18.0,
+    ) -> np.ndarray:
+        r"""
         Calculate height of echo tops (ET) in one full scan
 
         Parameters
@@ -99,7 +117,7 @@ except ImportError:
         -------
         data: numpy.ndarray
             echo tops data
-        '''
+        """
         r = np.ma.array(ref, mask=(ref > threshold))
         xshape, yshape = r[0].shape
         et = np.zeros((xshape, yshape))
@@ -112,10 +130,10 @@ except ImportError:
             for j in range(yshape):
                 vert_h = hght[:, i, j]
                 vert_r = ref[:, i, j]
-                if vert_r.max() < threshold: # Vertical points don't satisfy threshold
+                if vert_r.max() < threshold:  # Vertical points don't satisfy threshold
                     et[i][j] = 0
                     continue
-                elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold
+                elif vert_r[-1] >= threshold:  # Point in highest scan exceeds threshold
                     et[i][j] = vert_h[-1]
                     continue
                 else:
@@ -134,28 +152,37 @@ except ImportError:
                         et[i][j] = w1 * h2 + w2 * h1
         return et
 
+
 def potential_maximum_gust(et: np.ndarray, vil: np.ndarray) -> np.ndarray:
-    r'''
+    r"""
     Estimate the potential maximum gust with a descending downdraft by Stewart's formula
-    '''
+    """
     return np.sqrt(20.628571 * vil - 2.3810964e-6 * et ** 2)
 
-def potential_maximum_gust_from_reflectivity(ref: np.ndarray, distance: np.ndarray, elev: Array_T) -> np.ndarray:
+
+def potential_maximum_gust_from_reflectivity(
+    ref: np.ndarray, distance: np.ndarray, elev: Array_T
+) -> np.ndarray:
     et = echo_top(ref, distance, elev, 0)
     vil = vert_integrated_liquid(ref, distance, elev)
     return potential_maximum_gust(et, vil)
 
+
 def lanczos_differentiator(winlen: int):
     # Copyright (c) 2011-2018, wradlib developers.
     m = (winlen - 1) / 2
-    denom = m * (m + 1.) * (2 * m + 1.)
+    denom = m * (m + 1.0) * (2 * m + 1.0)
     k = np.arange(1, m + 1)
     f = 3 * k / denom
     return np.r_[f[::-1], [0], -f]
 
-def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: bool = None) -> np.ndarray:
+
+def kdp_from_phidp(
+    phidp: np.ndarray, winlen: int = 7, dr: int = 1.0, method: bool = None
+) -> np.ndarray:
     from scipy.stats import linregress
     from scipy.ndimage.filters import convolve1d
+
     # Copyright (c) 2011-2018, wradlib developers.
     """Retrieves :math:`K_{DP}` from :math:`Phi_{DP}`.
     In normal operation the method uses convolution to estimate :math:`K_{DP}`
@@ -212,8 +239,9 @@ def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: boo
     >>> lgnd = pl.legend(("phidp_true", "phidp_raw", "kdp_true", "kdp_reconstructed"))  # noqa
     >>> pl.show()
     """
-    assert (winlen % 2) == 1, \
-        "Window size N for function kdp_from_phidp must be an odd number."
+    assert (
+        winlen % 2
+    ) == 1, "Window size N for function kdp_from_phidp must be an odd number."
 
     shape = phidp.shape
     phidp = phidp.reshape((-1, shape[-1]))
@@ -221,7 +249,7 @@ def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: boo
     # Make really sure winlen is an integer
     winlen = int(winlen)
 
-    if method == 'slow':
+    if method == "slow":
         kdp = np.zeros(phidp.shape) * np.nan
     else:
         window = lanczos_differentiator(winlen)
@@ -231,7 +259,7 @@ def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: boo
     invalidkdp = np.isnan(kdp)
     if not np.any(invalidkdp.ravel()):
         # No NaN? Return KdP
-        return kdp.reshape(shape) / 2. / dr
+        return kdp.reshape(shape) / 2.0 / dr
 
     # Otherwise continue
     x = np.arange(phidp.shape[-1])
@@ -245,29 +273,29 @@ def kdp_from_phidp(phidp: np.ndarray, winlen: int = 7, dr: int = 1., method: boo
         nangates = np.where(invalidkdp[beam] & nvalid)[0]
         # now iterate over those
         for r in nangates:
-            ix = np.arange(max(0, r - int(winlen / 2)),
-                           min(r + int(winlen / 2) + 1, shape[-1]))
+            ix = np.arange(
+                max(0, r - int(winlen / 2)), min(r + int(winlen / 2) + 1, shape[-1])
+            )
             # check again (just to make sure...)
             if np.sum(valids[beam, ix]) < winlen / 2:
                 # not enough valid values inside our window
                 continue
-            kdp[beam, r] = linregress(x[ix][valids[beam, ix]],
-                                      phidp[beam, ix[valids[beam, ix]]])[0]
+            kdp[beam, r] = linregress(
+                x[ix][valids[beam, ix]], phidp[beam, ix[valids[beam, ix]]]
+            )[0]
         # take care of the start and end of the beam
         #   start
         ix = np.arange(0, winlen)
         if np.sum(valids[beam, ix]) >= 2:
-            kdp[beam, 0:int(winlen / 2)] = linregress(x[ix][valids[beam, ix]],
-                                                      phidp[beam,
-                                                            ix[valids[beam,
-                                                                      ix]]])[0]
+            kdp[beam, 0 : int(winlen / 2)] = linregress(
+                x[ix][valids[beam, ix]], phidp[beam, ix[valids[beam, ix]]]
+            )[0]
         # end
         ix = np.arange(shape[-1] - winlen, shape[-1])
         if np.sum(valids[beam, ix]) >= 2:
-            kdp[beam, -int(winlen / 2):] = linregress(x[ix][valids[beam, ix]],
-                                                      phidp[beam,
-                                                            ix[valids[beam,
-                                                                      ix]]])[0]
+            kdp[beam, -int(winlen / 2) :] = linregress(
+                x[ix][valids[beam, ix]], phidp[beam, ix[valids[beam, ix]]]
+            )[0]
 
     # accounting for forward/backward propagation AND gate length
-    return kdp.reshape(shape) / 2. / dr
+    return kdp.reshape(shape) / 2.0 / dr
