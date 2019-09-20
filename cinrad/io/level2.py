@@ -6,6 +6,7 @@ import datetime
 from pathlib import Path
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any, Generator
+import re
 
 import numpy as np
 
@@ -518,7 +519,15 @@ class StandardData(RadarBase):
         geo["lon"] = site_config["Longitude"]
         geo["height"] = site_config["ground_height"]
         task = np.frombuffer(self.f.read(256), SDD_task)
-        self.task_name = merge_bytes(task["task_name"][0]).decode()
+        task_name = merge_bytes(task["task_name"][0])
+        try:
+            self.task_name = task_name.decode()
+        except UnicodeDecodeError:
+            # Sometimes the bytes are contaminated with meaningless bytes
+            # set flag to `ignore` to avoid raising error
+            task_string = task_name.decode("utf-8", "ignore")
+            vcp_pattern = re.compile("VCP\d*D?")
+            self.task_name = re.findall(vcp_pattern, task_string)[0]
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(
             seconds=int(task["scan_start_time"])
         )
