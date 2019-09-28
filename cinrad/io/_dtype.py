@@ -7,7 +7,8 @@ import numpy as np
 __all__ = [
     'CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_task',
     'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
-    'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock'
+    'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock',
+    'S_SPECIAL_dtype'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -61,15 +62,20 @@ _S_INFO = [
     ("v_pointer_2", "u2"),
     ("w_pointer_2", "u2"),
     ("nyquist_vel", "u2"),
-    ("res3", "u2", 19),
 ]
+
+_S_RES = [("res3", "u2", 19)]
+_S_RES_2 = [("res3", "u2", 21)]
 
 _SAB_DATA = [("r", "u1", 460), ("v", "u1", 920), ("w", "u1", 920), ("res4", "u2", 2)]
 
 _CAB_DATA = [("r", "u1", 800), ("v", "u1", 1600), ("w", "u1", 1600), ("res4", "u2", 2)]
 
-SAB_dtype = np.dtype(_S_HEADER + _S_INFO + _SAB_DATA)
-CAB_dtype = np.dtype(_S_HEADER + _S_INFO + _CAB_DATA)
+_SPECIAL_DATA = [("r", "u1", 1000), ("v", "u1", 1000), ("w", "u1", 1000)]
+
+SAB_dtype = np.dtype(_S_HEADER + _S_INFO + _S_RES + _SAB_DATA)
+CAB_dtype = np.dtype(_S_HEADER + _S_INFO + _S_RES + _CAB_DATA)
+S_SPECIAL_dtype = np.dtype(_S_HEADER + _S_INFO + _S_RES_2 + _SPECIAL_DATA)
 
 SWAN_HEADER = [
     ("data_type", "12c"),
