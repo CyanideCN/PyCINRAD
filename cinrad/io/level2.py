@@ -145,24 +145,38 @@ class CinradReader(RadarBase):
         else:
             self.radartype = radartype
         f.seek(0)
-        if radartype in ["SA", "SB"]:
-            self._SAB_handler(f)
-        elif radartype in ["CA", "CB"]:
-            self._SAB_handler(f, SAB=False)
-        elif radartype is "CC":
-            self._CC_handler(f)
-        elif radartype in ["SC", "CD"]:
-            self._CD_handler(f)
+        try:
+            if radartype in ["SA", "SB"]:
+                self._SAB_handler(f)
+            elif radartype in ["CA", "CB"]:
+                self._SAB_handler(f, dtype="CAB")
+            elif radartype is "CC":
+                self._CC_handler(f)
+            elif radartype in ["SC", "CD"]:
+                self._CD_handler(f)
+        except Exception:
+            # Currently there's no good way to differentiate the special
+            # SC/CC files, so catch the exception of normal decoding process
+            # and try this one if possible
+            try:
+                f.seek(0)
+                self._SAB_handler(f, dtype="special")
+            except:
+                raise
         else:
             raise RadarDecodeError("Unrecognized data")
         self._update_radar_info()
         f.close()
 
-    def _SAB_handler(self, f: Any, SAB: bool = True):
-        if SAB:
+    def _SAB_handler(self, f: Any, dtype: str = "SAB"):
+        _header_size = 128
+        if dtype == "SAB":
             radar_dtype = SAB_dtype
-        else:
+        elif dtype == "CAB":
             radar_dtype = CAB_dtype
+        elif dtype == "special":
+            radar_dtype = S_SPECIAL_dtype
+            _header_size = 132
         data = np.frombuffer(f.read(), dtype=radar_dtype)
         start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(data["day"][0]))
@@ -190,11 +204,11 @@ class CinradReader(RadarBase):
 
             # Construct a temporary dtype to parse data more efficiently
             temp_dtype = [
-                ("header", "u1", 128),
+                ("header", "u1", _header_size),
                 ("ref", "u1", rnum),
                 ("vel", "u1", vnum),
                 ("sw", "u1", vnum),
-                ("res", "u1", size - 128 - rnum - vnum * 2),
+                ("res", "u1", size - _header_size - rnum - vnum * 2),
             ]
             da = np.frombuffer(f.read(bidx * size), dtype=np.dtype(temp_dtype))
             out_data[idx] = dict()
