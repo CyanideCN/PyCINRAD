@@ -154,6 +154,8 @@ class CinradReader(RadarBase):
                 self._CC_handler(f)
             elif radartype in ["SC", "CD"]:
                 self._CD_handler(f)
+            else:
+                raise RadarDecodeError("Unrecognized data")
         except Exception:
             # Currently there's no good way to differentiate the special
             # SC/CC files, so catch the exception of normal decoding process
@@ -163,8 +165,6 @@ class CinradReader(RadarBase):
                 self._SAB_handler(f, dtype="special")
             except:
                 raise
-        else:
-            raise RadarDecodeError("Unrecognized data")
         self._update_radar_info()
         f.close()
 
