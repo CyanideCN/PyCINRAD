@@ -1,4 +1,4 @@
-#cython: language_level=3
+# cython: language_level=3
 cimport numpy as np
 import numpy as np
 cimport cython
@@ -19,7 +19,7 @@ cdef height_single(double distance, double elevation):
 
 @cython.boundscheck(False)
 def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
-                           beam_width=0.99, threshold=18., density=False):
+                           double beam_width=0.99, double threshold=18., bint density=False):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp, h_higher, h_lower
     cdef long long[::1] position
     cdef Py_ssize_t xshape, yshape, zshape
@@ -62,9 +62,10 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
     return np.asarray(VIL)
 
 @cython.boundscheck(False)
-def echo_top(double[:, :, :] ref, double[:, :] distance, double[:] elev, double radarheight, threshold=18.):
+def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
+             double radarheight, double threshold=18.):
     cdef np.ndarray r, h, vert_h, vert_r
-    cdef int xshape, yshape, pos
+    cdef int xshape, yshape, pos, i, j
     cdef list h_
     cdef double z1, z2, h1, h2, w1, w2
     xshape, yshape = ref.shape[1], ref.shape[2]
