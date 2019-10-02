@@ -156,7 +156,7 @@ class CinradReader(RadarBase):
                 self._CD_handler(f)
             else:
                 raise RadarDecodeError("Unrecognized data")
-        except Exception:
+        except Exception as err:
             # Currently there's no good way to differentiate the special
             # SC/CC files, so catch the exception of normal decoding process
             # and try this one if possible
@@ -164,7 +164,7 @@ class CinradReader(RadarBase):
                 f.seek(0)
                 self._SAB_handler(f, dtype="special")
             except:
-                raise
+                raise err
         self._update_radar_info()
         f.close()
 
@@ -192,7 +192,7 @@ class CinradReader(RadarBase):
         self.task_name = "VCP{}".format(data["vcp_mode"][0])
         f.seek(0)
         size = radar_dtype.itemsize
-        b = np.append(boundary, data.shape[0] - 1)
+        b = np.append(boundary, data.shape[0])
         gnr = data["gate_num_r"][boundary]
         gnv = data["gate_num_v"][boundary]
         out_data = dict()
