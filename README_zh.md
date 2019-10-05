@@ -22,7 +22,7 @@ Metpy
 
 Shapefile
 
-Pyresample
+Pykdtree (可选安装)
 
 ### 安装方法
 

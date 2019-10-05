@@ -4,12 +4,33 @@
 from typing import Tuple, Optional
 
 import numpy as np
-from scipy.interpolate import griddata
-from pyresample.geometry import GridDefinition
-from pyresample.kd_tree import resample_nearest
+
+try:
+    from pykdtree.kdtree import KDTree
+except ImportError:
+    from scipy.spatial import KDTree
 
 from cinrad.constants import deg2rad
 from cinrad._typing import Number_T
+
+
+class KDResampler(object):
+    def __init__(
+        self, data: np.ndarray, x: np.ndarray, y: np.ndarray, roi: Number_T = 0.02
+    ):
+        x_ravel = x.ravel()
+        y_ravel = y.ravel()
+        self.tree = KDTree(np.dstack((x_ravel, y_ravel))[0])
+        self.data = data
+        self.roi = roi
+
+    def map_data(self, x_out: np.ndarray, y_out: np.ndarray) -> np.ma.MaskedArray:
+        out_coords = np.dstack((x_out.ravel(), y_out.ravel()))[0]
+        _, indices = self.tree.query(out_coords, distance_upper_bound=self.roi)
+        invalid_mask = indices == self.tree.n
+        indices[invalid_mask] = 0
+        data = np.ma.array(self.data.ravel()[indices], mask=invalid_mask)
+        return data.reshape(x_out.shape)
 
 
 def resample(
@@ -47,9 +68,8 @@ def resample(
     dist, theta = np.meshgrid(Rrange, Trange)
     # Original grid
     d, t = np.meshgrid(distance, azimuth)
-    r = griddata(
-        (d.flatten(), t.flatten()), data.flatten(), (dist, theta), method="nearest"
-    )
+    kds = KDResampler(data, d, t, 1)
+    r = kds.map_data(dist, theta)
     return r, dist, theta
 
 
@@ -59,7 +79,7 @@ def grid_2d(
     y: np.ndarray,
     x_out: Optional[np.ndarray] = None,
     y_out: Optional[np.ndarray] = None,
-    resolution: Tuple[int, int] = None,
+    resolution: Tuple[int, int] = (1000, 1000),
 ) -> tuple:
     r"""
     Interpolate data in polar coordinates into geographic coordinates
@@ -83,14 +103,12 @@ def grid_2d(
     y_cor: numpy.ndarray
         interpolated latitude in grid
     """
-    resolution = (1000, 1000) if not resolution else resolution
-    odf = GridDefinition(x, y)
     r_x, r_y = resolution
     if isinstance(x_out, type(None)):
         x_out = np.linspace(x.min(), x.max(), r_x)
     if isinstance(y_out, type(None)):
         y_out = np.linspace(y.min(), y.max(), r_y)
     t_x, t_y = np.meshgrid(x_out, y_out)
-    tdf = GridDefinition(t_x, t_y)
-    result = resample_nearest(odf, data, tdf, 2000)
+    kds = KDResampler(data, x, y)
+    result = kds.map_data(t_x, t_y)
     return result, x_out, y_out
