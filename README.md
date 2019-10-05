@@ -24,7 +24,7 @@ Metpy
 
 Shapefile
 
-Pyresample
+Pykdtree (optional)
 
 You can also download from github page and build from source
 

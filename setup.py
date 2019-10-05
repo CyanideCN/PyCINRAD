@@ -33,7 +33,6 @@ setup(
         "metpy>=0.8",
         "cartopy>=0.15",
         "pyshp!=2.0.0, !=2.0.1",
-        "pyresample",
         "matplotlib>=2.2",
     ],
     data_files=[
