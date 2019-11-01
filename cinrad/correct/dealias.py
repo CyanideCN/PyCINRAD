@@ -9,17 +9,7 @@ import numpy as np
 try:
     from cinrad.correct._unwrap_2d import unwrap_2d
 except ImportError:
-    from cinrad.error import RadarCalculationError
-
-    class ExceptionOnCall(object):
-        r"""Raise exception when calling"""
-
-        def __init__(self, exec_: Exception, msg: str):
-            self.exec = exec_
-            self.msg = msg
-
-        def __call__(self, *args, **kwargs):
-            raise self.exec(self.msg)
+    from cinrad.error import RadarCalculationError, ExceptionOnCall
 
     unwrap_2d = ExceptionOnCall(
         RadarCalculationError,

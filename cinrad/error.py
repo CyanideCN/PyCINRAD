@@ -15,3 +15,14 @@ class RadarPlotError(Exception):
 class RadarCalculationError(Exception):
     r"""Unable to calculate derivatives of radar data"""
     pass
+
+
+class ExceptionOnCall(object):
+    r"""Raise exception when calling"""
+
+    def __init__(self, exec_: Exception, msg: str):
+        self.exec = exec_
+        self.msg = msg
+
+    def __call__(self, *args, **kwargs):
+        raise self.exec(self.msg)
