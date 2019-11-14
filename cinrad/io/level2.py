@@ -150,7 +150,7 @@ class CinradReader(RadarBase):
                 self._SAB_handler(f)
             elif radartype in ["CA", "CB"]:
                 self._SAB_handler(f, dtype="CAB")
-            elif radartype is "CC":
+            elif radartype == "CC":
                 self._CC_handler(f)
             elif radartype in ["SC", "CD"]:
                 self._CD_handler(f)
