@@ -16,6 +16,7 @@ from cartopy.io import shapereader
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
 import shapefile
+from vanadis.colormap import Colormap
 
 from cinrad.visualize.gpf import _cmap
 from cinrad.constants import MODULE_DIR
@@ -35,24 +36,28 @@ __all__ = [
 
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
 
+def _get_uniform_cmap(cmap):
+    new_cm = Colormap(cmap=cmap.reversed()).set_uniform()
+    return new_cm.as_mpl_cmap()
+
 r_cmap = _cmap("REF")["cmap"]
 r_cmap_smooth = _cmap("REF_s")["cmap"]
 v_cmap = _cmap("VEL")["cmap"]
-v_cbar = _cmap("VEL_reverse")["cmap"]
+v_cbar = _get_uniform_cmap(v_cmap)
 v_cmap_smooth = _cmap("VEL_s")["cmap"]
 zdr_cmap = _cmap("ZDR")["cmap"]
-zdr_cbar = _cmap("ZDR_reverse")["cmap"]
+zdr_cbar = _get_uniform_cmap(zdr_cmap)
 zdr_cmap_smooth = _cmap("ZDR_s")["cmap"]
 kdp_cmap = _cmap("KDP")["cmap"]
-kdp_cbar = _cmap("KDP_reverse")["cmap"]
+kdp_cbar = _get_uniform_cmap(kdp_cmap)
 kdp_cmap_smooth = _cmap("KDP_s")["cmap"]
 cc_cmap = _cmap("CC")["cmap"]
-cc_cbar = _cmap("CC_reverse")["cmap"]
+cc_cbar = _get_uniform_cmap(cc_cmap)
 cc_cmap_smooth = _cmap("CC_s")["cmap"]
 et_cmap = _cmap("ET")["cmap"]
-et_cbar = _cmap("ET_reverse")["cmap"]
+et_cbar = _get_uniform_cmap(et_cmap)
 vil_cmap = _cmap("VIL")["cmap"]
-vil_cbar = _cmap("VIL_reverse")["cmap"]
+vil_cbar = _get_uniform_cmap(vil_cmap)
 rf_cmap = cmx.ListedColormap("#660066", "#FFFFFF")
 
 norm1 = cmx.Normalize(0, 75)  # reflectivity / vertially integrated liquid

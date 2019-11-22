@@ -34,6 +34,7 @@ setup(
         "cartopy>=0.15",
         "pyshp!=2.0.0, !=2.0.1",
         "matplotlib>=2.2",
+        "vanadis",
     ],
     data_files=[
         (
