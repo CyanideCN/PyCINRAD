@@ -226,7 +226,7 @@ class CinradReader(RadarBase):
             out_data[idx]["azimuth"] = self.azimuth[b[idx] : b[idx + 1]]
             out_data[idx]["RF"] = np.ma.masked_not_equal(da["vel"], 1)
         angleindex = np.arange(0, data["el_num"][-1], 1)
-        if dtype == 'special':
+        if dtype == "special":
             self.angleindex_r = self.angleindex_v = angleindex
         else:
             self.angleindex_r = np.delete(angleindex, [1, 3])
