@@ -25,8 +25,16 @@ def check_pyart_installed(func: Callable) -> Callable:
 
     return deco
 
-mapping = {'REF':'reflectivity', 'VEL':'velocity', 'SW':'spectrum_width', 'PHI':'differential_phase',
-           'ZDR':'differential_reflectivity', 'RHO':'cross_correlation_ratio'}
+
+mapping = {
+    "REF": "reflectivity",
+    "VEL": "velocity",
+    "SW": "spectrum_width",
+    "PHI": "differential_phase",
+    "ZDR": "differential_reflectivity",
+    "RHO": "cross_correlation_ratio",
+}
+
 
 @check_pyart_installed
 def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Radar:

@@ -36,9 +36,11 @@ __all__ = [
 
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
 
+
 def _get_uniform_cmap(cmap):
     new_cm = Colormap(cmap=cmap.reversed()).set_uniform()
     return new_cm.as_mpl_cmap()
+
 
 r_cmap = _cmap("REF")["cmap"]
 r_cmap_smooth = _cmap("REF_s")["cmap"]
@@ -69,7 +71,7 @@ norm6 = cmx.Normalize(-4, 5)  # differential reflectivity
 norm7 = cmx.Normalize(260, 360)  # differential phase
 norm8 = cmx.Normalize(0, 0.99)  # correlation coefficient
 norm9 = cmx.Normalize(-0.8, 21)  # specific differential phase
-norm10 = cmx.Normalize(0.1, 6)  # vertially integrated liquid density
+norm10 = cmx.Normalize(0.1, 6)  # vertically integrated liquid density
 
 # fmt: off
 norm_plot = {'REF':norm1, 'VEL':norm2, 'CR':norm1, 'ET':norm5, 'VIL':norm1, 'RF':norm3,
