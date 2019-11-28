@@ -145,26 +145,27 @@ class CinradReader(RadarBase):
         else:
             self.radartype = radartype
         f.seek(0)
-        try:
-            if radartype in ["SA", "SB"]:
-                self._SAB_handler(f)
-            elif radartype in ["CA", "CB"]:
-                self._SAB_handler(f, dtype="CAB")
-            elif radartype == "CC":
-                self._CC_handler(f)
-            elif radartype in ["SC", "CD"]:
-                self._CD_handler(f)
-            else:
-                raise RadarDecodeError("Unrecognized data")
-        except Exception as err:
-            # Currently there's no good way to differentiate the special
-            # SC/CC files, so catch the exception of normal decoding process
-            # and try this one if possible
+        if radartype in ["SA", "SB"]:
+            self._SAB_handler(f)
+        elif radartype in ["CA", "CB"]:
+            self._SAB_handler(f, dtype="CAB")
+        else:
             try:
-                f.seek(0)
-                self._SAB_handler(f, dtype="special")
-            except:
-                raise err
+                if radartype == "CC":
+                    self._CC_handler(f)
+                elif radartype in ["SC", "CD"]:
+                    self._CD_handler(f)
+                else:
+                    raise RadarDecodeError("Unrecognized data")
+            except Exception as err:
+                # Currently there's no good way to differentiate the special
+                # SC/CC files, so catch the exception of normal decoding process
+                # and try this one if possible
+                try:
+                    f.seek(0)
+                    self._SAB_handler(f, dtype="special")
+                except:
+                    raise err
         self._update_radar_info()
         f.close()
 
@@ -235,6 +236,12 @@ class CinradReader(RadarBase):
 
     def _CC_handler(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
+        for df in CC_header.fields.keys():
+            print(df, header[df])
+        scan_mode = header["ucScanMode"][0]
+        if scan_mode < 100:
+            raise NotImplementedError("Only VPPI scan mode is supported")
+        stop_angle = scan_mode - 100
         self.scantime = (
             datetime.datetime(
                 header["ucEYear1"][0] * 100 + header["ucEYear2"][0],
@@ -248,7 +255,6 @@ class CinradReader(RadarBase):
         )
         f.seek(218)
         param = np.frombuffer(f.read(660), CC_param)
-        stop_angle = np.where(param["usAngle"] < param["usAngle"][0])[0][0]
         self.el = param["usAngle"][:stop_angle] / 100
         self.nyquist_v = param["usMaxV"][:stop_angle] / 100
         self.task_name = vcp(len(self.el))
