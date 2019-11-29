@@ -1,7 +1,6 @@
 # PyCINRAD
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
-
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A python package which handles CINRAD radar data reading and plotting.
@@ -194,6 +193,14 @@ fig('D:\\')
 ##### PPI.storm_track_info(self, filepath)
 
 在PPI图上叠加PUP的STI产品。
+
+## 相关链接
+
+[利用PyCINRAD处理、显示天气雷达基数据](http://climate2weather.cc/2019/05/12/radar/)
+
+### 使用本模块绘制图片的论文
+
+1. 上海南汇WSR-88D双偏振天气雷达的生物回波识别与分析 doi: 10.16765/j.cnki.1673-7148.2019.03.015
 
 ## 其他
 
