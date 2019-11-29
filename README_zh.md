@@ -63,6 +63,12 @@ f.get_raw(tilt, drange, dtype)
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
 `get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。
 
+#### 转换为`pyart.core.Radar`类型
+
+`cinrad.io.export.standard_data_to_pyart`可以将`cinrad.io.StandardData`转换为`pyart.core.Radar`。
+
+`example`文件夹里有简单示例。
+
 #### 读取PUP数据和SWAN数据
 
 `cinrad.io.PUP`提供读取PUP数据的功能，读取出来的数据为`cinrad.datastruct.Radial`格式并且可以用来绘制PPI。目前只支持径向类型的数据。

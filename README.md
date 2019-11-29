@@ -58,6 +58,12 @@ f.get_raw(tilt, drange, dtype)
 
 The `get_raw` method returns radar records without other geographic information.
 
+#### Export data to `Py-ART` defined class
+
+Convert data structure defined in this module into `pyart.core.Radar` is very simple. `cinrad.io.export` has a function `standard_data_to_pyart`, which can take `cinrad.io.StandardData` as input and return `pyart.core.Radar` as output.
+
+`example` folder contains a simple demo about this.
+
 #### Decode PUP data and SWAN data
 
 `cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI. (Only radial data are supported.) 
