@@ -1,0 +1,30 @@
+package:
+    name: pycinrad
+    version: 1.5
+
+build:
+    skip: True # [py<34]
+
+source:
+    git_url: https://github.com/CyanideCN/PyCINRAD.git
+
+requirements:
+    build:
+        - python
+
+    host:
+        - python
+        - setuptools
+
+    run:
+        - python
+        - 'matplotlib>=2.2'
+        - 'metpy >=0.8'
+        - 'cartopy>=0.15'
+        - 'pyresample'  
+        - 'pyshp!=2.0.0, !=2.0.1'
+
+
+about:
+    home: https://github.com/CyanideCN/PyCINRAD.git
+    license: GPL-3.0
