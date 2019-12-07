@@ -588,11 +588,15 @@ class StandardData(RadarBase):
             aux[el_num]["elevation"].append(radial_header["elevation"][0])
             for _ in range(radial_header["moment_number"][0]):
                 moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
-                dtype = self.dtype_corr[moment_header["data_type"][0]]
+                dtype_code = moment_header["data_type"][0]
+                dtype = self.dtype_corr.get(dtype_code, None)
                 data_body = np.frombuffer(
                     self.f.read(moment_header["block_length"][0]),
                     "u{}".format(moment_header["bin_length"][0]),
                 )
+                if not dtype:
+                    warnings.warn('Data type {} not understood, skipping'.format(dtype_code), RuntimeWarning)
+                    continue
                 if dtype not in aux[el_num].keys():
                     scale = moment_header["scale"][0]
                     offset = moment_header["offset"][0]
