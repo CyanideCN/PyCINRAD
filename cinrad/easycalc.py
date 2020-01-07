@@ -49,7 +49,7 @@ def is_uniform(radial_list: Volume_T) -> bool:
     return len(set([i.dtype for i in radial_list])) == 1
 
 
-def quick_cr(r_list: Volume_T, resolution: Optional[tuple] = None) -> Grid:
+def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Grid:
     r"""
     Calculate composite reflectivity
 
