@@ -79,7 +79,7 @@ def grid_2d(
     y: np.ndarray,
     x_out: Optional[np.ndarray] = None,
     y_out: Optional[np.ndarray] = None,
-    resolution: Tuple[int, int] = (1000, 1000),
+    resolution: Optional[tuple] = None,
 ) -> tuple:
     r"""
     Interpolate data in polar coordinates into geographic coordinates

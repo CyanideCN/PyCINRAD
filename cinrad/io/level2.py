@@ -595,7 +595,10 @@ class StandardData(RadarBase):
                     "u{}".format(moment_header["bin_length"][0]),
                 )
                 if not dtype:
-                    warnings.warn('Data type {} not understood, skipping'.format(dtype_code), RuntimeWarning)
+                    warnings.warn(
+                        "Data type {} not understood, skipping".format(dtype_code),
+                        RuntimeWarning,
+                    )
                     continue
                 if dtype not in aux[el_num].keys():
                     scale = moment_header["scale"][0]
