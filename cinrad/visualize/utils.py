@@ -129,6 +129,13 @@ class ShpReader(shapereader.BasicReader):
         self._reader = reader = shapefile.Reader(filename, encoding=encoding)
         if reader.shp is None or reader.shx is None or reader.dbf is None:
             raise ValueError("Incomplete shapefile definition " "in '%s'." % filename)
+        try:
+            shapeType = reader.shapeType
+            self._geometry_factory = shapereader.GEOMETRY_FACTORIES.get(shapeType)
+            if self._geometry_factory is None:
+                raise ValueError("Unsupported shape type: %s" % shapeType)
+        except AttributeError:
+            pass
         self._fields = self._reader.fields
 
 
