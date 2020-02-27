@@ -207,4 +207,4 @@ Plot PUP STI product on the current PPI map, including past positions, current p
 
 If you are interested in this program, you can join the developers of this program. Any contribution is appreciated!
 
-If you have questions or advise about this program, you can create a issue or email me at 274555447@qq.com.
+If you have questions or advise about this program, you can create an issue or email me at 274555447@qq.com.
