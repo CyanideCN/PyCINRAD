@@ -22,7 +22,6 @@ __all__ = [
     "quick_et",
     "quick_vil",
     "VCS",
-    "max_potential_gust",
     "quick_vild",
 ]
 
@@ -193,40 +192,6 @@ def quick_vild(r_list: Volume_T) -> Radial:
         **i.scan_info
     )
     lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
-
-
-def max_potential_gust(r_list: Volume_T) -> Radial:
-    r"""
-    Estimate maximum potential descending gust by Stewart's formula
-
-    Paramters
-    ---------
-    r_list: list of cinrad.datastruct.Radial
-
-    Returns
-    -------
-    l2_obj: cinrad.datastruct.Grid
-        Wind gust
-    """
-    r_data, d, a, elev = _extract(r_list)
-    i = r_list[0]
-    g = potential_maximum_gust_from_reflectivity(r_data, d, elev)
-    l2_obj = Radial(
-        np.ma.array(g, mask=(g <= 0)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "GUST",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
-    )
-    lon, lat = get_coordinate(d[0], a.T[0], 0, i.stp["lon"], i.stp["lat"])
     l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
     return l2_obj
 
