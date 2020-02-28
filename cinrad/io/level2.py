@@ -236,8 +236,6 @@ class CinradReader(RadarBase):
 
     def _CC_handler(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
-        for df in CC_header.fields.keys():
-            print(df, header[df])
         scan_mode = header["ucScanMode"][0]
         if scan_mode < 100:
             raise NotImplementedError("Only VPPI scan mode is supported")
