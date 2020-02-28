@@ -7,7 +7,10 @@ from typing import Tuple, Optional
 
 import numpy as np
 from xarray import DataArray
-from pykdtree.kdtree import KDTree
+try:
+    from pykdtree.kdtree import KDTree
+except ImportError:
+    from scipy.spatial import KDTree
 
 from cinrad.utils import *
 from cinrad.datastruct import Radial, Grid, Slice_
