@@ -195,7 +195,7 @@ class PPI(object):
             self._add_city_names()
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
-        ax2 = self.fig.add_axes([0.92, 0.06, 0.01, 0.35])
+        ax2 = self.fig.add_axes([0.83, 0.06, 0.01, 0.35])
         for sp in ax2.spines.values():
             sp.set_visible(False)
         ax, cbar = setup_axes(self.fig, ccmap, cnorm)
@@ -217,12 +217,11 @@ class PPI(object):
                 task,
                 self.data.elev,
             )
-            ax2.text(0, 2.36, " " * 35)  # Ensure consistent figure size
-            ax2.text(0, 2.36, prodname[dtype], **plot_kw)
-            ax2.text(0, 1.96, "Max: {:.1f}{}".format(var.max(), unit[dtype]), **plot_kw)
+            ax2.text(0, 2.63, prodname[dtype], **plot_kw)
+            ax2.text(0, 2.15, "Max: {:.1f}{}".format(var.max(), unit[dtype]), **plot_kw)
             if self.data.dtype == "VEL":
                 ax2.text(
-                    0, 1.91, "Min: {:.1f}{}".format(var.min(), unit[dtype]), **plot_kw
+                    0, 2.09, "Min: {:.1f}{}".format(var.min(), unit[dtype]), **plot_kw
                 )
         if self.settings["slice"]:
             self.plot_cross_section(self.settings["slice"])

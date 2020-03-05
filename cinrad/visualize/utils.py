@@ -112,7 +112,7 @@ cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
 font = FontProperties(
     fname=os.path.join(MODULE_DIR, "data", "font", "NotoSansHans-Regular.otf")
 )
-plot_kw = {"fontproperties": font}
+plot_kw = {"fontproperties": font, 'fontsize':12}
 
 
 def set_font(font_path: str):
@@ -139,7 +139,7 @@ class ShpReader(shapereader.BasicReader):
         self._fields = self._reader.fields
 
 
-def setup_plot(dpi: Number_T, figsize: tuple = (9, 9), style: str = "black") -> Any:
+def setup_plot(dpi: Number_T, figsize: tuple = (10, 8), style: str = "black") -> Any:
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis("off")
     if style == "black":
@@ -148,7 +148,7 @@ def setup_plot(dpi: Number_T, figsize: tuple = (9, 9), style: str = "black") -> 
 
 
 def setup_axes(fig: Any, cmap: Any, norm: Any) -> tuple:
-    ax = fig.add_axes([0.92, 0.06, 0.045, 0.38])
+    ax = fig.add_axes([0.83, 0.06, 0.04, 0.38])
     cbar = ColorbarBase(
         ax, cmap=cmap, norm=norm, orientation="vertical", drawedges=False
     )
@@ -168,19 +168,19 @@ def text(
 ):
     from cinrad.visualize.utils import plot_kw
 
-    ax.text(0, 2.31, "Range: {:.0f}km".format(drange), **plot_kw)
+    ax.text(0, 2.57, "Range: {:.0f}km".format(drange), **plot_kw)
     if reso < 0.1:
         # Change the unit from km to m for better formatting
-        ax.text(0, 2.26, "Resolution: {:.0f}m".format(reso * 1000), **plot_kw)
+        ax.text(0, 2.51, "Resolution: {:.0f}m".format(reso * 1000), **plot_kw)
     else:
-        ax.text(0, 2.26, "Resolution: {:.2f}km".format(reso), **plot_kw)
-    ax.text(0, 2.21, "Date: {}".format(scantime.strftime("%Y.%m.%d")), **plot_kw)
-    ax.text(0, 2.16, "Time: {}".format(scantime.strftime("%H:%M")), **plot_kw)
+        ax.text(0, 2.51, "Resolution: {:.2f}km".format(reso), **plot_kw)
+    ax.text(0, 2.45, "Date: {}".format(scantime.strftime("%Y.%m.%d")), **plot_kw)
+    ax.text(0, 2.39, "Time: {}".format(scantime.strftime("%H:%M")), **plot_kw)
     if name is None:
         name = "Unknown"
-    ax.text(0, 2.11, "RDA: " + name, **plot_kw)
-    ax.text(0, 2.06, "Task: {}".format(task), **plot_kw)
-    ax.text(0, 2.01, "Elev: {:.2f}deg".format(elev), **plot_kw)
+    ax.text(0, 2.33, "RDA: " + name, **plot_kw)
+    ax.text(0, 2.27, "Task: {}".format(task), **plot_kw)
+    ax.text(0, 2.21, "Elev: {:.2f}deg".format(elev), **plot_kw)
 
 
 def save(fpath: str):
@@ -276,7 +276,7 @@ def draw_highlight_area(area: Union[Array_T, str]):
 
 
 def set_geoaxes(fig: Any, proj: ccrs.Projection, extent: Array_T) -> GeoAxes:
-    ax = fig.add_axes([0, 0, 0.9, 0.9], projection=proj)
+    ax = fig.add_axes([0, 0, 0.8, 1], projection=proj)
     ax.background_patch.set_visible(False)
     ax.outline_patch.set_visible(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
