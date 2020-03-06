@@ -10,19 +10,7 @@ from typing import Union, Optional, Any, List
 import numpy as np
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.axes import Axes
 
-from cinrad.visualize.utils import (
-    add_shp,
-    save,
-    setup_axes,
-    setup_plot,
-    text,
-    change_cbar_text,
-    draw_highlight_area,
-    set_geoaxes,
-)
 from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
 from cinrad.datastruct import Radial, Slice_, Grid
@@ -32,19 +20,6 @@ from cinrad._typing import Number_T
 from cinrad.visualize.layout import FAKE_CBAR_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
 
 __all__ = ["PPI"]
-
-
-def _prepare(data: Radial, datatype: str) -> tuple:
-    if not data.geoflag:
-        raise RadarPlotError("Geographic information should be contained in data")
-    else:
-        lon, lat = data.lon, data.lat
-        r = data.data
-    if data.dtype is not datatype:
-        raise RadarPlotError(
-            'Expected datatype is "{}", received "{}"'.format(datatype, data.dtype)
-        )
-    return lon, lat, r
 
 
 class PPI(object):
@@ -147,7 +122,7 @@ class PPI(object):
 
     def _plot(self, **kwargs):
         dtype = self.data.dtype
-        lon, lat, var = _prepare(self.data, dtype)
+        lon, lat, var = self.data.lon, self.data.lon, self.data.data
         if (
             self.settings["extent"] == None
         ):  # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
@@ -164,7 +139,7 @@ class PPI(object):
             )
         else:
             proj = ccrs.PlateCarree()
-        self.geoax: GeoAxes = set_geoaxes(
+        self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=self.settings["extent"]
         )
         if self.data.dtype in ["VEL", "SW"] and self.data.include_rf:
@@ -247,7 +222,7 @@ class PPI(object):
         pcmap, ccmap = self._cmap()
         if self.settings["plot_labels"]:
             self.text()
-        ax, cbar = setup_axes(self.fig, ccmap, cnorm, self.cbar_pos)
+        cbar = setup_axes(self.fig, ccmap, cnorm, self.cbar_pos)
         if not isinstance(clabel, type(None)):
             change_cbar_text(
                 cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel
@@ -355,7 +330,6 @@ class PPI(object):
             transform=self.data_crs,
             zorder=5,
         )
-        return ax2
 
     def storm_track_info(self, filepath: str):
         r"""

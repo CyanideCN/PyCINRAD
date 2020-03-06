@@ -38,7 +38,7 @@ __all__ = [
     "text",
     "change_cbar_text",
     "draw_highlight_area",
-    "set_geoaxes",
+    "create_geoaxes",
     "norm_plot",
     "norm_cbar",
     "cmap_plot",
@@ -52,7 +52,7 @@ __all__ = [
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
 
 
-def _get_uniform_cmap(cmap):
+def _get_uniform_cmap(cmap: Any) -> Any:
     new_cm = Colormap(cmap=cmap.reversed()).set_uniform()
     return new_cm.as_mpl_cmap()
 
@@ -162,14 +162,14 @@ def setup_plot(dpi: Number_T, figsize: tuple = FIG_SIZE, style: str = "black") -
     return fig
 
 
-def setup_axes(fig: Any, cmap: Any, norm: Any, position: list) -> tuple:
+def setup_axes(fig: Any, cmap: Any, norm: Any, position: List[Number_T]) -> tuple:
     ax = fig.add_axes(position)
     cbar = ColorbarBase(
         ax, cmap=cmap, norm=norm, orientation="vertical", drawedges=False
     )
     cbar.ax.tick_params(axis="both", which="both", length=0, labelsize=10)
     cbar.outline.set_visible(False)
-    return ax, cbar
+    return cbar
 
 
 def text(
@@ -278,7 +278,7 @@ def add_shp(
         ax.coastlines(resolution="10m", color=line_colors[2], zorder=3, linewidth=1)
 
 
-def change_cbar_text(cbar: ColorbarBase, tick: list, text: list):
+def change_cbar_text(cbar: ColorbarBase, tick: List[Number_T], text: List[str]):
     cbar.set_ticks(tick)
     cbar.set_ticklabels(text)
 
@@ -314,7 +314,7 @@ def draw_highlight_area(area: Union[Array_T, str]):
         pat.set_zorder(4)
 
 
-def set_geoaxes(fig: Any, proj: ccrs.Projection, extent: Array_T) -> GeoAxes:
+def create_geoaxes(fig: Any, proj: ccrs.Projection, extent: List[Number_T]) -> GeoAxes:
     ax = fig.add_axes(GEOAXES_POS, projection=proj)
     ax.background_patch.set_visible(False)
     ax.outline_patch.set_visible(False)
