@@ -7,6 +7,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 from xarray import DataArray
+
 try:
     from pykdtree.kdtree import KDTree
 except ImportError:

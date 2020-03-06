@@ -3,10 +3,8 @@
 
 import os
 from pathlib import Path
-from typing import Union
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from cinrad.datastruct import Slice_
 from cinrad.visualize.utils import sec_plot, norm_plot, prodname
