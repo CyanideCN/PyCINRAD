@@ -11,37 +11,15 @@ import numpy as np
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
 
-from cinrad.visualize.utils import (
-    add_shp,
-    save,
-    setup_axes,
-    setup_plot,
-    text,
-    change_cbar_text,
-    draw_highlight_area,
-    set_geoaxes,
-)
 from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
 from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
+from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
 
 __all__ = ["PPI"]
-
-
-def _prepare(data: Radial, datatype: str) -> tuple:
-    if not data.geoflag:
-        raise RadarPlotError("Geographic information should be contained in data")
-    else:
-        lon, lat = data.lon, data.lat
-        r = data.data
-    if data.dtype is not datatype:
-        raise RadarPlotError(
-            'Expected datatype is "{}", received "{}"'.format(datatype, data.dtype)
-        )
-    return lon, lat, r
 
 
 class PPI(object):
@@ -99,6 +77,9 @@ class PPI(object):
             self.fig = setup_plot(dpi, style=style)
         else:
             self.fig = fig
+        self.text_pos = TEXT_AXES_POS
+        self.cbar_pos = CBAR_POS
+        self._plot_ctx = dict()
         self._plot(**kwargs)
 
     def __call__(self, fpath: Optional[str] = None):
@@ -140,10 +121,8 @@ class PPI(object):
             return c, c2
 
     def _plot(self, **kwargs):
-        from cinrad.visualize.utils import plot_kw
-
         dtype = self.data.dtype
-        lon, lat, var = _prepare(self.data, dtype)
+        lon, lat, var = self.data.lon, self.data.lat, self.data.data
         if (
             self.settings["extent"] == None
         ):  # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
@@ -160,12 +139,14 @@ class PPI(object):
             )
         else:
             proj = ccrs.PlateCarree()
-        self.geoax: GeoAxes = set_geoaxes(
+        self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=self.settings["extent"]
         )
         if self.data.dtype in ["VEL", "SW"] and self.data.include_rf:
             rf = var[1]
             var = var[0]
+        self._plot_ctx["var"] = var
+        self._plot_ctx["dtype"] = dtype
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(
@@ -193,41 +174,59 @@ class PPI(object):
             draw_highlight_area(self.settings["highlight"])
         if self.settings["add_city_names"]:
             self._add_city_names()
+
+        if self.settings["slice"]:
+            self.plot_cross_section(self.settings["slice"])
+
+    def text(self):
+        from cinrad.visualize.utils import plot_kw
+
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
-        ax2 = self.fig.add_axes([0.92, 0.06, 0.01, 0.35])
+        var = self._plot_ctx["var"]
+        dtype = self._plot_ctx["dtype"]
+        ax2 = self.fig.add_axes(self.text_pos)
         for sp in ax2.spines.values():
             sp.set_visible(False)
-        ax, cbar = setup_axes(self.fig, ccmap, cnorm)
+        ax2.yaxis.set_visible(False)
+        ax2.xaxis.set_visible(False)
+        # Make VCP21 the default scanning strategy
+        task = self.data.scan_info.pop("task", "VCP21")
+        text(
+            ax2,
+            self.data.drange,
+            self.data.reso,
+            self.data.scantime,
+            self.data.name,
+            task,
+            self.data.elev,
+        )
+        ax2.text(0, INIT_TEXT_POS, prodname[dtype], **plot_kw)
+        ax2.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 8,
+            "Max: {:.1f}{}".format(var.max(), unit[dtype]),
+            **plot_kw
+        )
+        if self.data.dtype == "VEL":
+            ax2.text(
+                0,
+                INIT_TEXT_POS - TEXT_SPACING * 9,
+                "Min: {:.1f}{}".format(var.min(), unit[dtype]),
+                **plot_kw
+            )
+
+    def _save(self, fpath: str):
+        # Finalize texting here
+        pnorm, cnorm, clabel = self._norm()
+        pcmap, ccmap = self._cmap()
+        if self.settings["plot_labels"]:
+            self.text()
+        cbar = setup_axes(self.fig, ccmap, cnorm, self.cbar_pos)
         if not isinstance(clabel, type(None)):
             change_cbar_text(
                 cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel
             )
-        ax2.yaxis.set_visible(False)
-        ax2.xaxis.set_visible(False)
-        if self.settings["plot_labels"]:
-            # Make VCP21 the default scanning strategy
-            task = self.data.scan_info.pop("task", "VCP21")
-            text(
-                ax2,
-                self.data.drange,
-                self.data.reso,
-                self.data.scantime,
-                self.data.name,
-                task,
-                self.data.elev,
-            )
-            ax2.text(0, 2.36, " " * 35)  # Ensure consistent figure size
-            ax2.text(0, 2.36, prodname[dtype], **plot_kw)
-            ax2.text(0, 1.96, "Max: {:.1f}{}".format(var.max(), unit[dtype]), **plot_kw)
-            if self.data.dtype == "VEL":
-                ax2.text(
-                    0, 1.91, "Min: {:.1f}{}".format(var.min(), unit[dtype]), **plot_kw
-                )
-        if self.settings["slice"]:
-            self.plot_cross_section(self.settings["slice"])
-
-    def _save(self, fpath: str):
         if not self.settings["path_customize"]:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
@@ -289,10 +288,25 @@ class PPI(object):
             elif self.settings["style"] == "white":
                 linecolor = "black"
         self.settings["slice"] = data
-        ax2 = self.fig.add_axes([0, -0.3, 0.9, 0.26])
+        # The axes to plot c-section is below the main axes
+        # the height of it is a quarter of the height of main axes
+        # so the positions of the figure, the main axes, the colorbar axes
+        # should be adjusted accordingly.
+        # TODO: remove hardcode and calculate positions automatically
+        self.fig.set_size_inches(10, 10)
+        self.geoax.set_position([0, 0.2, 0.8, 0.8])
+        ax2 = self.fig.add_axes([0, 0.01, 0.8, 0.17])
+        # transform coordinates
+        self.text_pos[1] = self.text_pos[1] * 0.8 + 0.2
+        self.text_pos[3] = self.text_pos[3] * 0.8
+        self.cbar_pos[1] = self.cbar_pos[1] * 0.8 + 0.2
+        self.cbar_pos[3] = self.cbar_pos[3] * 0.8
         ax2.yaxis.set_ticks_position("right")
         ax2.set_xticks([])
         sl = data.data
+        if data.dtype == 'REF':
+            # visualization improvement for reflectivity
+            sl[np.isnan(sl)] = -0.1
         xcor = data.xcor
         ycor = data.ycor
         stp = data.geoinfo["stp"]
