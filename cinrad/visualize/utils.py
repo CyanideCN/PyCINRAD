@@ -22,8 +22,23 @@ from cinrad.visualize.gpf import _cmap
 from cinrad.constants import MODULE_DIR
 from cinrad._typing import Array_T, Number_T
 from cinrad.error import RadarPlotError
+from cinrad.visualize.layout import (
+    CBAR_POS,
+    FIG_SIZE,
+    GEOAXES_POS,
+    INIT_TEXT_POS,
+    TEXT_SPACING,
+)
 
 __all__ = [
+    "add_shp",
+    "save",
+    "setup_axes",
+    "setup_plot",
+    "text",
+    "change_cbar_text",
+    "draw_highlight_area",
+    "create_geoaxes",
     "norm_plot",
     "norm_cbar",
     "cmap_plot",
@@ -37,7 +52,7 @@ __all__ = [
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
 
 
-def _get_uniform_cmap(cmap):
+def _get_uniform_cmap(cmap: Any) -> Any:
     new_cm = Colormap(cmap=cmap.reversed()).set_uniform()
     return new_cm.as_mpl_cmap()
 
@@ -112,7 +127,7 @@ cbar_text = {'REF':None, 'VEL':['RF', '', '27', '20', '15', '10', '5', '1', '0',
 font = FontProperties(
     fname=os.path.join(MODULE_DIR, "data", "font", "NotoSansHans-Regular.otf")
 )
-plot_kw = {"fontproperties": font}
+plot_kw = {"fontproperties": font, "fontsize": 12}
 
 
 def set_font(font_path: str):
@@ -139,7 +154,7 @@ class ShpReader(shapereader.BasicReader):
         self._fields = self._reader.fields
 
 
-def setup_plot(dpi: Number_T, figsize: tuple = (9, 9), style: str = "black") -> Any:
+def setup_plot(dpi: Number_T, figsize: tuple = FIG_SIZE, style: str = "black") -> Any:
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis("off")
     if style == "black":
@@ -147,14 +162,14 @@ def setup_plot(dpi: Number_T, figsize: tuple = (9, 9), style: str = "black") -> 
     return fig
 
 
-def setup_axes(fig: Any, cmap: Any, norm: Any) -> tuple:
-    ax = fig.add_axes([0.92, 0.06, 0.045, 0.38])
+def setup_axes(fig: Any, cmap: Any, norm: Any, position: List[Number_T]) -> tuple:
+    ax = fig.add_axes(position)
     cbar = ColorbarBase(
         ax, cmap=cmap, norm=norm, orientation="vertical", drawedges=False
     )
     cbar.ax.tick_params(axis="both", which="both", length=0, labelsize=10)
     cbar.outline.set_visible(False)
-    return ax, cbar
+    return cbar
 
 
 def text(
@@ -168,23 +183,47 @@ def text(
 ):
     from cinrad.visualize.utils import plot_kw
 
-    ax.text(0, 2.31, "Range: {:.0f}km".format(drange), **plot_kw)
+    ax.text(
+        0, INIT_TEXT_POS - TEXT_SPACING, "Range: {:.0f}km".format(drange), **plot_kw
+    )
     if reso < 0.1:
         # Change the unit from km to m for better formatting
-        ax.text(0, 2.26, "Resolution: {:.0f}m".format(reso * 1000), **plot_kw)
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 2,
+            "Resolution: {:.0f}m".format(reso * 1000),
+            **plot_kw
+        )
     else:
-        ax.text(0, 2.26, "Resolution: {:.2f}km".format(reso), **plot_kw)
-    ax.text(0, 2.21, "Date: {}".format(scantime.strftime("%Y.%m.%d")), **plot_kw)
-    ax.text(0, 2.16, "Time: {}".format(scantime.strftime("%H:%M")), **plot_kw)
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 2,
+            "Resolution: {:.2f}km".format(reso),
+            **plot_kw
+        )
+    ax.text(
+        0,
+        INIT_TEXT_POS - TEXT_SPACING * 3,
+        "Date: {}".format(scantime.strftime("%Y.%m.%d")),
+        **plot_kw
+    )
+    ax.text(
+        0,
+        INIT_TEXT_POS - TEXT_SPACING * 4,
+        "Time: {}".format(scantime.strftime("%H:%M")),
+        **plot_kw
+    )
     if name is None:
         name = "Unknown"
-    ax.text(0, 2.11, "RDA: " + name, **plot_kw)
-    ax.text(0, 2.06, "Task: {}".format(task), **plot_kw)
-    ax.text(0, 2.01, "Elev: {:.2f}deg".format(elev), **plot_kw)
+    ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **plot_kw)
+    ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **plot_kw)
+    ax.text(
+        0, INIT_TEXT_POS - TEXT_SPACING * 7, "Elev: {:.2f}deg".format(elev), **plot_kw
+    )
 
 
 def save(fpath: str):
-    plt.savefig(fpath, bbox_inches="tight", pad_inches=0)
+    plt.savefig(fpath, pad_inches=0)
     # TODO: remove bbox_inches kwargs since this will influence
     # the size of figure a little bit
     plt.close("all")
@@ -239,7 +278,7 @@ def add_shp(
         ax.coastlines(resolution="10m", color=line_colors[2], zorder=3, linewidth=1)
 
 
-def change_cbar_text(cbar: ColorbarBase, tick: list, text: list):
+def change_cbar_text(cbar: ColorbarBase, tick: List[Number_T], text: List[str]):
     cbar.set_ticks(tick)
     cbar.set_ticklabels(text)
 
@@ -275,8 +314,8 @@ def draw_highlight_area(area: Union[Array_T, str]):
         pat.set_zorder(4)
 
 
-def set_geoaxes(fig: Any, proj: ccrs.Projection, extent: Array_T) -> GeoAxes:
-    ax = fig.add_axes([0, 0, 0.9, 0.9], projection=proj)
+def create_geoaxes(fig: Any, proj: ccrs.Projection, extent: List[Number_T]) -> GeoAxes:
+    ax = fig.add_axes(GEOAXES_POS, projection=proj)
     ax.background_patch.set_visible(False)
     ax.outline_patch.set_visible(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
