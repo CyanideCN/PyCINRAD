@@ -17,7 +17,7 @@ from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
-from cinrad.visualize.layout import FAKE_CBAR_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
+from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
 
 __all__ = ["PPI"]
 
@@ -77,9 +77,9 @@ class PPI(object):
             self.fig = setup_plot(dpi, style=style)
         else:
             self.fig = fig
-        self.text_pos = FAKE_CBAR_POS
+        self.text_pos = TEXT_AXES_POS
         self.cbar_pos = CBAR_POS
-        self.ctx = dict()
+        self._plot_ctx = dict()
         self._plot(**kwargs)
 
     def __call__(self, fpath: Optional[str] = None):
@@ -122,7 +122,7 @@ class PPI(object):
 
     def _plot(self, **kwargs):
         dtype = self.data.dtype
-        lon, lat, var = self.data.lon, self.data.lon, self.data.data
+        lon, lat, var = self.data.lon, self.data.lat, self.data.data
         if (
             self.settings["extent"] == None
         ):  # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
@@ -145,8 +145,8 @@ class PPI(object):
         if self.data.dtype in ["VEL", "SW"] and self.data.include_rf:
             rf = var[1]
             var = var[0]
-        self.ctx["var"] = var
-        self.ctx["dtype"] = dtype
+        self._plot_ctx["var"] = var
+        self._plot_ctx["dtype"] = dtype
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(
@@ -183,8 +183,8 @@ class PPI(object):
 
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
-        var = self.ctx["var"]
-        dtype = self.ctx["dtype"]
+        var = self._plot_ctx["var"]
+        dtype = self._plot_ctx["dtype"]
         ax2 = self.fig.add_axes(self.text_pos)
         for sp in ax2.spines.values():
             sp.set_visible(False)
@@ -295,7 +295,7 @@ class PPI(object):
         # TODO: remove hardcode and calculate positions automatically
         self.fig.set_size_inches(10, 10)
         self.geoax.set_position([0, 0.2, 0.8, 0.8])
-        ax2 = self.fig.add_axes([0, 0.02, 0.8, 0.15])
+        ax2 = self.fig.add_axes([0, 0.01, 0.8, 0.17])
         # transform coordinates
         self.text_pos[1] = self.text_pos[1] * 0.8 + 0.2
         self.text_pos[3] = self.text_pos[3] * 0.8
@@ -304,6 +304,9 @@ class PPI(object):
         ax2.yaxis.set_ticks_position("right")
         ax2.set_xticks([])
         sl = data.data
+        if data.dtype == 'REF':
+            # visualization improvement for reflectivity
+            sl[np.isnan(sl)] = -0.1
         xcor = data.xcor
         ycor = data.ycor
         stp = data.geoinfo["stp"]
