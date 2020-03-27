@@ -304,7 +304,7 @@ class PPI(object):
         ax2.yaxis.set_ticks_position("right")
         ax2.set_xticks([])
         sl = data.data
-        if data.dtype == 'REF':
+        if data.dtype == "REF":
             # visualization improvement for reflectivity
             sl[np.isnan(sl)] = -0.1
         xcor = data.xcor

@@ -5,4 +5,4 @@ from . import easycalc
 from . import visualize
 from . import correct
 
-__version__ = "1.5"
+__version__ = "1.5.1"
