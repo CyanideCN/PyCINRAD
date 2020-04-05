@@ -90,7 +90,7 @@ class Section(object):
                 "{:.2f}N\n{:.2f}E".format(enp[1], enp[0]),
             ],
         )  # 分为五等分
-        plt.ylabel("Height (km)", **plot_kw, fontsize=23)  ## 修改于2019-01-22 By WU Fulang
+        plt.ylabel("Height (km)", **plot_kw)  ## 修改于2019-01-22 By WU Fulang
         # plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
         # plt.ylabel('Altitude (km)')
         if self.path_customize:
