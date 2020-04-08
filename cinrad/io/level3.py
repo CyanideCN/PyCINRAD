@@ -13,7 +13,7 @@ import numpy as np
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
-from cinrad.io.base import RadarBase, prepare_file
+from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
 from cinrad.io._dtype import *
 from cinrad.datastruct import Radial, Grid
 from cinrad.error import RadarDecodeError
@@ -32,18 +32,34 @@ class PUP(RadarBase):
         from metpy.io.nexrad import Level3File
 
         f = Level3File(file)
+        # Because metpy interface doesn't provide station codes,
+        # it's necessary to reopen it and read the code.
+        with open(file, "rb") as buf:
+            buf.seek(12)
+            code = np.frombuffer(buf.read(2), ">i2")[0]
+            cds = str(code).zfill(3)
+            self.code = "Z9" + cds
+        self._update_radar_info()
         self.dtype = self._det_product_type(f.prod_desc.prod_code)
         self.radial_flag = self._is_radial(f.prod_desc.prod_code)
         data_block = f.sym_block[0][0]
         data = np.ma.array(data_block["data"])
         data[data == 0] = np.ma.masked
         self.data = np.ma.masked_invalid(f.map_data(data))
-        self.max_range = f.max_range
+        station_info = _get_radar_info(self.code)
+        radar_type = station_info[3]
+        # Hard code
+        if radar_type in ["SA", "SB"]:
+            self.max_range = 230
+        elif radar_type in ["SC", "CC", "CD"]:
+            self.max_range = 150
+        elif radar_type in ["CA", "CB"]:
+            self.max_range = 200
         if self.radial_flag:
             self.az = (
                 np.array(data_block["start_az"] + [data_block["end_az"][-1]]) * deg2rad
             )
-            self.rng = np.linspace(0, f.max_range, data.shape[-1] + 1)
+            self.rng = np.linspace(0, self.max_range, data.shape[-1] + 1)
             self.reso = self.max_range / data.shape[1]
         else:
             # TODO: Support grid type data
@@ -63,18 +79,6 @@ class PUP(RadarBase):
         self.stationlon = f.lon
         self.el = f.metadata["el_angle"]
         self.scantime = f.metadata["vol_time"]
-        # Because metpy interface doesn't provide station codes,
-        # it's necessary to reopen it and read the code.
-        o = open(file, "rb")
-        o.seek(12)
-        code = np.frombuffer(o.read(2), ">i2")[0]
-        if code in range(0, 100):
-            cds = "0{}".format(code)
-        else:
-            cds = str(code)
-        self.code = "Z9" + cds
-        o.close()
-        self._update_radar_info()
 
     def get_data(self) -> Union[Grid, Radial]:
         if self.radial_flag:
