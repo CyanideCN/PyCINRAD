@@ -60,7 +60,7 @@ def _get_uniform_cmap(cmap: Any) -> Any:
 r_cmap = _cmap("REF")["cmap"]
 r_cmap_smooth = _cmap("REF_s")["cmap"]
 v_cmap = _cmap("VEL")["cmap"]
-v_cbar = _get_uniform_cmap(v_cmap)
+v_cbar = _cmap("VEL_reverse")["cmap"]
 v_cmap_smooth = _cmap("VEL_s")["cmap"]
 zdr_cmap = _cmap("ZDR")["cmap"]
 zdr_cbar = _get_uniform_cmap(zdr_cmap)
