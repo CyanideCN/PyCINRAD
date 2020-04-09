@@ -130,7 +130,7 @@ class PPI(object):
         # When plot single radar, azimuthal equidistant projection is used.
         # The data which has code like 'Z9XXX' is considered as single radar.
         code = self.data.code
-        if isinstance(self.data, Radial) or (
+        if isinstance(self.data, Radial) and (
             code.startswith("Z") and code[1:].isnumeric()
         ):
             proj = ccrs.AzimuthalEquidistant(
