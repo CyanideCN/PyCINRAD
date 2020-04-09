@@ -23,6 +23,16 @@ def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
     return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
 
 
+# As metpy use a different table to map the data
+# The color table constructed from PUP software is used to replace metpy
+# fmt: off
+velocity_map = {0: np.ma.masked, 1: -27.5, 2: -20.5, 3: -15.5, 4: -10.5, 5: -5.5,
+                6: -1.5, 7: -0.5, 8: 0.5, 9: 4.5, 10: 9.5, 11: 14.5, 12: 19.5,
+                13: 26.5, 14: 27, 15: 30}
+# fmt: on
+velocity_mapper = np.vectorize(velocity_map.__getitem__)
+
+
 class PUP(RadarBase):
     r"""
     Class handling PUP data (Nexrad Level III data)
@@ -40,21 +50,28 @@ class PUP(RadarBase):
             cds = str(code).zfill(3)
             self.code = "Z9" + cds
         self._update_radar_info()
-        self.dtype = self._det_product_type(f.prod_desc.prod_code)
-        self.radial_flag = self._is_radial(f.prod_desc.prod_code)
+        product_code = f.prod_desc.prod_code
+        self.dtype = self._det_product_type(product_code)
+        self.radial_flag = self._is_radial(product_code)
         data_block = f.sym_block[0][0]
         data = np.ma.array(data_block["data"])
-        data[data == 0] = np.ma.masked
-        self.data = np.ma.masked_invalid(f.map_data(data))
+        if self.dtype == "VEL":
+            self.data = np.ma.masked_invalid(velocity_mapper(data))
+        else:
+            data[data == 0] = np.ma.masked
+            self.data = np.ma.masked_invalid(f.map_data(data))
+        if self.dtype == "ET":
+            # convert kft to km
+            self.data *= 0.30478
         station_info = _get_radar_info(self.code)
         radar_type = station_info[3]
-        # Hard code
-        if radar_type in ["SA", "SB"]:
-            self.max_range = 230
-        elif radar_type in ["SC", "CC", "CD"]:
-            self.max_range = 150
-        elif radar_type in ["CA", "CB"]:
-            self.max_range = 200
+        self.max_range = f.max_range
+        # Hard coding to adjust max range for different types of radar
+        if f.max_range == 230:
+            if radar_type in ["SC", "CC", "CD"]:
+                self.max_range = 150
+            elif radar_type in ["CA", "CB"]:
+                self.max_range = 200
         if self.radial_flag:
             self.az = (
                 np.array(data_block["start_az"] + [data_block["end_az"][-1]]) * deg2rad
@@ -62,19 +79,11 @@ class PUP(RadarBase):
             self.rng = np.linspace(0, self.max_range, data.shape[-1] + 1)
             self.reso = self.max_range / data.shape[1]
         else:
-            # TODO: Support grid type data
-            raise NotImplementedError("Grid-type data is not supported")
             xdim, ydim = data.shape
-            x = (
-                np.linspace(xdim * f.ij_to_km * -1, xdim * f.ij_to_km, xdim) / 111
-                + f.lon
-            )
-            y = (
-                np.linspace(ydim * f.ij_to_km, ydim * f.ij_to_km * -1, ydim) / 111
-                + f.lat
-            )
+            x = np.linspace(self.max_range * -1, self.max_range, xdim) / 111 + f.lon
+            y = np.linspace(self.max_range, self.max_range * -1, ydim) / 111 + f.lat
             self.lon, self.lat = np.meshgrid(x, y)
-            self.reso = f.ij_to_km
+            self.reso = self.max_range / data.shape[0] * 2
         self.stationlat = f.lat
         self.stationlon = f.lon
         self.el = f.metadata["el_angle"]
@@ -131,6 +140,10 @@ class PUP(RadarBase):
             return "SW"
         elif spec == 37:
             return "CR"
+        elif spec == 41:
+            return "ET"
+        elif spec == 57:
+            return "VIL"
         else:
             raise RadarDecodeError("Unsupported product type {}".format(spec))
 

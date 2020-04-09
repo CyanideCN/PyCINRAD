@@ -78,7 +78,7 @@ vil_cbar = _get_uniform_cmap(vil_cmap)
 rf_cmap = cmx.ListedColormap("#660066", "#FFFFFF")
 
 norm1 = cmx.Normalize(0, 75)  # reflectivity / vertially integrated liquid
-norm2 = cmx.Normalize(-35, 27)  # velocity
+norm2 = cmx.Normalize(-35, 28)  # velocity
 norm3 = cmx.Normalize(-1, 0)  # RF
 norm4 = cmx.Normalize(0, 1)  # colorbar
 norm5 = cmx.Normalize(0, 21)  # echo top
