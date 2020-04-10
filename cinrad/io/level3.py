@@ -28,7 +28,7 @@ def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
 # fmt: off
 velocity_map = {0: np.ma.masked, 1: -27.5, 2: -20.5, 3: -15.5, 4: -10.5, 5: -5.5,
                 6: -1.5, 7: -0.5, 8: 0.5, 9: 4.5, 10: 9.5, 11: 14.5, 12: 19.5,
-                13: 26.5, 14: 27, 15: 30}
+                13: 26.5, 14: 27.5, 15: 30}
 # fmt: on
 velocity_mapper = np.vectorize(velocity_map.__getitem__)
 
@@ -56,7 +56,10 @@ class PUP(RadarBase):
         data_block = f.sym_block[0][0]
         data = np.ma.array(data_block["data"])
         if self.dtype == "VEL":
-            self.data = np.ma.masked_invalid(velocity_mapper(data))
+            mapped_data = np.ma.masked_invalid(velocity_mapper(data))
+            rf = np.ma.masked_not_equal(mapped_data, 30)
+            data = np.ma.masked_equal(mapped_data, 30)
+            self.data = (data, rf)
         else:
             data[data == 0] = np.ma.masked
             self.data = np.ma.masked_invalid(f.map_data(data))
@@ -64,14 +67,16 @@ class PUP(RadarBase):
             # convert kft to km
             self.data *= 0.30478
         station_info = _get_radar_info(self.code)
-        radar_type = station_info[3]
+        self.radar_type = station_info[3]
         self.max_range = f.max_range
         # Hard coding to adjust max range for different types of radar
-        if f.max_range == 230:
-            if radar_type in ["SC", "CC", "CD"]:
+        if f.max_range >= 230:
+            if self.radar_type in ["SC", "CC"]:
                 self.max_range = 150
-            elif radar_type in ["CA", "CB"]:
+            elif self.radar_type in ["CA", "CB"]:
                 self.max_range = 200
+            elif self.radar_type == 'CD':
+                self.max_range = 125
         if self.radial_flag:
             self.az = (
                 np.array(data_block["start_az"] + [data_block["end_az"][-1]]) * deg2rad
@@ -86,7 +91,7 @@ class PUP(RadarBase):
             self.reso = self.max_range / data.shape[0] * 2
         self.stationlat = f.lat
         self.stationlon = f.lon
-        self.el = f.metadata["el_angle"]
+        self.el = np.round_(f.metadata["el_angle"], 1)
         self.scantime = f.metadata["vol_time"]
 
     def get_data(self) -> Union[Grid, Radial]:
@@ -138,7 +143,7 @@ class PUP(RadarBase):
             return "VEL"
         elif spec in range(28, 31):
             return "SW"
-        elif spec == 37:
+        elif spec in range(37, 39):
             return "CR"
         elif spec == 41:
             return "ET"
