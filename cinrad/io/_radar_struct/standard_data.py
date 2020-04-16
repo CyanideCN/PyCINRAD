@@ -15,7 +15,7 @@ generic_header_dtype = np.dtype(generic_header)
 
 site_config = [
     ("site_code", "8c"),
-    ("site_name", "32c"),
+    ("site_name", "S32"),
     ("Latitude", "f4"),
     ("Longitude", "f4"),
     ("antenna_height", "i4"),
@@ -35,7 +35,7 @@ site_config = [
 site_config_dtype = np.dtype(site_config)
 
 task_config = [
-    ("task_name", "32c"),
+    ("task_name", "S32"),
     ("task_dsc", "128c"),
     ("polar_type", "i4"),
     ("scan_type", "i4"),
@@ -141,7 +141,7 @@ moment_header_dtype = np.dtype(moment_header)
 
 product_header = [
     ("product_type", "i4"),
-    ("product_name", "32c"),
+    ("product_name", "S32"),
     ("product_gentime", "i4"),
     ("scan_start_time", "i4"),
     ("data_start_time", "i4"),
