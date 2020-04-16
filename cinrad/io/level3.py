@@ -68,7 +68,7 @@ class PUP(RadarBase):
             self.data *= 0.30478
         station_info = _get_radar_info(self.code)
         self.radar_type = station_info[3]
-        self.max_range = f.max_range
+        self.max_range = int(f.max_range)
         # Hard coding to adjust max range for different types of radar
         if f.max_range >= 230:
             if self.radar_type in ["SC", "CC"]:
