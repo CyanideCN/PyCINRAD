@@ -75,7 +75,7 @@ class PUP(RadarBase):
                 self.max_range = 150
             elif self.radar_type in ["CA", "CB"]:
                 self.max_range = 200
-            elif self.radar_type == 'CD':
+            elif self.radar_type == "CD":
                 self.max_range = 125
         if self.radial_flag:
             self.az = (
