@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from cinrad.datastruct import Slice_
@@ -13,11 +14,16 @@ __all__ = ["Section", "RHI"]
 
 
 class Section(object):
-    def __init__(self, data: Slice_, hlim: int = 15, interpolate: bool = True):
+    def __init__(
+        self,
+        data: Slice_,
+        hlim: int = 15,
+        interpolate: bool = True,
+        figsize: tuple = (10, 5),
+    ):
         self.data = data
         self.dtype = data.dtype
-        self.hlim = hlim
-        self.interp = interpolate
+        self.settings = {"hlim": hlim, "interp": interpolate, "figsize": figsize}
         self.path_customize = False
 
     def _plot(self, fpath: str):
@@ -28,31 +34,21 @@ class Section(object):
         ycor = self.data.ycor
         rmax = rhi.max()
         plt.style.use("dark_background")
-        # plt.figure(figsize=(10, 4), dpi=200)
-        plt.figure(figsize=(10, 8), dpi=600)  ## 修改于2019-01-22 By WU Fulang
-        plt.tick_params(labelsize=20)  # 坐标轴字体大小
+        plt.figure(figsize=self.settings["figsize"], dpi=300)
         plt.grid(
             True, linewidth=0.50, linestyle="-.", color="white"
         )  ## 修改于2019-01-22 By WU Fulang
-        # plt.contourf(xcor, ycor, rhi, 128, cmap=rhi_cmap_smooth, norm=norm1)
-        if self.interp:
+        cmap = sec_plot[self.data.dtype]
+        norm = norm_plot[self.data.dtype]
+        if self.settings["interp"]:
             plt.contourf(
-                xcor,
-                ycor,
-                rhi,
-                128,
-                cmap=sec_plot[self.data.dtype],
-                norm=norm_plot[self.data.dtype],
+                xcor, ycor, rhi, 128, cmap=cmap, norm=norm,
             )
         else:
             plt.pcolormesh(
-                xcor,
-                ycor,
-                rhi,
-                cmap=sec_plot[self.data.dtype],
-                norm=norm_plot[self.data.dtype],
+                xcor, ycor, rhi, cmap=cmap, norm=norm,
             )
-        plt.ylim(0, self.hlim)
+        plt.ylim(0, self.settings["hlim"])
         stps = self.data.geoinfo["stp_s"]
         enps = self.data.geoinfo["enp_s"]
         stp = self.data.geoinfo["stp"]
@@ -68,31 +64,12 @@ class Section(object):
             ),
             **plot_kw
         )
-        # 重新绘制VCS的横坐标，分为5等分
-        deltaLat = (enp[1] - stp[1]) / 5.0
-        deltaLon = (enp[0] - stp[0]) / 5.0
-        plt.xticks(
-            [0, 0.2, 0.4, 0.6, 0.8, 1],
-            [
-                "{:.2f}N\n{:.2f}E".format(stp[1], stp[0]),
-                "{:.2f}N\n{:.2f}E".format(
-                    stp[1] + deltaLat * 1.0, stp[0] + deltaLon * 1.0
-                ),
-                "{:.2f}N\n{:.2f}E".format(
-                    stp[1] + deltaLat * 2.0, stp[0] + deltaLon * 2.0
-                ),
-                "{:.2f}N\n{:.2f}E".format(
-                    stp[1] + deltaLat * 3.0, stp[0] + deltaLon * 3.0
-                ),
-                "{:.2f}N\n{:.2f}E".format(
-                    stp[1] + deltaLat * 4.0, stp[0] + deltaLon * 4.0
-                ),
-                "{:.2f}N\n{:.2f}E".format(enp[1], enp[0]),
-            ],
-        )  # 分为五等分
+        lat_pos = np.linspace(stp[1], enp[1], 6)
+        lon_pos = np.linspace(stp[0], enp[0], 6)
+        tick_formatter = lambda x, y: "{:.2f}N\n{:.2f}E".format(x, y)
+        ticks = list(map(tick_formatter, lat_pos, lon_pos))
+        plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1], ticks)
         plt.ylabel("Height (km)", **plot_kw)  ## 修改于2019-01-22 By WU Fulang
-        # plt.xticks([0, 1], ['{}N\n{}E'.format(stp[1], stp[0]), '{}N\n{}E'.format(enp[1], enp[0])])
-        # plt.ylabel('Altitude (km)')
         if self.path_customize:
             path_string = fpath
         else:
@@ -139,22 +116,15 @@ class RHI(object):
         plt.style.use("dark_background")
         plt.figure(figsize=(10, 5), dpi=300)
         plt.grid(True, linewidth=0.5, linestyle="-.", color="white")
+        norm = norm_plot[self.data.dtype]
+        cmap = sec_plot[self.data.dtype]
         if interpolate:
             plt.contourf(
-                xcor,
-                ycor,
-                rhi,
-                128,
-                cmap=sec_plot[self.data.dtype],
-                norm=norm_plot[self.data.dtype],
+                xcor, ycor, rhi, 128, cmap=cmap, norm=norm,
             )
         else:
             plt.pcolormesh(
-                xcor,
-                ycor,
-                rhi,
-                cmap=sec_plot[self.data.dtype],
-                norm=norm_plot[self.data.dtype],
+                xcor, ycor, rhi, cmap=cmap, norm=norm,
             )
         plt.ylim(0, self.hlim)
         plt.title(

@@ -385,8 +385,8 @@ class PPI(object):
             # draw ticks on AzimuthalEquidistant plot
             from cartopy import __version__
 
-            ver = tuple([int(i) for i in __version__.split(".")])
-            if ver <= (0, 17, 0):
+            ver = tuple([i for i in __version__.split(".")])
+            if ver < ("0", "18", "0"):
                 warnings.warn(
                     "Cartopy older than 0.18 cannot draw ticks on AzimuthalEquidistant plot.",
                     RuntimeWarning,
