@@ -9,6 +9,7 @@ from typing import Union, Optional, List, Any, Generator
 import re
 
 import numpy as np
+import xarray as xr
 
 from cinrad.constants import deg2rad, con
 from cinrad.datastruct import Radial, Slice_
@@ -405,7 +406,7 @@ class CinradReader(RadarBase):
             ret = r.T
         return ret
 
-    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> Radial:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
         r"""
         Get radar data
 
@@ -425,27 +426,35 @@ class CinradReader(RadarBase):
         task = getattr(self, "task_name", None)
         reso = self.Rreso if dtype == "REF" else self.Vreso
         ret = self.get_raw(tilt, drange, dtype)
-        shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
-        r_obj = Radial(
-            ret,
-            int(np.round(shape * reso)),
-            self.elev,
-            reso,
-            self.code,
-            self.name,
-            self.scantime,
-            dtype,
-            self.stationlon,
-            self.stationlat,
-            nyquist_velocity=self.nyquist_v[tilt],
-            task=task,
-        )
         x, y, z, d, a = self.projection(reso)
-        r_obj.add_geoc(x, y, z)
-        r_obj.add_polarc(d, a)
+        shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
+        if dtype in ["VEL", "SW"]:
+            da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
+        else:
+            da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
+        ds = xr.Dataset(
+            {dtype: da},
+            attrs={
+                "elevation": self.elev,
+                "range": int(np.round(shape * reso)),
+                "scan_time": self.scantime,
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": reso,
+                "nyquist_vel": self.nyquist_v[tilt],
+                "task": task,
+            },
+        )
+        ds["longitude"] = (["azimuth", "distance"], x)
+        ds["latitude"] = (["azimuth", "distance"], y)
+        ds["height"] = (["azimuth", "distance"], z)
+        if dtype in ["VEL", "SW"]:
+            ds["RF"] = (["azimuth", "distance"], ret[1])
         if self.radartype == "CC":
-            r_obj.a_reso = 512
-        return r_obj
+            ds.attrs["radial_reso"] = 512
+        return ds
 
     def projection(self, reso: float, h_offset: bool = False) -> tuple:
         r"""Calculate the geographic coordinates of the requested data range."""
@@ -675,7 +684,7 @@ class StandardData(RadarBase):
 
     def get_data(
         self, tilt: int, drange: Number_T, dtype: str
-    ) -> Union[Radial, Slice_]:
+    ) -> xr.Dataset:
         r"""
         Get radar data
 
@@ -695,25 +704,32 @@ class StandardData(RadarBase):
         reso = self.scan_config[tilt].dop_reso / 1000
         ret = self.get_raw(tilt, drange, dtype)
         if self.scan_type == "PPI":
-            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
-            r_obj = Radial(
-                ret,
-                int(shape * reso),
-                self.elev,
-                reso,
-                self.code,
-                self.name,
-                self.scantime,
-                dtype,
-                self.stationlon,
-                self.stationlat,
-                nyquist_velocity=self.scan_config[tilt].nyquist_spd,
-                task=self.task_name,
-            )
             x, y, z, d, a = self.projection(reso)
-            r_obj.add_geoc(x, y, z)
-            r_obj.add_polarc(d, a)
-            return r_obj
+            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
+            if dtype in ["VEL", "SW"]:
+                # (r.data, coords=[r.az, r.dist], dims=['azimuth', 'distance'])
+                da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
+            else:
+                da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
+            ds = xr.Dataset(
+                {dtype: da},
+                attrs={
+                    "elevation": self.elev,
+                    "range": int(shape * reso),
+                    "scan_time": self.scantime,
+                    "site_code": self.code,
+                    "site_name": self.name,
+                    "site_longitude": self.stationlon,
+                    "site_latitude": self.stationlat,
+                    "tangential_reso": reso,
+                    "nyquist_vel": self.scan_config[tilt].nyquist_spd,
+                    "task": self.task_name,
+                },
+            )
+            ds["longitude"] = (["azimuth", "distance"], x)
+            ds["latitude"] = (["azimuth", "distance"], y)
+            ds["height"] = (["azimuth", "distance"], z)
+            return ds
         else:
             # Manual projection
             shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
