@@ -452,9 +452,6 @@ class CinradReader(RadarBase):
         ds["height"] = (["azimuth", "distance"], z)
         if dtype in ["VEL", "SW"]:
             ds["RF"] = (["azimuth", "distance"], ret[1])
-        # TODO: Remove this attribute
-        if self.radartype == "CC":
-            ds.attrs["radial_reso"] = 512
         return ds
 
     def projection(self, reso: float, h_offset: bool = False) -> tuple:

@@ -53,6 +53,15 @@ def require(var_names: List[str]) -> Callable:
     return wrap
 
 
+def get_dtype(data: Dataset) -> str:
+    all_data = list(data.keys())
+    geo_var_name = ["longitude", "latitude", "height"]
+    for i in geo_var_name:
+        if i in all_data:
+            all_data.remove(i)
+    return all_data[0]
+
+
 def _extract(r_list: List[Dataset], dtype: str) -> tuple:
     if len(set(i.range for i in r_list)) > 1:
         raise ValueError("Input radials must have same data range")
@@ -80,12 +89,6 @@ def _extract(r_list: List[Dataset], dtype: str) -> tuple:
     return data, d, a, np.array(elev)
 
 
-# TODO: Remove later
-def is_uniform(radial_list: List[Dataset]) -> bool:
-    r"""Check if all input radials have same data type"""
-    return len(set([i.dtype for i in radial_list])) == 1
-
-
 @require(["REF"])
 def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset:
     r"""
@@ -97,7 +100,7 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
 
     Returns
     -------
-    l2_obj: xarray.Dataset
+    ret: xarray.Dataset
         composite reflectivity
     """
     r_data = list()
@@ -112,21 +115,10 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     # TODO
-    l2_obj = Grid(
-        np.ma.array(cr, mask=(cr <= 0)),
-        i.drange,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "CR",
-        i.stp["lon"],
-        i.stp["lat"],
-        x,
-        y,
-        **i.scan_info
-    )
-    return l2_obj
+    ret = Dataset({"CR": DataArray(cr, coords=[x, y], dims=["longitude", "latitude"],)})
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    return ret
 
 
 @require(["REF"])
@@ -168,7 +160,7 @@ def quick_et(r_list: List[Dataset]) -> Dataset:
 
 
 @require(["REF"])
-def quick_vil(r_list: Volume_T) -> Dataset:
+def quick_vil(r_list: List[Dataset]) -> Dataset:
     r"""
     Calculate vertically integrated liquid
 
@@ -205,7 +197,7 @@ def quick_vil(r_list: Volume_T) -> Dataset:
     return ret
 
 
-def quick_vild(r_list: Volume_T) -> Radial:
+def quick_vild(r_list: List[Dataset]) -> Dataset:
     r"""
     Calculate vertically integrated liquid density
 
@@ -248,43 +240,43 @@ def quick_vild(r_list: Volume_T) -> Radial:
 class VCS(object):
     r"""Class performing vertical cross-section calculation"""
 
-    def __init__(self, r_list: Volume_T):
-        if not is_uniform(r_list):
-            raise RadarCalculationError(
-                "All input radials must have the same data type"
-            )
-        el = [i.elev for i in r_list]
+    def __init__(self, r_list: List[Dataset]):
+        el = [i.elevation for i in r_list]
         if len(el) != len(set(el)):
             self.rl = list()
             el_list = list()
             for data in r_list:
-                if data.elev not in el_list:
+                if data.elevation not in el_list:
                     self.rl.append(data)
                     el_list.append(data.elev)
         else:
             self.rl = r_list
+        self.dtype = get_dtype(r_list[0])
         self.x, self.y, self.h, self.r = self._geocoor()
+        self.attrs = r_list[0].attrs
 
-    def _geocoor(self) -> tuple:
+    def _geocoor(self) -> Tuple[list]:
         r_data = list()
         x_data = list()
         y_data = list()
         h_data = list()
         for i in self.rl:
-            if i.dtype in ["VEL", "SW"]:
-                r, x, y = grid_2d(i.data[0], i.lon, i.lat)
+            _lon = i["longitude"].values
+            _lat = i["latitude"].values
+            if self.dtype in ["VEL", "SW"]:
+                r, x, y = grid_2d(i[self.dtype][0].values, _lon, _lat)
             else:
-                r, x, y = grid_2d(i.data, i.lon, i.lat)
+                r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
-            hgh_grid, x, y = grid_2d(i.height, i.lon, i.lat)
+            hgh_grid, x, y = grid_2d(i["height"].values, _lon, _lat)
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
     def _get_section(
         self, stp: Tuple[float, float], enp: Tuple[float, float], spacing: int
-    ) -> Slice_:
+    ) -> Dataset:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -298,24 +290,20 @@ class VCS(object):
             h_sec.append(h_section)
         r = np.asarray(r_sec)
         h = np.asarray(h_sec)
-        r = np.ma.masked_invalid(r)
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
-        stp_s = "{}N, {}E".format(stp[1], stp[0])
-        enp_s = "{}N, {}E".format(enp[1], enp[0])
-        sl = Slice_(
-            r,
-            x,
-            h,
-            self.rl[0].scantime,
-            self.rl[0].code,
-            self.rl[0].name,
-            self.rl[0].dtype,
-            stp_s=stp_s,
-            enp_s=enp_s,
-            stp=stp,
-            enp=enp,
+        ret = Dataset(
+            {
+                self.dtype: DataArray(r, dims=["distance", "tilt"]),
+                "height": DataArray(h, dims=["distance", "tilt"]),
+            }
         )
-        return sl
+        r_attr = self.attrs.copy()
+        del r_attr["elevation"], r_attr["tangential_reso"], r_attr["range"]
+        r_attr["start_lon"] = stp[0]
+        r_attr["start_lat"] = stp[1]
+        r_attr["end_lon"] = enp[0]
+        r_attr["end_lat"] = enp[1]
+        return ret
 
     def get_section(
         self,
@@ -324,7 +312,7 @@ class VCS(object):
         start_cart: Optional[Tuple[float, float]] = None,
         end_cart: Optional[Tuple[float, float]] = None,
         spacing: int = 500,
-    ) -> Slice_:
+    ) -> Dataset:
         r"""
         Get cross-section data from input points
 
@@ -364,13 +352,11 @@ class VCS(object):
 
 
 class GridMapper(object):
-    def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
+    def __init__(self, fields: List[Dataset], max_dist: Number_T = 0.1):
         # Process data type
-        if len(set([i.dtype for i in fields])) > 1:
-            raise RadarCalculationError("All input data should have same data type")
-        self.dtype = fields[0].dtype
+        self.dtype = get_dtype(fields[0])
         # Process time
-        t_arr = np.array([time.mktime(i.scantime.timetuple()) for i in fields])
+        t_arr = np.array([time.mktime(i.scan_time.timetuple()) for i in fields])
         if (t_arr.max() - t_arr.min()) / 60 > 10:
             raise RadarCalculationError(
                 "Time difference of input data should not exceed 10 minutes"
@@ -384,14 +370,18 @@ class GridMapper(object):
         else:
             mean_dtime -= datetime.timedelta(minutes=time_rest)
         self.scan_time = mean_dtime
-        self.lon_ravel = np.hstack([i.lon.ravel() for i in fields])
-        self.lat_ravel = np.hstack([i.lat.ravel() for i in fields])
-        self.data_ravel = np.ma.hstack([i.data.ravel() for i in fields])
+        self.lon_ravel = np.hstack([i["longitude"].values.ravel() for i in fields])
+        self.lat_ravel = np.hstack([i["latitude"].values.ravel() for i in fields])
+        self.data_ravel = np.ma.hstack([i[self.dtype].values.ravel() for i in fields])
         self.dist_ravel = np.hstack(
-            [np.broadcast_to(i.dist, i.lon.shape).ravel() for i in fields]
+            [
+                np.broadcast_to(i["distance"], i["longitude"].shape).ravel()
+                for i in fields
+            ]
         )
         self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
         self.md = max_dist
+        self.attr = fields[0].attrs.copy()
 
     def _process_grid(self, x_step: Number_T, y_step: Number_T) -> Tuple[np.ndarray]:
         x_lower = np.round_(self.lon_ravel.min(), 2)
@@ -420,20 +410,16 @@ class GridMapper(object):
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def __call__(self, step: Number_T) -> Grid:
+    def __call__(self, step: Number_T) -> Dataset:
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        return Grid(
-            grid,
-            np.nan,
-            step,
-            "RADMAP",
-            "RADMAP",
-            self.scan_time,
-            self.dtype,
-            0,
-            0,
-            x,
-            y,
+        ret = Dataset({self.dtype: DataArray(grid, dims=["distance", "tilt"])})
+        r_attr = self.attr
+        del (
+            r_attr["site_code"],
+            r_attr["site_name"],
+            r_attr["tangential_reso"],
+            r_attr["range"],
         )
+        return ret
