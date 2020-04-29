@@ -118,14 +118,14 @@ except ImportError:
         data: numpy.ndarray
             echo tops data
         """
-        r = np.ma.array(ref, mask=(ref > threshold))
-        xshape, yshape = r[0].shape
+        ref[np.isnan(ref)] = 0
+        xshape, yshape = ref[0].shape
         et = np.zeros((xshape, yshape))
         h_ = list()
         for i in elev:
             h = height(distance, i, radarheight)
             h_.append(h)
-        hght = np.concatenate(h_).reshape(r.shape)
+        hght = np.concatenate(h_).reshape(ref.shape)
         for i in range(xshape):
             for j in range(yshape):
                 vert_h = hght[:, i, j]
