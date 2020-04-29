@@ -76,6 +76,7 @@ def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
         h_.append(h)
     hght = np.concatenate(h_).reshape(ref.shape[0], ref.shape[1], ref.shape[2])
     r = np.asarray(ref)
+    r[np.isnan(ref)] = 0
     for i in range(xshape):
         for j in range(yshape):
             vert_h = hght[:, i, j]
