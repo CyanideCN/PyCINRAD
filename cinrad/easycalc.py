@@ -3,10 +3,10 @@
 
 import datetime
 import time
-from typing import Tuple, Optional
+from typing import *
 
 import numpy as np
-from xarray import DataArray
+from xarray import DataArray, Dataset
 
 try:
     from pykdtree.kdtree import KDTree
@@ -30,47 +30,88 @@ __all__ = [
 ]
 
 
-def _extract(r_list: Volume_T) -> tuple:
-    d_list = np.array([i.drange for i in r_list])
-    if d_list.mean() != d_list.max():
+def require(var_names: List[str]) -> Callable:
+    def wrap(func: Callable) -> Callable:
+        def deco(*args, **kwargs) -> Any:
+            varset = args[0]
+            if isinstance(varset, Dataset):
+                var_list = list(varset.keys())
+            elif isinstance(varset, list):
+                var_list = list()
+                for var in varset:
+                    var_list += list(var.keys())
+                var_list = list(set(var_list))
+            for v in var_names:
+                if v not in var_list:
+                    raise ValueError(
+                        "Function {} requires variable {}".format(func.__name__, v)
+                    )
+            return func(*args, **kwargs)
+
+        return deco
+
+    return wrap
+
+
+def _extract(r_list: List[Dataset], dtype: str) -> tuple:
+    if len(set(i.range for i in r_list)) > 1:
         raise ValueError("Input radials must have same data range")
+    adim_shape = set(i.dims["azimuth"] for i in r_list)
+    if max(adim_shape) > 400:
+        # CC radar
+        adim_interp_to = 512
+    else:
+        adim_interp_to = 360
     r_data = list()
     elev = list()
-    areso = r_list[0].a_reso if r_list[0].a_reso else 360
     for i in r_list:
-        x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
+        x, d, a = resample(
+            i[dtype].values,
+            i["distance"].values,
+            i["azimuth"].values,
+            i.tangential_reso,
+            adim_interp_to,
+        )
         r_data.append(x)
-        elev.append(i.elev)
+        elev.append(i.elevation)
     data = np.concatenate(r_data).reshape(
         len(r_list), r_data[0].shape[0], r_data[0].shape[1]
     )
     return data, d, a, np.array(elev)
 
 
-def is_uniform(radial_list: Volume_T) -> bool:
+# TODO: Remove later
+def is_uniform(radial_list: List[Dataset]) -> bool:
     r"""Check if all input radials have same data type"""
     return len(set([i.dtype for i in radial_list])) == 1
 
 
-def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Grid:
+@require(["REF"])
+def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset:
     r"""
     Calculate composite reflectivity
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    l2_obj: xarray.Dataset
         composite reflectivity
     """
     r_data = list()
     for i in r_list:
-        r, x, y = grid_2d(i.data, i.lon, i.lat, resolution=resolution)
+        r, x, y = grid_2d(
+            i["REF"].values,
+            i["longitude"].values,
+            i["latitude"].values,
+            resolution=resolution,
+        )
         r_data.append(r)
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
+    # TODO
     l2_obj = Grid(
         np.ma.array(cr, mask=(cr <= 0)),
         i.drange,
@@ -88,76 +129,80 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Grid:
     return l2_obj
 
 
-def quick_et(r_list: Volume_T) -> Radial:
+@require(["REF"])
+def quick_et(r_list: List[Dataset]) -> Dataset:
     r"""
     Calculate echo tops
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    ret: xarray.Dataset
         echo tops
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
     et = echo_top(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.0
     )
-    l2_obj = Radial(
-        np.ma.array(et, mask=(et < 2)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "ET",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "ET": DataArray(
+                np.ma.masked_less(et, 2),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
-def quick_vil(r_list: Volume_T) -> Radial:
+@require(["REF"])
+def quick_vil(r_list: Volume_T) -> Dataset:
     r"""
     Calculate vertically integrated liquid
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    ret: xarray.Dataset
         vertically integrated liquid
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
     vil = vert_integrated_liquid(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double)
     )
-    l2_obj = Radial(
-        np.ma.array(vil, mask=(vil <= 0)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "VIL",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "VIL": DataArray(
+                np.ma.masked_less(vil, 0),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
 def quick_vild(r_list: Volume_T) -> Radial:
@@ -166,38 +211,38 @@ def quick_vild(r_list: Volume_T) -> Radial:
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    l2_obj: xarray.Dataset
         vertically integrated liquid density
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
-    vil = vert_integrated_liquid(
+    vild = vert_integrated_liquid(
         r_data.astype(np.double),
         d.astype(np.double),
         elev.astype(np.double),
         density=True,
     )
-    vild = np.ma.masked_invalid(vil)
-    l2_obj = Radial(
-        np.ma.array(vild, mask=(vild <= 0.1)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "VILD",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "VILD": DataArray(
+                np.ma.masked_less(vild, 0.1),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
 class VCS(object):

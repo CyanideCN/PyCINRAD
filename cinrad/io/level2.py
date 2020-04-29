@@ -452,6 +452,7 @@ class CinradReader(RadarBase):
         ds["height"] = (["azimuth", "distance"], z)
         if dtype in ["VEL", "SW"]:
             ds["RF"] = (["azimuth", "distance"], ret[1])
+        # TODO: Remove this attribute
         if self.radartype == "CC":
             ds.attrs["radial_reso"] = 512
         return ds
@@ -682,9 +683,7 @@ class StandardData(RadarBase):
             ret = r
         return ret
 
-    def get_data(
-        self, tilt: int, drange: Number_T, dtype: str
-    ) -> xr.Dataset:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
         r"""
         Get radar data
 
