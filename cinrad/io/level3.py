@@ -9,6 +9,7 @@ import glob
 from io import BytesIO
 
 import numpy as np
+from xarray import Dataset
 
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
@@ -94,37 +95,53 @@ class PUP(RadarBase):
         self.el = np.round_(f.metadata["el_angle"], 1)
         self.scantime = f.metadata["vol_time"]
 
-    def get_data(self) -> Union[Grid, Radial]:
+    def get_data(self) -> Dataset:
         if self.radial_flag:
             lon, lat = self.projection()
-            return Radial(
-                self.data,
-                self.max_range,
-                self.el,
-                self.reso,
-                self.code,
-                self.name,
-                self.scantime,
-                self.dtype,
-                self.stationlon,
-                self.stationlat,
-                lon,
-                lat,
+            if dtype in ["VEL", "SW"]:
+                da = xr.DataArray(
+                    self.data[0],
+                    coords=[self.az, self.rng],
+                    dims=["azimuth", "distance"],
+                )
+            else:
+                da = xr.DataArray(
+                    self.data, coords=[self.az, self.rng], dims=["azimuth", "distance"]
+                )
+            ds = xr.Dataset(
+                {dtype: da},
+                attrs={
+                    "elevation": self.el,
+                    "range": self.max_range,
+                    "scan_time": self.scantime,
+                    "site_code": self.code,
+                    "site_name": self.name,
+                    "site_longitude": self.stationlon,
+                    "site_latitude": self.stationlat,
+                    "tangential_reso": self.reso,
+                },
             )
+            ds["longitude"] = (["azimuth", "distance"], lon)
+            ds["latitude"] = (["azimuth", "distance"], lat)
+            if dtype in ["VEL", "SW"]:
+                ds["RF"] = (["azimuth", "distance"], self.data[1])
         else:
-            return Grid(
-                self.data,
-                self.max_range,
-                self.reso,
-                self.code,
-                self.name,
-                self.scantime,
-                self.dtype,
-                self.stationlon,
-                self.stationlat,
-                self.lon,
-                self.lat,
+            da = xr.DataArray(
+                self.data, coords=[self.lon, self.lat], dims=["longitude", "latitude"]
             )
+            ds = xr.Dataset(
+                {dtype: da},
+                attrs={
+                    "range": self.max_range,
+                    "scan_time": self.scantime,
+                    "site_code": self.code,
+                    "site_name": self.name,
+                    "site_longitude": self.stationlon,
+                    "site_latitude": self.stationlat,
+                    "tangential_reso": self.reso,
+                },
+            )
+        return ds
 
     @staticmethod
     def _is_radial(code: int) -> bool:
@@ -201,7 +218,7 @@ class SWAN(object):
             # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.masked_equal(out, 0)
 
-    def get_data(self, level=0) -> Grid:
+    def get_data(self, level=0) -> Dataset:
         x, y = np.meshgrid(self.lon, self.lat)
         dtype = self.product_name
         if self.data.ndim == 2:
@@ -210,10 +227,17 @@ class SWAN(object):
             ret = self.data[level]
             if self.product_name == "3DREF":
                 dtype = "CR"
-        grid = Grid(
-            ret, np.nan, np.nan, "SWAN", "SWAN", self.data_time, dtype, 0, 0, x, y
+        da = xr.DataArray(ret, coords=[x, y], dims=["longitude", "latitude"])
+        ds = xr.Dataset(
+            {dtype: da},
+            attrs={
+                "scan_time": self.scantime,
+                "site_code": "SWAN",
+                "site_name": "SWAN",
+                "tangential_reso": np.nan,
+            },
         )
-        return grid
+        return ds
 
 
 class StormTrackInfo(object):
@@ -436,20 +460,26 @@ class StandardPUP(RadarBase):
             dist, self.azi, self.el, self.stationlon, self.stationlat
         )
         hgt = height(dist, self.el, self.radarheight)
-        radial = Radial(
-            self.data,
-            self.end_range,
-            self.el,
-            self.reso,
-            self.code,
-            self.name,
-            self.scantime,
-            self.dtype,
-            self.stationlon,
-            self.stationlat,
-            lon,
-            lat,
-            height,
-            task=self.task_name,
+        da = xr.DataArray(
+            self.data, coords=[self.azi, dist], dims=["azimuth", "distance"]
         )
+        ds = xr.Dataset(
+            {dtype: da},
+            attrs={
+                "elevation": self.el,
+                "range": self.end_range,
+                "scan_time": self.scantime,
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": self.reso,
+                "task": self.task_name,
+            },
+        )
+        ds["longitude"] = (["azimuth", "distance"], lon)
+        ds["latitude"] = (["azimuth", "distance"], lat)
+        ds["height"] = (["azimuth", "distance"], hgt)
+        if dtype in ["VEL", "SW"]:
+            ds["RF"] = (["azimuth", "distance"], self.data[1])
         return radial

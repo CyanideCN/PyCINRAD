@@ -20,6 +20,7 @@ from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
+from cinrad.common import get_dtype
 
 __all__ = [
     "quick_cr",
@@ -51,15 +52,6 @@ def require(var_names: List[str]) -> Callable:
         return deco
 
     return wrap
-
-
-def get_dtype(data: Dataset) -> str:
-    all_data = list(data.keys())
-    geo_var_name = ["longitude", "latitude", "height"]
-    for i in geo_var_name:
-        if i in all_data:
-            all_data.remove(i)
-    return all_data[0]
 
 
 def _extract(r_list: List[Dataset], dtype: str) -> tuple:
