@@ -699,9 +699,9 @@ class StandardData(RadarBase):
         """
         reso = self.scan_config[tilt].dop_reso / 1000
         ret = self.get_raw(tilt, drange, dtype)
+        shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
         if self.scan_type == "PPI":
             x, y, z, d, a = self.projection(reso)
-            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
             if dtype in ["VEL", "SW"]:
                 # (r.data, coords=[r.az, r.dist], dims=['azimuth', 'distance'])
                 da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
@@ -725,24 +725,29 @@ class StandardData(RadarBase):
             ds["longitude"] = (["azimuth", "distance"], x)
             ds["latitude"] = (["azimuth", "distance"], y)
             ds["height"] = (["azimuth", "distance"], z)
-            return ds
         else:
             # Manual projection
-            shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
             dist = np.linspace(reso, self.drange, ret.shape[1])
             d, e = np.meshgrid(dist, self.aux[tilt]["elevation"])
             h = height(d, e, 0)
-            rhi = Slice_(
-                ret,
-                d,
-                h,
-                self.scantime,
-                self.code,
-                self.name,
-                dtype,
-                azimuth=self.aux[tilt]["azimuth"][0],
+            if dtype in ["VEL", "SW"]:
+                da = xr.DataArray(ret[0], coords=[dist, e], dims=["distance", "tilt"])
+            else:
+                da = xr.DataArray(ret, coords=[dist, e], dims=["distance", "tilt"])
+            ds = xr.Dataset(
+                {dtype: da},
+                attrs={
+                    "range": drange,
+                    "scan_time": self.scantime,
+                    "site_code": self.code,
+                    "site_name": self.name,
+                    "site_longitude": self.stationlon,
+                    "site_latitude": self.stationlat,
+                    "tangential_reso": reso,
+                    "azimuth": self.aux[tilt]["azimuth"][0],
+                },
             )
-            return rhi
+        return ds
 
     def projection(self, reso: float) -> tuple:
         r = np.arange(reso, self.drange + reso, reso)
