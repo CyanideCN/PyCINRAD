@@ -19,7 +19,7 @@ from cinrad.io.base import RadarBase, prepare_file
 from cinrad.io._dtype import *
 from cinrad._typing import Number_T
 
-__all__ = ["CinradReader", "StandardData", "NexradL2Data"]
+__all__ = ["CinradReader", "StandardData"]
 
 ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)

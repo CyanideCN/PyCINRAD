@@ -110,5 +110,6 @@ def grid_2d(
         y_out = np.linspace(y.min(), y.max(), r_y)
     t_x, t_y = np.meshgrid(x_out, y_out)
     kds = KDResampler(data, x, y)
-    result = kds.map_data(t_x, t_y)
+    # TODO: Rewrite the logic for conversion between np.ma.masked and np.nan
+    result = kds.map_data(t_x, t_y).data
     return result, x_out, y_out

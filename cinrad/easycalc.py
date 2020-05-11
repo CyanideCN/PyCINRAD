@@ -104,7 +104,7 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
             resolution=resolution,
         )
         r_data.append(r)
-    cr = np.max(r_data, axis=0)
+    cr = np.nanmax(r_data, axis=0)
     x, y = np.meshgrid(x, y)
     ret = Dataset({"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])})
     ret.attrs = i.attrs
@@ -174,7 +174,7 @@ def quick_vil(r_list: List[Dataset]) -> Dataset:
     ret = Dataset(
         {
             "VIL": DataArray(
-                np.ma.masked_less(vil, 0),
+                np.ma.masked_less(vil, 0.1),
                 coords=[azimuth, distance],
                 dims=["azimuth", "distance"],
             )
