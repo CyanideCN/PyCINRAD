@@ -106,8 +106,7 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
         r_data.append(r)
     cr = np.max(r_data, axis=0)
     x, y = np.meshgrid(x, y)
-    # TODO
-    ret = Dataset({"CR": DataArray(cr, coords=[x, y], dims=["longitude", "latitude"],)})
+    ret = Dataset({"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])})
     ret.attrs = i.attrs
     ret.attrs["elevation"] = 0
     return ret
@@ -406,12 +405,15 @@ class GridMapper(object):
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        ret = Dataset({self.dtype: DataArray(grid, dims=["distance", "tilt"])})
+        ret = Dataset({self.dtype: DataArray(grid, dims=["longitude", "latitude"])})
+        # TODO: need test
+        ds["longitude"] = x
+        ds["latitude"] = y
         r_attr = self.attr
         del (
-            r_attr["site_code"],
-            r_attr["site_name"],
             r_attr["tangential_reso"],
             r_attr["range"],
         )
+        r_attr["site_name"] = "RADMAP"
+        r_attr["site_code"] = "RADMAP"
         return ret

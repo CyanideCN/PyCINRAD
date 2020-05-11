@@ -1,5 +1,8 @@
 import numpy as np
+from xarray import Dataset
 from cinrad.utils import vert_integrated_liquid, echo_top
+from cinrad.easycalc import VCS
+from pytest import fixture
 
 
 def test_vil():
@@ -38,3 +41,7 @@ def test_et():
     )
 
     assert np.array_equal(et, true_et)
+
+
+def test_vcs():
+    pass

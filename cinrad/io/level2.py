@@ -703,7 +703,6 @@ class StandardData(RadarBase):
         if self.scan_type == "PPI":
             x, y, z, d, a = self.projection(reso)
             if dtype in ["VEL", "SW"]:
-                # (r.data, coords=[r.az, r.dist], dims=['azimuth', 'distance'])
                 da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
             else:
                 da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
@@ -772,97 +771,3 @@ class StandardData(RadarBase):
     def iter_tilt(self, drange: Number_T, dtype: str) -> Generator:
         for i in self.available_tilt(dtype):
             yield self.get_data(i, drange, dtype)
-
-
-class NexradL2Data(object):
-    r"""
-    Class handling dual-polarized radar data (stored in Nexrad level II format) reading and plotting
-    """
-
-    def __init__(self, file: Any):
-        r"""
-        Parameters
-        ----------
-        file: str
-            path directed to the file to read
-        """
-        from metpy.io.nexrad import Level2File
-
-        self.f = Level2File(file)
-        self.scantime = self.f.dt
-        self.name = self.f.stid.decode()
-        self.el = np.array([ray[0][0].el_angle for ray in self.f.sweeps])
-        self.stationlon = self.f.sweeps[0][0][1].lon
-        self.stationlat = self.f.sweeps[0][0][1].lat
-
-    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> Radial:
-        if isinstance(dtype, str):
-            self.dtype = dtype.upper().encode()
-        elif isinstance(dtype, bytes):
-            self.dtype = dtype.upper()
-        if self.dtype in [b"REF", b"VEL", b"ZDR", b"PHI", b"RHO"]:
-            if self.dtype in [b"ZDR", b"PHI", b"RHO"] and tilt in [1, 3]:
-                tilt -= 1
-                warnings.warn(
-                    "Elevation angle {} does not contain {} data, automatically switch to tilt {}".format(
-                        tilt + 1, self.dtype.decode(), tilt
-                    )
-                )
-            elif self.dtype in [b"VEL", b"SW"] and tilt in [0, 2]:
-                tilt += 1
-                warnings.warn(
-                    "Elevation angle {} does not contain {} data, automatically switch to tilt {}".format(
-                        tilt - 1, self.dtype.decode(), tilt
-                    )
-                )
-            hdr = self.f.sweeps[tilt][0][4][self.dtype][0]
-            self.reso = hdr.gate_width
-            raw = np.array([ray[4][self.dtype][1] for ray in self.f.sweeps[tilt]])
-        else:
-            raise RadarDecodeError(
-                "Unsupported data type {}".format(self.dtype.decode())
-            )
-        cut = raw[:, : int(drange / self.reso)]
-        masked = np.ma.masked_invalid(cut)
-        self.tilt = tilt
-        self.drange = drange
-        self.elev = self.el[tilt]
-        x, y, z, d, a = self.projection(self.reso)
-        radial = Radial(
-            masked,
-            drange,
-            self.elev,
-            self.reso,
-            self.name,
-            self.name,
-            self.scantime,
-            self.dtype.decode(),
-            self.stationlon,
-            self.stationlat,
-            x,
-            y,
-            a_reso=720,
-        )
-        radial.add_polarc(d, a)
-        return radial
-
-    def projection(self, reso: float, h_offset: bool = False) -> tuple:
-        header = self.f.sweeps[self.tilt][0][4][self.dtype][0]
-        gatenum = header.num_gates
-        firstgate = header.first_gate
-        data_range = np.arange(gatenum) * reso + firstgate
-        azi = np.array([ray[0].az_angle for ray in self.f.sweeps[self.tilt]]) * deg2rad
-        datalength = int(self.drange / reso)
-        lonx, latx = get_coordinate(
-            data_range[:datalength],
-            azi,
-            self.elev,
-            self.stationlon,
-            self.stationlat,
-            h_offset=h_offset,
-        )
-        hght = (
-            height(data_range[:datalength], self.elev, 0)
-            * np.ones(azi.shape[0])[:, np.newaxis]
-        )
-        return lonx, latx, hght, data_range[:datalength], azi

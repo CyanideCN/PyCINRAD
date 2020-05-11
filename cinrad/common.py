@@ -11,3 +11,8 @@ def get_dtype(data: Dataset) -> str:
         if i in all_data:
             all_data.remove(i)
     return all_data[0]
+
+
+def is_radial(data: Dataset) -> bool:
+    coords = set(data.coords.keys())
+    return coords == set(("distance", "azimuth"))

@@ -18,7 +18,7 @@ from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
-from cinrad.common import get_dtype
+from cinrad.common import get_dtype, is_radial
 from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
 
 __all__ = ["PPI"]
@@ -54,7 +54,7 @@ class PPI(object):
         highlight: Optional[Union[str, List[str]]] = None,
         coastline: bool = False,
         extent: Optional[List[Number_T]] = None,
-        section: Optional[Slice_] = None,
+        section: Optional[Dataset] = None,
         style: str = "black",
         add_city_names: bool = False,
         plot_labels: bool = True,
@@ -133,9 +133,7 @@ class PPI(object):
         # When plot single radar, azimuthal equidistant projection is used.
         # The data which has code like 'Z9XXX' is considered as single radar.
         code = self.data.site_code
-        if isinstance(self.data, Radial) and (
-            code.startswith("Z") and code[1:].isnumeric()
-        ):
+        if is_radial(self.data) and (code.startswith("Z") and code[1:].isnumeric()):
             proj = ccrs.AzimuthalEquidistant(
                 central_longitude=self.data.site_longitude,
                 central_latitude=self.data.site_latitude,
@@ -206,14 +204,14 @@ class PPI(object):
         ax2.text(
             0,
             INIT_TEXT_POS - TEXT_SPACING * 8,
-            "Max: {:.1f}{}".format(var.max(), unit[self.dtype]),
+            "Max: {:.1f}{}".format(np.nanmax(var.values), unit[self.dtype]),
             **plot_kw
         )
         if self.dtype == "VEL":
             ax2.text(
                 0,
                 INIT_TEXT_POS - TEXT_SPACING * 9,
-                "Min: {:.1f}{}".format(var.min(), unit[self.dtype]),
+                "Min: {:.1f}{}".format(np.nanmin(var.values), unit[self.dtype]),
                 **plot_kw
             )
 
