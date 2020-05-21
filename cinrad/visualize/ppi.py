@@ -14,7 +14,7 @@ from xarray import Dataset
 
 from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
-from cinrad.datastruct import Radial, Slice_, Grid
+from cinrad.datastruct import Slice_
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
@@ -30,7 +30,7 @@ class PPI(object):
 
     Attributes
     ----------
-    data: cinrad.datastruct.Radial / cinrad.datastruct.Grid
+    data: xarray.Dataset
     settings: dict
         settings extracted from __init__ function
     geoax: cartopy.mpl.geoaxes.GeoAxes
@@ -233,7 +233,9 @@ class PPI(object):
                 data = self.settings["slice"]
                 stp = data.geoinfo["stp"]
                 enp = data.geoinfo["enp"]
-                sec = "_{}N{}E_{}N{}E".format(stp[1], stp[0], enp[1], enp[0])
+                sec = "_".join(
+                    [data.start_lat, data.start_lon, data.end_lat, data.end_lon]
+                )
             else:
                 sec = ""
             path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
@@ -275,11 +277,12 @@ class PPI(object):
 
     def plot_cross_section(
         self,
-        data: Slice_,
+        data: Dataset,
         ymax: Optional[int] = None,
         linecolor: Optional[str] = None,
         interpolate: bool = True,
     ):
+        # May add check to ensure the data is slice data
         r"""Plot cross section data below the PPI plot."""
         if not linecolor:
             if self.settings["style"] == "black":
@@ -306,10 +309,8 @@ class PPI(object):
         if data.dtype == "REF":
             # visualization improvement for reflectivity
             sl[np.isnan(sl)] = -0.1
-        xcor = data.xcor
-        ycor = data.ycor
-        stp = data.geoinfo["stp"]
-        enp = data.geoinfo["enp"]
+        xcor = data["xcor"]
+        ycor = data["ycor"]
         cmap = sec_plot[data.dtype]
         norm = norm_plot[data.dtype]
         if interpolate:
@@ -321,12 +322,12 @@ class PPI(object):
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title(
-            "Start: {}N {}E".format(stp[1], stp[0])
-            + " End: {}N {}E".format(enp[1], enp[0])
+            "Start: {}N {}E".format(data.start_lat, data.start_lon)
+            + " End: {}N {}E".format(data.end_lat, data.end_lon)
         )
         self.geoax.plot(
-            [stp[0], enp[0]],
-            [stp[1], enp[1]],
+            [data.start_lon, data.end_lon],
+            [data.start_lat, data.end_lat],
             marker="x",
             color=linecolor,
             transform=self.data_crs,

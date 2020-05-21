@@ -164,6 +164,8 @@ class PUP(RadarBase):
             return "ET"
         elif spec == 57:
             return "VIL"
+        elif spec == 129:
+            return "RHO"
         else:
             raise RadarDecodeError("Unsupported product type {}".format(spec))
 
@@ -217,7 +219,6 @@ class SWAN(object):
             self.data = np.ma.masked_equal(out, 0)
 
     def get_data(self, level=0) -> Dataset:
-        x, y = np.meshgrid(self.lon, self.lat)
         dtype = self.product_name
         if self.data.ndim == 2:
             ret = self.data
@@ -225,7 +226,9 @@ class SWAN(object):
             ret = self.data[level]
             if self.product_name == "3DREF":
                 dtype = "CR"
-        da = xr.DataArray(ret, coords=[x, y], dims=["longitude", "latitude"])
+        da = xr.DataArray(
+            ret, coords=[self.lon, self.lat], dims=["longitude", "latitude"]
+        )
         ds = xr.Dataset(
             {dtype: da},
             attrs={

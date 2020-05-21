@@ -106,7 +106,9 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
         r_data.append(r)
     cr = np.nanmax(r_data, axis=0)
     x, y = np.meshgrid(x, y)
-    ret = Dataset({"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])})
+    ret = Dataset(
+        {"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])}
+    )
     ret.attrs = i.attrs
     ret.attrs["elevation"] = 0
     return ret
@@ -285,7 +287,8 @@ class VCS(object):
         ret = Dataset(
             {
                 self.dtype: DataArray(r, dims=["distance", "tilt"]),
-                "height": DataArray(h, dims=["distance", "tilt"]),
+                "y_cor": DataArray(h, dims=["distance", "tilt"]),
+                "x_cor": DataArray(x, dims=["distance", "tilt"]),
             }
         )
         r_attr = self.attrs.copy()
@@ -294,6 +297,7 @@ class VCS(object):
         r_attr["start_lat"] = stp[1]
         r_attr["end_lon"] = enp[0]
         r_attr["end_lat"] = enp[1]
+        ret.attrs = r_attr
         return ret
 
     def get_section(

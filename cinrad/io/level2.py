@@ -12,7 +12,6 @@ import numpy as np
 import xarray as xr
 
 from cinrad.constants import deg2rad, con
-from cinrad.datastruct import Radial, Slice_
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io.base import RadarBase, prepare_file
@@ -421,7 +420,7 @@ class CinradReader(RadarBase):
 
         Returns
         -------
-        r_obj: cinrad.datastruct.Radial
+        ds: xarray.Dataset
         """
         task = getattr(self, "task_name", None)
         reso = self.Rreso if dtype == "REF" else self.Vreso
@@ -695,7 +694,7 @@ class StandardData(RadarBase):
 
         Returns
         -------
-        r_obj: cinrad.datastruct.Radial
+        ds: xarray.Dataset
         """
         reso = self.scan_config[tilt].dop_reso / 1000
         ret = self.get_raw(tilt, drange, dtype)
