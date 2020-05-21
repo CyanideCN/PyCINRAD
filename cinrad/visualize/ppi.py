@@ -14,7 +14,6 @@ from xarray import Dataset
 
 from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
-from cinrad.datastruct import Slice_
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
@@ -231,8 +230,6 @@ class PPI(object):
                 fpath += os.path.sep
             if self.settings["slice"]:
                 data = self.settings["slice"]
-                stp = data.geoinfo["stp"]
-                enp = data.geoinfo["enp"]
                 sec = "_".join(
                     [data.start_lat, data.start_lon, data.end_lat, data.end_lon]
                 )
@@ -305,14 +302,15 @@ class PPI(object):
         self.cbar_pos[3] = self.cbar_pos[3] * 0.8
         ax2.yaxis.set_ticks_position("right")
         ax2.set_xticks([])
-        sl = data.data
-        if data.dtype == "REF":
+        dtype = get_dtype(data)
+        sl = data[dtype].values
+        if dtype == "REF":
             # visualization improvement for reflectivity
             sl[np.isnan(sl)] = -0.1
-        xcor = data["xcor"]
-        ycor = data["ycor"]
-        cmap = sec_plot[data.dtype]
-        norm = norm_plot[data.dtype]
+        xcor = data["x_cor"]
+        ycor = data["y_cor"]
+        cmap = sec_plot[dtype]
+        norm = norm_plot[dtype]
         if interpolate:
             ax2.contourf(xcor, ycor, sl, 256, cmap=cmap, norm=norm)
         else:

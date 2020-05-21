@@ -14,7 +14,6 @@ from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
 from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
 from cinrad.io._dtype import *
-from cinrad.datastruct import Radial, Grid
 from cinrad.error import RadarDecodeError
 
 
@@ -164,8 +163,6 @@ class PUP(RadarBase):
             return "ET"
         elif spec == 57:
             return "VIL"
-        elif spec == 129:
-            return "RHO"
         else:
             raise RadarDecodeError("Unsupported product type {}".format(spec))
 

@@ -2,10 +2,9 @@
 # Author: Puyuan Du
 from typing import List, Union
 from numpy import ndarray
-
-from cinrad.datastruct import Radial
+from xarray import Dataset
 
 Array_T = Union[list, ndarray]
-Volume_T = List[Radial]
+Volume_T = List[Dataset]
 Boardcast_T = Union[int, float, ndarray]
 Number_T = Union[int, float]

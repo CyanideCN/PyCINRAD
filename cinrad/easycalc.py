@@ -14,7 +14,6 @@ except ImportError:
     from scipy.spatial import KDTree
 
 from cinrad.utils import *
-from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
@@ -54,7 +53,7 @@ def require(var_names: List[str]) -> Callable:
     return wrap
 
 
-def _extract(r_list: List[Dataset], dtype: str) -> tuple:
+def _extract(r_list: Volume_T, dtype: str) -> tuple:
     if len(set(i.range for i in r_list)) > 1:
         raise ValueError("Input radials must have same data range")
     adim_shape = set(i.dims["azimuth"] for i in r_list)
@@ -82,7 +81,7 @@ def _extract(r_list: List[Dataset], dtype: str) -> tuple:
 
 
 @require(["REF"])
-def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset:
+def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
     r"""
     Calculate composite reflectivity
 
@@ -115,7 +114,7 @@ def quick_cr(r_list: List[Dataset], resolution: tuple = (1000, 1000)) -> Dataset
 
 
 @require(["REF"])
-def quick_et(r_list: List[Dataset]) -> Dataset:
+def quick_et(r_list: Volume_T) -> Dataset:
     r"""
     Calculate echo tops
 
@@ -153,7 +152,7 @@ def quick_et(r_list: List[Dataset]) -> Dataset:
 
 
 @require(["REF"])
-def quick_vil(r_list: List[Dataset]) -> Dataset:
+def quick_vil(r_list: Volume_T) -> Dataset:
     r"""
     Calculate vertically integrated liquid
 
@@ -190,7 +189,7 @@ def quick_vil(r_list: List[Dataset]) -> Dataset:
     return ret
 
 
-def quick_vild(r_list: List[Dataset]) -> Dataset:
+def quick_vild(r_list: Volume_T) -> Dataset:
     r"""
     Calculate vertically integrated liquid density
 
@@ -233,7 +232,7 @@ def quick_vild(r_list: List[Dataset]) -> Dataset:
 class VCS(object):
     r"""Class performing vertical cross-section calculation"""
 
-    def __init__(self, r_list: List[Dataset]):
+    def __init__(self, r_list: Volume_T):
         el = [i.elevation for i in r_list]
         if len(el) != len(set(el)):
             self.rl = list()
@@ -347,7 +346,7 @@ class VCS(object):
 
 
 class GridMapper(object):
-    def __init__(self, fields: List[Dataset], max_dist: Number_T = 0.1):
+    def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
         # Process data type
         self.dtype = get_dtype(fields[0])
         # Process time
