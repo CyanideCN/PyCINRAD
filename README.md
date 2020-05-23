@@ -2,8 +2,9 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Downloads](https://pepy.tech/badge/cinrad)](https://pepy.tech/project/cinrad)
 
-A python package which can read CINRAD radar data, perform calculations and visualize the data.
+Decode CINRAD (China New Generation Weather Radar) data and visualize. 
 
 [中文说明](https://github.com/CyanideCN/PyCINRAD/blob/master/README_zh.md)
 
@@ -11,19 +12,11 @@ A python package which can read CINRAD radar data, perform calculations and visu
 
 ## Installation
 
+PyCINRAD supports Python version 3.5 and higher.
+
 ```
 pip install cinrad
 ```
-
-Python 3.5 +
-
-Cartopy
-
-Metpy
-
-Shapefile
-
-Pykdtree (optional)
 
 You can also download from github page and build from source
 
@@ -32,16 +25,6 @@ python setup.py install
 ```
 
 ## Modules
-
-### cinrad.datastruct
-
-This submodule contains data structure used in this program.
-
-Radial type data: `cinrad.datastruct.Radial`
-
-Cross-section type data: `cinrad.datastruct.Slice_`
-
-Grid type data: `cinrad.datastruct.Grid`
 
 ### cinrad.io
 
@@ -57,6 +40,34 @@ f.get_raw(tilt, drange, dtype)
 
 The `get_raw` method returns radar records without other geographic information.
 
+The `get_data` method returns `xarray.Dataset` with radar records, geographic coordinates, and all extra attributes. So, all benefits of `xarray` can be enjoyed. For example, it's very convenient to save data as netcdf format.
+
+```python
+>>> print(data)
+<xarray.Dataset>
+Dimensions:    (azimuth: 366, distance: 920)
+Coordinates:
+  * azimuth    (azimuth) float32 0.14084807 0.15812683 ... 0.12601277 0.14381513
+  * distance   (distance) float64 0.25 0.5 0.75 1.0 ... 229.2 229.5 229.8 230.0
+Data variables:
+    ZDR        (azimuth, distance) float64 nan nan nan nan ... nan nan nan nan
+    longitude  (azimuth, distance) float64 120.2 120.2 120.2 ... 120.6 120.6
+    latitude   (azimuth, distance) float64 35.99 35.99 36.0 ... 38.04 38.04
+    height     (azimuth, distance) float64 0.1771 0.1792 0.1814 ... 5.218 5.227
+Attributes:
+    elevation:        0.48339844
+    range:            230
+    scan_time:        2020-05-17 11:00:28
+    site_code:        Z9532
+    site_name:        青岛
+    site_longitude:   120.23028
+    site_latitude:    35.98861
+    tangential_reso:  0.25
+    nyquist_vel:      8.37801
+    task:             VCP21D
+>>> data.to_netcdf('1.nc')
+```
+
 #### Export data to `Py-ART` defined class
 
 Convert data structure defined in this module into `pyart.core.Radar` is very simple. `cinrad.io.export` has a function `standard_data_to_pyart`, which can take `cinrad.io.StandardData` as input and return `pyart.core.Radar` as output.
@@ -65,7 +76,7 @@ Convert data structure defined in this module into `pyart.core.Radar` is very si
 
 #### Decode PUP data and SWAN data
 
-`cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI. (Only radial data are supported.) 
+`cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI.
 
 `cinrad.io.SWAN` provides similar interface to decode SWAN data.
 
@@ -128,7 +139,7 @@ v_corrected = cinrad.correct.dealias(v)
 
 ### cinrad.visualize
 
-Visualize the data stored in acceptable format (`cinrad.datastruct`). It also means that you can using customized data to construct a object belongs to one of the class in `cinrad.datastruct` and then perform visualization. For further information about this method, please see the examples contained in `example` folder.
+Visualize the data stored in acceptable format (`cinrad.datastruct`). It also means that you can using customized data to perform visualization, as long as the data is stored as `xarray.Dataset` and constructed by the same protocol (variables naming conventions, data coordinates and dimensions, etc.) For further information about this method, please see the examples contained in `example` folder.
 
 ```python
 from cinrad.visualize import PPI
@@ -136,9 +147,6 @@ fig = PPI(R) #Plot PPI
 fig('D:\\') #Pass the path to save the fig
 from cinrad.visualize import Section
 fig = Section(Slice_) #Plot VCS
-fig('D:\\')
-from cinrad.visualize import RHI
-fig = RHI(rhi) #Plot data from RHI scan mode
 fig('D:\\')
 ```
 

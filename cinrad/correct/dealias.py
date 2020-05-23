@@ -30,10 +30,10 @@ def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarra
 
 
 def dealias(v_data: Dataset) -> Dataset:
-    v_field = v_data['VEL']
+    v_field = v_data["VEL"]
     nyq = v_data.attrs.get("nyquist_velocity")
     out_data = dealias_unwrap_2d(v_field, nyq)
     out_masked = np.ma.array(out_data, mask=v_field.mask)
     v_ret = copy.deepcopy(v_data)
-    v_ret['VEL'] = (["azimuth", "distance"], out_masked)
+    v_ret["VEL"] = (["azimuth", "distance"], out_masked)
     return v_ret
