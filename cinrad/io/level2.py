@@ -726,12 +726,23 @@ class StandardData(RadarBase):
         else:
             # Manual projection
             dist = np.linspace(reso, self.drange, ret.shape[1])
-            d, e = np.meshgrid(dist, self.aux[tilt]["elevation"])
-            h = height(d, e, 0)
+            azimuth = self.aux[tilt]["azimuth"][0]
+            elev = self.aux[tilt]["elevation"]
+            d, e = np.meshgrid(dist, elev)
+            h = height(d, e, self.radarheight)
             if dtype in ["VEL", "SW"]:
-                da = xr.DataArray(ret[0], coords=[dist, e], dims=["distance", "tilt"])
+                da = xr.DataArray(
+                    ret[0], coords=[elev, dist], dims=["tilt", "distance"]
+                )
             else:
-                da = xr.DataArray(ret, coords=[dist, e], dims=["distance", "tilt"])
+                da = xr.DataArray(ret, coords=[elev, dist], dims=["tilt", "distance"])
+            # Calculate the "start" and "end" of RHI scan
+            # to facilitate tick labeling
+            start_lon = self.stationlon
+            start_lat = self.stationlat
+            end_lon, end_lat = get_coordinate(
+                drange, azimuth * deg2rad, 0, self.stationlon, self.stationlat
+            )
             ds = xr.Dataset(
                 {dtype: da},
                 attrs={
@@ -742,9 +753,15 @@ class StandardData(RadarBase):
                     "site_longitude": self.stationlon,
                     "site_latitude": self.stationlat,
                     "tangential_reso": reso,
-                    "azimuth": self.aux[tilt]["azimuth"][0],
+                    "azimuth": azimuth,
+                    "start_lon": start_lon,
+                    "start_lat": start_lat,
+                    "end_lon": end_lon,
+                    "end_lat": end_lat,
                 },
             )
+            ds["x_cor"] = (["tilt", "distance"], d)
+            ds["y_cor"] = (["tilt", "distance"], h)
         return ds
 
     def projection(self, reso: float) -> tuple:

@@ -7,7 +7,7 @@ import datetime
 from io import BytesIO
 
 import numpy as np
-from xarray import Dataset
+from xarray import Dataset, DataArray
 
 from cinrad.projection import get_coordinate
 from cinrad.constants import deg2rad
@@ -76,11 +76,9 @@ class PUP(RadarBase):
             elif self.radar_type == "CD":
                 self.max_range = 125
         if self.radial_flag:
-            self.az = (
-                np.array(data_block["start_az"] + [data_block["end_az"][-1]]) * deg2rad
-            )
-            self.rng = np.linspace(0, self.max_range, data.shape[-1] + 1)
+            self.az = np.array(data_block["start_az"]) * deg2rad
             self.reso = self.max_range / data.shape[1]
+            self.rng = np.arange(self.reso, self.max_range + self.reso, self.reso)
         else:
             xdim, ydim = data.shape
             x = np.linspace(self.max_range * -1, self.max_range, xdim) / 111 + f.lon
@@ -95,18 +93,18 @@ class PUP(RadarBase):
     def get_data(self) -> Dataset:
         if self.radial_flag:
             lon, lat = self.projection()
-            if dtype in ["VEL", "SW"]:
-                da = xr.DataArray(
+            if self.dtype in ["VEL", "SW"]:
+                da = DataArray(
                     self.data[0],
                     coords=[self.az, self.rng],
                     dims=["azimuth", "distance"],
                 )
             else:
-                da = xr.DataArray(
+                da = DataArray(
                     self.data, coords=[self.az, self.rng], dims=["azimuth", "distance"]
                 )
-            ds = xr.Dataset(
-                {dtype: da},
+            ds = Dataset(
+                {self.dtype: da},
                 attrs={
                     "elevation": self.el,
                     "range": self.max_range,
@@ -120,13 +118,13 @@ class PUP(RadarBase):
             )
             ds["longitude"] = (["azimuth", "distance"], lon)
             ds["latitude"] = (["azimuth", "distance"], lat)
-            if dtype in ["VEL", "SW"]:
+            if self.dtype in ["VEL", "SW"]:
                 ds["RF"] = (["azimuth", "distance"], self.data[1])
         else:
-            da = xr.DataArray(
+            da = DataArray(
                 self.data, coords=[self.lon, self.lat], dims=["longitude", "latitude"]
             )
-            ds = xr.Dataset(
+            ds = Dataset(
                 {dtype: da},
                 attrs={
                     "range": self.max_range,
@@ -223,10 +221,8 @@ class SWAN(object):
             ret = self.data[level]
             if self.product_name == "3DREF":
                 dtype = "CR"
-        da = xr.DataArray(
-            ret, coords=[self.lon, self.lat], dims=["longitude", "latitude"]
-        )
-        ds = xr.Dataset(
+        da = DataArray(ret, coords=[self.lon, self.lat], dims=["longitude", "latitude"])
+        ds = Dataset(
             {dtype: da},
             attrs={
                 "scan_time": self.scantime,
@@ -458,10 +454,8 @@ class StandardPUP(RadarBase):
             dist, self.azi, self.el, self.stationlon, self.stationlat
         )
         hgt = height(dist, self.el, self.radarheight)
-        da = xr.DataArray(
-            self.data, coords=[self.azi, dist], dims=["azimuth", "distance"]
-        )
-        ds = xr.Dataset(
+        da = DataArray(self.data, coords=[self.azi, dist], dims=["azimuth", "distance"])
+        ds = Dataset(
             {dtype: da},
             attrs={
                 "elevation": self.el,
