@@ -240,7 +240,7 @@ class VCS(object):
             for data in r_list:
                 if data.elevation not in el_list:
                     self.rl.append(data)
-                    el_list.append(data.elev)
+                    el_list.append(data.elevation)
         else:
             self.rl = r_list
         self.dtype = get_dtype(r_list[0])
@@ -255,10 +255,8 @@ class VCS(object):
         for i in self.rl:
             _lon = i["longitude"].values
             _lat = i["latitude"].values
-            if self.dtype in ["VEL", "SW"]:
-                r, x, y = grid_2d(i[self.dtype][0].values, _lon, _lat)
-            else:
-                r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
+            r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
+            r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
@@ -408,10 +406,13 @@ class GridMapper(object):
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        ret = Dataset({self.dtype: DataArray(grid, dims=["longitude", "latitude"])})
-        # TODO: need test
-        ds["longitude"] = x
-        ds["latitude"] = y
+        ret = Dataset(
+            {
+                self.dtype: DataArray(
+                    grid, coords=[y[:, 0], x[0]], dims=["latitude", "longitude"]
+                )
+            }
+        )
         r_attr = self.attr
         del (
             r_attr["tangential_reso"],
@@ -419,4 +420,5 @@ class GridMapper(object):
         )
         r_attr["site_name"] = "RADMAP"
         r_attr["site_code"] = "RADMAP"
+        ret.attrs = r_attr
         return ret
