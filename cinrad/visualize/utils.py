@@ -224,8 +224,6 @@ def text(
 
 def save(fpath: str):
     plt.savefig(fpath, pad_inches=0)
-    # TODO: remove bbox_inches kwargs since this will influence
-    # the size of figure a little bit
     plt.close("all")
 
 

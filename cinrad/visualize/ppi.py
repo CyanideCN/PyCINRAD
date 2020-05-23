@@ -10,13 +10,14 @@ from typing import Union, Optional, Any, List
 import numpy as np
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
+from xarray import Dataset
 
 from cinrad.visualize.utils import *
 from cinrad.projection import get_coordinate
-from cinrad.datastruct import Radial, Slice_, Grid
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
+from cinrad.common import get_dtype, is_radial
 from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
 
 __all__ = ["PPI"]
@@ -28,7 +29,7 @@ class PPI(object):
 
     Attributes
     ----------
-    data: cinrad.datastruct.Radial / cinrad.datastruct.Grid
+    data: xarray.Dataset
     settings: dict
         settings extracted from __init__ function
     geoax: cartopy.mpl.geoaxes.GeoAxes
@@ -42,7 +43,7 @@ class PPI(object):
 
     def __init__(
         self,
-        data: Union[Radial, Grid],
+        data: Dataset,
         fig: Optional[Any] = None,
         norm: Optional[Any] = None,
         cmap: Optional[Any] = None,
@@ -52,13 +53,14 @@ class PPI(object):
         highlight: Optional[Union[str, List[str]]] = None,
         coastline: bool = False,
         extent: Optional[List[Number_T]] = None,
-        section: Optional[Slice_] = None,
+        section: Optional[Dataset] = None,
         style: str = "black",
         add_city_names: bool = False,
         plot_labels: bool = True,
         **kwargs
     ):
         self.data = data
+        self.dtype = get_dtype(data)
         self.settings = {
             "cmap": cmap,
             "norm": norm,
@@ -107,52 +109,49 @@ class PPI(object):
                     clabel = np.linspace(n.vmin, n.vmax, 10).astype(str)
             return n, n, clabel
         else:
-            n = norm_plot[self.data.dtype]
-            n2 = norm_cbar[self.data.dtype]
-            return n, n2, cbar_text[self.data.dtype]
+            n = norm_plot[self.dtype]
+            n2 = norm_cbar[self.dtype]
+            return n, n2, cbar_text[self.dtype]
 
     def _cmap(self):
         if self.settings["cmap"]:
             c = self.settings["cmap"]
             return c, c
         else:
-            c = cmap_plot[self.data.dtype]
-            c2 = cmap_cbar[self.data.dtype]
+            c = cmap_plot[self.dtype]
+            c2 = cmap_cbar[self.dtype]
             return c, c2
 
     def _plot(self, **kwargs):
-        dtype = self.data.dtype
-        lon, lat, var = self.data.lon, self.data.lat, self.data.data
-        if (
-            self.settings["extent"] == None
-        ):  # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
+        lon = self.data["longitude"]
+        lat = self.data["latitude"]
+        var = self.data[self.dtype]
+        if not self.settings["extent"]:
+            # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings["extent"] = [lon.min(), lon.max(), lat.min(), lat.max()]
         # When plot single radar, azimuthal equidistant projection is used.
         # The data which has code like 'Z9XXX' is considered as single radar.
-        code = self.data.code
-        if isinstance(self.data, Radial) and (
-            code.startswith("Z") and code[1:].isnumeric()
-        ):
+        code = self.data.site_code
+        if is_radial(self.data) and (code.startswith("Z") and code[1:].isnumeric()):
             proj = ccrs.AzimuthalEquidistant(
-                central_longitude=self.data.stp["lon"],
-                central_latitude=self.data.stp["lat"],
+                central_longitude=self.data.site_longitude,
+                central_latitude=self.data.site_latitude,
             )
         else:
             proj = ccrs.PlateCarree()
         self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=self.settings["extent"]
         )
-        if self.data.dtype in ["VEL", "SW"] and self.data.include_rf:
+        if self.dtype in ["VEL", "SW"]:
             rf = var[1]
             var = var[0]
         self._plot_ctx["var"] = var
-        self._plot_ctx["dtype"] = dtype
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(
             lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs
         )
-        if self.data.dtype in ["VEL", "SW"] and self.data.include_rf:
+        if self.dtype in ["VEL", "SW"]:
             self.geoax.pcolormesh(
                 lon,
                 lat,
@@ -184,35 +183,34 @@ class PPI(object):
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
         var = self._plot_ctx["var"]
-        dtype = self._plot_ctx["dtype"]
         ax2 = self.fig.add_axes(self.text_pos)
         for sp in ax2.spines.values():
             sp.set_visible(False)
         ax2.yaxis.set_visible(False)
         ax2.xaxis.set_visible(False)
         # Make VCP21 the default scanning strategy
-        task = self.data.scan_info.pop("task", "VCP21")
+        task = self.data.attrs.get("task", "VCP21")
         text(
             ax2,
-            self.data.drange,
-            self.data.reso,
-            self.data.scantime,
-            self.data.name,
+            self.data.range,
+            self.data.tangential_reso,
+            self.data.scan_time,
+            self.data.site_name,
             task,
-            self.data.elev,
+            self.data.elevation,
         )
-        ax2.text(0, INIT_TEXT_POS, prodname[dtype], **plot_kw)
+        ax2.text(0, INIT_TEXT_POS, prodname[self.dtype], **plot_kw)
         ax2.text(
             0,
             INIT_TEXT_POS - TEXT_SPACING * 8,
-            "Max: {:.1f}{}".format(var.max(), unit[dtype]),
+            "Max: {:.1f}{}".format(np.nanmax(var.values), unit[self.dtype]),
             **plot_kw
         )
-        if self.data.dtype == "VEL":
+        if self.dtype == "VEL":
             ax2.text(
                 0,
                 INIT_TEXT_POS - TEXT_SPACING * 9,
-                "Min: {:.1f}{}".format(var.min(), unit[dtype]),
+                "Min: {:.1f}{}".format(np.nanmin(var.values), unit[self.dtype]),
                 **plot_kw
             )
 
@@ -232,18 +230,18 @@ class PPI(object):
                 fpath += os.path.sep
             if self.settings["slice"]:
                 data = self.settings["slice"]
-                stp = data.geoinfo["stp"]
-                enp = data.geoinfo["enp"]
-                sec = "_{}N{}E_{}N{}E".format(stp[1], stp[0], enp[1], enp[0])
+                sec = "_".join(
+                    [data.start_lat, data.start_lon, data.end_lat, data.end_lon]
+                )
             else:
                 sec = ""
             path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
                 fpath,
-                self.data.code,
-                self.data.scantime.strftime("%Y%m%d%H%M%S"),
-                self.data.elev,
-                self.data.drange,
-                self.data.dtype.upper(),
+                self.data.site_code,
+                self.data.scan_time.strftime("%Y%m%d%H%M%S"),
+                self.data.elevation,
+                self.data.range,
+                self.dtype.upper(),
                 sec,
             )
         else:
@@ -258,7 +256,7 @@ class PPI(object):
         **kwargs
     ):
         r"""Plot range rings on PPI plot."""
-        slon, slat = self.data.stp["lon"], self.data.stp["lat"]
+        slon, slat = self.data.site_longitude, self.data.site_latitude
         if isinstance(_range, (int, float)):
             _range = [_range]
         theta = np.linspace(0, 2 * np.pi, 800)
@@ -276,11 +274,12 @@ class PPI(object):
 
     def plot_cross_section(
         self,
-        data: Slice_,
+        data: Dataset,
         ymax: Optional[int] = None,
         linecolor: Optional[str] = None,
         interpolate: bool = True,
     ):
+        # May add check to ensure the data is slice data
         r"""Plot cross section data below the PPI plot."""
         if not linecolor:
             if self.settings["style"] == "black":
@@ -303,16 +302,15 @@ class PPI(object):
         self.cbar_pos[3] = self.cbar_pos[3] * 0.8
         ax2.yaxis.set_ticks_position("right")
         ax2.set_xticks([])
-        sl = data.data
-        if data.dtype == "REF":
+        dtype = get_dtype(data)
+        sl = data[dtype].values
+        if dtype == "REF":
             # visualization improvement for reflectivity
             sl[np.isnan(sl)] = -0.1
-        xcor = data.xcor
-        ycor = data.ycor
-        stp = data.geoinfo["stp"]
-        enp = data.geoinfo["enp"]
-        cmap = sec_plot[data.dtype]
-        norm = norm_plot[data.dtype]
+        xcor = data["x_cor"]
+        ycor = data["y_cor"]
+        cmap = sec_plot[dtype]
+        norm = norm_plot[dtype]
         if interpolate:
             ax2.contourf(xcor, ycor, sl, 256, cmap=cmap, norm=norm)
         else:
@@ -322,12 +320,12 @@ class PPI(object):
         else:
             ax2.set_ylim(0, 15)
         ax2.set_title(
-            "Start: {}N {}E".format(stp[1], stp[0])
-            + " End: {}N {}E".format(enp[1], enp[0])
+            "Start: {}N {}E".format(data.start_lat, data.start_lon)
+            + " End: {}N {}E".format(data.end_lat, data.end_lon)
         )
         self.geoax.plot(
-            [stp[0], enp[0]],
-            [stp[1], enp[1]],
+            [data.start_lon, data.end_lon],
+            [data.start_lat, data.end_lat],
             marker="x",
             color=linecolor,
             transform=self.data_crs,

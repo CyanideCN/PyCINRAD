@@ -2,8 +2,9 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Downloads](https://pepy.tech/badge/cinrad)](https://pepy.tech/project/cinrad)
 
-A python package which handles CINRAD radar data reading and plotting.
+Decode CINRAD (China New Generation Weather Radar) data and visualize. 
 
 读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
@@ -11,19 +12,9 @@ A python package which handles CINRAD radar data reading and plotting.
 
 ## 安装
 
-### 安装要求
-
-Python 3.5 及以上
-
-Cartopy
-
-Metpy
-
-Shapefile
-
-Pykdtree (可选安装)
-
 ### 安装方法
+
+支持Python 3.5 及以上
 
 ```
 pip install cinrad
@@ -35,16 +26,6 @@ python setup.py install
 ```
 
 ## 模块介绍
-
-### cinrad.datastruct
-
-构建本模块所使用的数据类型
-
-径向数据类型：`cinrad.datastruct.Radial`
-
-剖面数据类型: `cinrad.datastruct.Slice_`
-
-格点数据类型：`cinrad.datastruct.Grid`
 
 ### cinrad.io
 
@@ -60,7 +41,33 @@ f.get_data(tilt, drange, dtype) #获取数据
 f.get_raw(tilt, drange, dtype)
 ```
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
-`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。
+`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。`get_data`返回的数据类型为`xarray.Dataset`，因此可以享受`xarray`模块的便利。例如可以很轻松的把数据保存成netcdf格式。
+
+```python
+>>> print(data)
+<xarray.Dataset>
+Dimensions:    (azimuth: 366, distance: 920)
+Coordinates:
+  * azimuth    (azimuth) float32 0.14084807 0.15812683 ... 0.12601277 0.14381513
+  * distance   (distance) float64 0.25 0.5 0.75 1.0 ... 229.2 229.5 229.8 230.0
+Data variables:
+    ZDR        (azimuth, distance) float64 nan nan nan nan ... nan nan nan nan
+    longitude  (azimuth, distance) float64 120.2 120.2 120.2 ... 120.6 120.6
+    latitude   (azimuth, distance) float64 35.99 35.99 36.0 ... 38.04 38.04
+    height     (azimuth, distance) float64 0.1771 0.1792 0.1814 ... 5.218 5.227
+Attributes:
+    elevation:        0.48339844
+    range:            230
+    scan_time:        2020-05-17 11:00:28
+    site_code:        Z9532
+    site_name:        青岛
+    site_longitude:   120.23028
+    site_latitude:    35.98861
+    tangential_reso:  0.25
+    nyquist_vel:      8.37801
+    task:             VCP21D
+>>> data.to_netcdf('1.nc')
+```
 
 #### 转换为`pyart.core.Radar`类型
 
@@ -144,19 +151,16 @@ v_corrected = cinrad.correct.dealias(v)
 
 ### cinrad.visualize
 
-雷达数据可视化，包括`PPI`和`Section`以及`RHI`，仅接受`cinrad.datastruct`包含的类型。
+雷达数据可视化，包括`PPI`和`Section`。如果传入的是自定义的数据，需要符合本模块构建`xarray.Dataset`的方式，比如坐标和维度的名字，变量的命名，等等。
 
-例子：
+示例：
 
 ```python
 from cinrad.visualize import PPI
 fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
-fig = Section(Slice_) #绘制VCS
-fig('D:\\')
-from cinrad.visualize import RHI
-fig = RHI(rhi) #绘制RHI扫描模式的数据
+fig = Section(Slice_) #绘制剖面
 fig('D:\\')
 ```
 
