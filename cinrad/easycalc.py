@@ -3,10 +3,10 @@
 
 import datetime
 import time
-from typing import Tuple, Optional
+from typing import *
 
 import numpy as np
-from xarray import DataArray
+from xarray import DataArray, Dataset
 
 try:
     from pykdtree.kdtree import KDTree
@@ -14,12 +14,12 @@ except ImportError:
     from scipy.spatial import KDTree
 
 from cinrad.utils import *
-from cinrad.datastruct import Radial, Grid, Slice_
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
 from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
+from cinrad.common import get_dtype
 
 __all__ = [
     "quick_cr",
@@ -30,216 +30,243 @@ __all__ = [
 ]
 
 
-def _extract(r_list: Volume_T) -> tuple:
-    d_list = np.array([i.drange for i in r_list])
-    if d_list.mean() != d_list.max():
+def require(var_names: List[str]) -> Callable:
+    def wrap(func: Callable) -> Callable:
+        def deco(*args, **kwargs) -> Any:
+            varset = args[0]
+            if isinstance(varset, Dataset):
+                var_list = list(varset.keys())
+            elif isinstance(varset, list):
+                var_list = list()
+                for var in varset:
+                    var_list += list(var.keys())
+                var_list = list(set(var_list))
+            for v in var_names:
+                if v not in var_list:
+                    raise ValueError(
+                        "Function {} requires variable {}".format(func.__name__, v)
+                    )
+            return func(*args, **kwargs)
+
+        return deco
+
+    return wrap
+
+
+def _extract(r_list: Volume_T, dtype: str) -> tuple:
+    if len(set(i.range for i in r_list)) > 1:
         raise ValueError("Input radials must have same data range")
+    adim_shape = set(i.dims["azimuth"] for i in r_list)
+    if max(adim_shape) > 400:
+        # CC radar
+        adim_interp_to = 512
+    else:
+        adim_interp_to = 360
     r_data = list()
     elev = list()
-    areso = r_list[0].a_reso if r_list[0].a_reso else 360
     for i in r_list:
-        x, d, a = resample(i.data, i.dist, i.az, i.reso, areso)
+        x, d, a = resample(
+            i[dtype].values,
+            i["distance"].values,
+            i["azimuth"].values,
+            i.tangential_reso,
+            adim_interp_to,
+        )
         r_data.append(x)
-        elev.append(i.elev)
+        elev.append(i.elevation)
     data = np.concatenate(r_data).reshape(
         len(r_list), r_data[0].shape[0], r_data[0].shape[1]
     )
     return data, d, a, np.array(elev)
 
 
-def is_uniform(radial_list: Volume_T) -> bool:
-    r"""Check if all input radials have same data type"""
-    return len(set([i.dtype for i in radial_list])) == 1
-
-
-def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Grid:
+@require(["REF"])
+def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
     r"""
     Calculate composite reflectivity
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    ret: xarray.Dataset
         composite reflectivity
     """
     r_data = list()
     for i in r_list:
-        r, x, y = grid_2d(i.data, i.lon, i.lat, resolution=resolution)
+        r, x, y = grid_2d(
+            i["REF"].values,
+            i["longitude"].values,
+            i["latitude"].values,
+            resolution=resolution,
+        )
         r_data.append(r)
-    cr = np.max(r_data, axis=0)
+    cr = np.nanmax(r_data, axis=0)
     x, y = np.meshgrid(x, y)
-    l2_obj = Grid(
-        np.ma.array(cr, mask=(cr <= 0)),
-        i.drange,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "CR",
-        i.stp["lon"],
-        i.stp["lat"],
-        x,
-        y,
-        **i.scan_info
+    ret = Dataset(
+        {"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])}
     )
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    return ret
 
 
-def quick_et(r_list: Volume_T) -> Radial:
+@require(["REF"])
+def quick_et(r_list: Volume_T) -> Dataset:
     r"""
     Calculate echo tops
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    ret: xarray.Dataset
         echo tops
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
     et = echo_top(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.0
     )
-    l2_obj = Radial(
-        np.ma.array(et, mask=(et < 2)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "ET",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "ET": DataArray(
+                np.ma.masked_less(et, 2),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
-def quick_vil(r_list: Volume_T) -> Radial:
+@require(["REF"])
+def quick_vil(r_list: Volume_T) -> Dataset:
     r"""
     Calculate vertically integrated liquid
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    ret: xarray.Dataset
         vertically integrated liquid
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
     vil = vert_integrated_liquid(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double)
     )
-    l2_obj = Radial(
-        np.ma.array(vil, mask=(vil <= 0)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "VIL",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "VIL": DataArray(
+                np.ma.masked_less(vil, 0.1),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
-def quick_vild(r_list: Volume_T) -> Radial:
+def quick_vild(r_list: Volume_T) -> Dataset:
     r"""
     Calculate vertically integrated liquid density
 
     Paramters
     ---------
-    r_list: list of cinrad.datastruct.Radial
+    r_list: list of xarray.Dataset
 
     Returns
     -------
-    l2_obj: cinrad.datastruct.Grid
+    l2_obj: xarray.Dataset
         vertically integrated liquid density
     """
-    r_data, d, a, elev = _extract(r_list)
+    r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
-    vil = vert_integrated_liquid(
+    vild = vert_integrated_liquid(
         r_data.astype(np.double),
         d.astype(np.double),
         elev.astype(np.double),
         density=True,
     )
-    vild = np.ma.masked_invalid(vil)
-    l2_obj = Radial(
-        np.ma.array(vild, mask=(vild <= 0.1)),
-        i.drange,
-        0,
-        i.reso,
-        i.code,
-        i.name,
-        i.scantime,
-        "VILD",
-        i.stp["lon"],
-        i.stp["lat"],
-        **i.scan_info
+    azimuth = a[:, 0]
+    distance = d[0]
+    ret = Dataset(
+        {
+            "VILD": DataArray(
+                np.ma.masked_less(vild, 0.1),
+                coords=[azimuth, distance],
+                dims=["azimuth", "distance"],
+            )
+        }
     )
-    lon, lat = get_coordinate(d[0], a[:, 0], 0, i.stp["lon"], i.stp["lat"])
-    l2_obj.add_geoc(lon, lat, np.zeros(lon.shape))
-    return l2_obj
+    ret.attrs = i.attrs
+    ret.attrs["elevation"] = 0
+    lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
+    ret["longitude"] = (["azimuth", "distance"], lon)
+    ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
 
 
 class VCS(object):
     r"""Class performing vertical cross-section calculation"""
 
     def __init__(self, r_list: Volume_T):
-        if not is_uniform(r_list):
-            raise RadarCalculationError(
-                "All input radials must have the same data type"
-            )
-        el = [i.elev for i in r_list]
+        el = [i.elevation for i in r_list]
         if len(el) != len(set(el)):
             self.rl = list()
             el_list = list()
             for data in r_list:
-                if data.elev not in el_list:
+                if data.elevation not in el_list:
                     self.rl.append(data)
-                    el_list.append(data.elev)
+                    el_list.append(data.elevation)
         else:
             self.rl = r_list
+        self.dtype = get_dtype(r_list[0])
         self.x, self.y, self.h, self.r = self._geocoor()
+        self.attrs = r_list[0].attrs
 
-    def _geocoor(self) -> tuple:
+    def _geocoor(self) -> Tuple[list]:
         r_data = list()
         x_data = list()
         y_data = list()
         h_data = list()
         for i in self.rl:
-            if i.dtype in ["VEL", "SW"]:
-                r, x, y = grid_2d(i.data[0], i.lon, i.lat)
-            else:
-                r, x, y = grid_2d(i.data, i.lon, i.lat)
+            _lon = i["longitude"].values
+            _lat = i["latitude"].values
+            r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
+            r, x, y = grid_2d(i[self.dtype].values, _lon, _lat)
             r_data.append(r)
             x_data.append(x)
             y_data.append(y)
-            hgh_grid, x, y = grid_2d(i.height, i.lon, i.lat)
+            hgh_grid, x, y = grid_2d(i["height"].values, _lon, _lat)
             h_data.append(hgh_grid)
         return x_data, y_data, h_data, r_data
 
     def _get_section(
         self, stp: Tuple[float, float], enp: Tuple[float, float], spacing: int
-    ) -> Slice_:
+    ) -> Dataset:
         r_sec = list()
         h_sec = list()
         for x, y, h, r in zip(self.x, self.y, self.h, self.r):
@@ -253,24 +280,22 @@ class VCS(object):
             h_sec.append(h_section)
         r = np.asarray(r_sec)
         h = np.asarray(h_sec)
-        r = np.ma.masked_invalid(r)
         x = np.linspace(0, 1, spacing) * np.ones(r.shape[0])[:, np.newaxis]
-        stp_s = "{}N, {}E".format(stp[1], stp[0])
-        enp_s = "{}N, {}E".format(enp[1], enp[0])
-        sl = Slice_(
-            r,
-            x,
-            h,
-            self.rl[0].scantime,
-            self.rl[0].code,
-            self.rl[0].name,
-            self.rl[0].dtype,
-            stp_s=stp_s,
-            enp_s=enp_s,
-            stp=stp,
-            enp=enp,
+        ret = Dataset(
+            {
+                self.dtype: DataArray(r, dims=["distance", "tilt"]),
+                "y_cor": DataArray(h, dims=["distance", "tilt"]),
+                "x_cor": DataArray(x, dims=["distance", "tilt"]),
+            }
         )
-        return sl
+        r_attr = self.attrs.copy()
+        del r_attr["elevation"], r_attr["tangential_reso"], r_attr["range"]
+        r_attr["start_lon"] = stp[0]
+        r_attr["start_lat"] = stp[1]
+        r_attr["end_lon"] = enp[0]
+        r_attr["end_lat"] = enp[1]
+        ret.attrs = r_attr
+        return ret
 
     def get_section(
         self,
@@ -279,7 +304,7 @@ class VCS(object):
         start_cart: Optional[Tuple[float, float]] = None,
         end_cart: Optional[Tuple[float, float]] = None,
         spacing: int = 500,
-    ) -> Slice_:
+    ) -> Dataset:
         r"""
         Get cross-section data from input points
 
@@ -321,11 +346,9 @@ class VCS(object):
 class GridMapper(object):
     def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
         # Process data type
-        if len(set([i.dtype for i in fields])) > 1:
-            raise RadarCalculationError("All input data should have same data type")
-        self.dtype = fields[0].dtype
+        self.dtype = get_dtype(fields[0])
         # Process time
-        t_arr = np.array([time.mktime(i.scantime.timetuple()) for i in fields])
+        t_arr = np.array([time.mktime(i.scan_time.timetuple()) for i in fields])
         if (t_arr.max() - t_arr.min()) / 60 > 10:
             raise RadarCalculationError(
                 "Time difference of input data should not exceed 10 minutes"
@@ -339,14 +362,18 @@ class GridMapper(object):
         else:
             mean_dtime -= datetime.timedelta(minutes=time_rest)
         self.scan_time = mean_dtime
-        self.lon_ravel = np.hstack([i.lon.ravel() for i in fields])
-        self.lat_ravel = np.hstack([i.lat.ravel() for i in fields])
-        self.data_ravel = np.ma.hstack([i.data.ravel() for i in fields])
+        self.lon_ravel = np.hstack([i["longitude"].values.ravel() for i in fields])
+        self.lat_ravel = np.hstack([i["latitude"].values.ravel() for i in fields])
+        self.data_ravel = np.ma.hstack([i[self.dtype].values.ravel() for i in fields])
         self.dist_ravel = np.hstack(
-            [np.broadcast_to(i.dist, i.lon.shape).ravel() for i in fields]
+            [
+                np.broadcast_to(i["distance"], i["longitude"].shape).ravel()
+                for i in fields
+            ]
         )
         self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
         self.md = max_dist
+        self.attr = fields[0].attrs.copy()
 
     def _process_grid(self, x_step: Number_T, y_step: Number_T) -> Tuple[np.ndarray]:
         x_lower = np.round_(self.lon_ravel.min(), 2)
@@ -375,20 +402,23 @@ class GridMapper(object):
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
-    def __call__(self, step: Number_T) -> Grid:
+    def __call__(self, step: Number_T) -> Dataset:
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
-        return Grid(
-            grid,
-            np.nan,
-            step,
-            "RADMAP",
-            "RADMAP",
-            self.scan_time,
-            self.dtype,
-            0,
-            0,
-            x,
-            y,
+        ret = Dataset(
+            {
+                self.dtype: DataArray(
+                    grid, coords=[y[:, 0], x[0]], dims=["latitude", "longitude"]
+                )
+            }
         )
+        r_attr = self.attr
+        del (
+            r_attr["tangential_reso"],
+            r_attr["range"],
+        )
+        r_attr["site_name"] = "RADMAP"
+        r_attr["site_code"] = "RADMAP"
+        ret.attrs = r_attr
+        return ret

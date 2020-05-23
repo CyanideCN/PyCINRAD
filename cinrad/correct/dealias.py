@@ -5,6 +5,7 @@ import copy
 import warnings
 
 import numpy as np
+from xarray import Dataset
 
 try:
     from cinrad.correct._unwrap_2d import unwrap_2d
@@ -15,7 +16,6 @@ except ImportError:
         RadarCalculationError,
         "Cython is not installed, velocity dealias function cannot be used.",
     )
-from cinrad.datastruct import Radial
 
 
 def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarray:
@@ -29,11 +29,11 @@ def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarra
     return unwrapped * nyquist_vel / np.pi
 
 
-def dealias(v_data: Radial) -> Radial:
-    v_field = v_data.data[0]
-    nyq = v_data.scan_info.get("nyquist_velocity")
+def dealias(v_data: Dataset) -> Dataset:
+    v_field = v_data["VEL"]
+    nyq = v_data.attrs.get("nyquist_velocity")
     out_data = dealias_unwrap_2d(v_field, nyq)
     out_masked = np.ma.array(out_data, mask=v_field.mask)
     v_ret = copy.deepcopy(v_data)
-    v_ret.data = (out_masked, v_data.data[1])
+    v_ret["VEL"] = (["azimuth", "distance"], out_masked)
     return v_ret
