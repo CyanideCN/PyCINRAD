@@ -90,8 +90,11 @@ class PPI(object):
             # When the path is not specified, store the picture in home dir.
             fpath = os.path.join(str(Path.home()), "PyCINRAD")
         else:
-            if fpath.upper().endswith(".PNG"):
-                self.settings["path_customize"] = True
+            ext_name = fpath.split(".")
+            if len(ext_name) > 1:
+                all_fmt = self.fig.canvas.get_supported_filetypes()
+                if ext_name[-1] in all_fmt:
+                    self.settings["path_customize"] = True
             else:
                 if not fpath.endswith(os.path.sep):
                     fpath += os.path.sep
@@ -231,8 +234,8 @@ class PPI(object):
                 fpath += os.path.sep
             if self.settings["slice"]:
                 data = self.settings["slice"]
-                sec = "_".join(
-                    [data.start_lat, data.start_lon, data.end_lat, data.end_lon]
+                sec = "_{:.2f}_{:.2f}_{:.2f}_{:.2f}".format(
+                    data.start_lat, data.start_lon, data.end_lat, data.end_lon
                 )
             else:
                 sec = ""
