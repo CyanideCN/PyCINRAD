@@ -79,8 +79,9 @@ class PPI(object):
             self.fig = setup_plot(dpi, style=style)
         else:
             self.fig = fig
-        self.text_pos = TEXT_AXES_POS
-        self.cbar_pos = CBAR_POS
+        # avoid in-place modification
+        self.text_pos = TEXT_AXES_POS.copy()
+        self.cbar_pos = CBAR_POS.copy()
         self._plot_ctx = dict()
         self._plot(**kwargs)
 
