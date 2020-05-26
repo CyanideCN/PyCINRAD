@@ -64,10 +64,11 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
 @cython.boundscheck(False)
 def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
              double radarheight, double threshold=18.):
-    cdef np.ndarray r, h, vert_h, vert_r
+    cdef np.ndarray r, h, vert_h, vert_r, hght
     cdef int xshape, yshape, pos, i, j
     cdef list h_
     cdef double z1, z2, h1, h2, w1, w2
+    cdef long long[::1] position
     xshape, yshape = ref.shape[1], ref.shape[2]
     cdef double[:, ::1] et = np.zeros((xshape, yshape))
     h_ = list()
