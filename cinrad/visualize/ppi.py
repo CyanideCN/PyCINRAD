@@ -127,9 +127,9 @@ class PPI(object):
             return c, c2
 
     def _plot(self, **kwargs):
-        lon = self.data["longitude"]
-        lat = self.data["latitude"]
-        var = self.data[self.dtype]
+        lon = self.data["longitude"].values
+        lat = self.data["latitude"].values
+        var = self.data[self.dtype].values
         if not self.settings["extent"]:
             # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
             self.settings["extent"] = [lon.min(), lon.max(), lat.min(), lat.max()]
@@ -147,8 +147,7 @@ class PPI(object):
             self.fig, proj, extent=self.settings["extent"]
         )
         if self.dtype in ["VEL", "SW"]:
-            rf = var[1]
-            var = var[0]
+            rf = self.data["RF"].values
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -207,14 +206,14 @@ class PPI(object):
         ax2.text(
             0,
             INIT_TEXT_POS - TEXT_SPACING * 8,
-            "Max: {:.1f}{}".format(np.nanmax(var.values), unit[self.dtype]),
+            "Max: {:.1f}{}".format(np.nanmax(var), unit[self.dtype]),
             **plot_kw
         )
         if self.dtype == "VEL":
             ax2.text(
                 0,
                 INIT_TEXT_POS - TEXT_SPACING * 9,
-                "Min: {:.1f}{}".format(np.nanmin(var.values), unit[self.dtype]),
+                "Min: {:.1f}{}".format(np.nanmin(var), unit[self.dtype]),
                 **plot_kw
             )
 

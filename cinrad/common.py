@@ -6,7 +6,7 @@ from xarray import Dataset
 
 def get_dtype(data: Dataset) -> str:
     all_data = list(data.keys())
-    geo_var_name = ["longitude", "latitude", "height", "x_cor", "y_cor"]
+    geo_var_name = ["longitude", "latitude", "height", "x_cor", "y_cor", "RF"]
     for i in geo_var_name:
         if i in all_data:
             all_data.remove(i)
