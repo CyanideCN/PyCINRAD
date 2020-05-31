@@ -10,40 +10,44 @@ cdef int rm = 8500
 deg2rad = 3.141592653589793 / 180
 vil_const = 3.44e-6
 
-cdef height(np.ndarray distance, double elevation, double radarheight):
+cdef np.ndarray height(np.ndarray distance, double elevation, double radarheight):
     # unit is meter
     return distance * sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight
 
-cdef height_single(double distance, double elevation):
+cdef double height_single(double distance, double elevation):
     return distance * sin(elevation * deg2rad) + distance ** 2 / (2 * rm)
 
 @cython.boundscheck(False)
+@cython.cdivision(True)
 def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
                            double beam_width=0.99, double threshold=18., bint density=False):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp, h_higher, h_lower
     cdef long long[::1] position
     cdef Py_ssize_t xshape, yshape, zshape
-    cdef int pos_s, pos_e, l
+    cdef int pos_s, pos_e, l, i, j, k
+    cdef double[:] vert_r, vert_z
     v_beam_width = beam_width * deg2rad
     zshape, xshape, yshape = ref.shape[0], ref.shape[1], ref.shape[2]
     cdef double[:, ::1] VIL = np.zeros((xshape, yshape))
     for i in range(xshape):
         for j in range(yshape):
-            vert_r = list()
-            vert_z = list()
-            for z in range(zshape):
-                r_tmp = ref[z, i, j]
-                vert_r.append(r_tmp)
-                vert_z.append(10 ** (r_tmp / 10))
+            vert_r = ref[:, i, j]
+            vert_z = vert_r.copy()
+            for k in range(zshape):
+                vert_z[k] = 10 ** (vert_z[k] / 10)
             dist = distance[i][j] * 1000
             hi = dist * sin(v_beam_width / 2)
-            position = np.nonzero(np.asarray(vert_r) > threshold)[0]
-            if position.shape[0] == 0:
+            pos_s = -1
+            pos_e = -1
+            for k in range(zshape):
+                if vert_r[k] > threshold:
+                    pos_e = k
+                    if pos_s == -1:
+                        pos_s = k
+            if pos_s == -1:
                 continue
-            pos_s = position[0]
-            pos_e = position[-1]
             m1 = 0.
-            for l in position[:-1]:
+            for l in range(pos_e):
                 ht = dist * (sin(elev[l + 1] * deg2rad) - sin(elev[l] * deg2rad))
                 factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
                 m1 += vil_const * factor * ht

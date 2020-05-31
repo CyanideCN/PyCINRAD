@@ -79,7 +79,7 @@ except ImportError:
                 pos_e = position[-1]
                 m1 = 0
                 hi = hi_arr[i][j]
-                for l in position[:-1].astype(int):
+                for l in range(pos_e):
                     ht = dist * (np.sin(elev[l + 1]) - np.sin(elev[l]))
                     factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
                     m1 += vil_const * factor * ht
