@@ -18,7 +18,6 @@ cdef double height_single(double distance, double elevation):
     return distance * sin(elevation * deg2rad) + distance ** 2 / (2 * rm)
 
 @cython.boundscheck(False)
-@cython.cdivision(True)
 def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
                            double beam_width=0.99, double threshold=18., bint density=False):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp, h_higher, h_lower
