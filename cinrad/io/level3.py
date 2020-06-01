@@ -122,11 +122,12 @@ class PUP(RadarBase):
                 ds["RF"] = (["azimuth", "distance"], self.data[1])
         else:
             da = DataArray(
-                self.data, coords=[self.lon, self.lat], dims=["longitude", "latitude"]
+                self.data, coords=[self.lon[0], self.lat[:, 0]], dims=["longitude", "latitude"]
             )
             ds = Dataset(
-                {dtype: da},
+                {self.dtype: da},
                 attrs={
+                    "elevation": 0,
                     "range": self.max_range,
                     "scan_time": self.scantime,
                     "site_code": self.code,

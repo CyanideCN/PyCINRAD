@@ -120,9 +120,9 @@ data = f.get_data()
 
 This submodule provides some useful algorithms in radar meteorology. All functions only accept `numpy.ndarray` as input data. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.
 
-### cinrad.easycalc
+### cinrad.calc
 
-For direct computation of decoded data, `cinrad.easycalc` provides functions that simplify the process of calculation. For functions contained in this submodule, only a list of reflectivity data is required as the argument.
+For direct computation of decoded data, `cinrad.calc` provides functions that simplify the process of calculation. For functions contained in this submodule, only a list of reflectivity data is required as the argument.
 
 Code to generate the required list:
 
@@ -134,14 +134,14 @@ r_list = list(f.iter_tilt(230, 'REF'))
 
 #### VCS
 
-`cinrad.easycalc.VCS` provides calculation of vertical cross-section for **all variables**.
+`cinrad.calc.VCS` provides calculation of vertical cross-section for **all variables**.
 
 ```python
 import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
 rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
-vcs = cinrad.easycalc.VCS(rl)
+vcs = cinrad.calc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # pass geographic coordinates (longitude, latitude)
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # pass polar coordinates (distance, azimuth)
 fig = Section(sec)
@@ -150,7 +150,7 @@ fig('D:\\')
 
 #### Radar mosaic
 
-`cinrad.easycalc.GridMapper` can merge different radar scans into a cartesian grid.
+`cinrad.calc.GridMapper` can merge different radar scans into a cartesian grid.
 
 ### cinrad.correct
 
