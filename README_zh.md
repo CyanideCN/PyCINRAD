@@ -127,7 +127,7 @@ data = f.get_data()
 
 注：对于当反射率很强时，得到的VIL值可能会很大，这是因为该计算函数没有对强回波进行滤除，程序本身是没有问题的。
 
-### cinrad.easycalc
+### cinrad.calc
 
 提供雷达衍生产品的计算
 使用`cinrad.io`读取的数据可直接带入该模块下的函数来计算。
@@ -144,7 +144,7 @@ r_list = list(f.iter_tilt(230, 'REF'))
 ```
 #### VCS
 
-`cinrad.easycalc.VCS`用于计算任意两点剖面，目前支持所有要素。
+`cinrad.calc.VCS`用于计算任意两点剖面，目前支持所有要素。
 
 示例代码：
 ```python
@@ -152,7 +152,7 @@ import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
 rl = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
-vcs = cinrad.easycalc.VCS(rl)
+vcs = cinrad.calc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # 传入经纬度坐标
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # 传入极坐标
 fig = Section(sec)
@@ -161,7 +161,7 @@ fig('D:\\')
 
 #### 雷达拼图
 
-`cinrad.easycalc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图。
+`cinrad.calc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图。
 
 ### cinrad.correct
 

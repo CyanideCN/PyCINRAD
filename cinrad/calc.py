@@ -4,6 +4,7 @@
 import datetime
 import time
 from typing import *
+from functools import wraps
 
 import numpy as np
 from xarray import DataArray, Dataset
@@ -32,6 +33,7 @@ __all__ = [
 
 def require(var_names: List[str]) -> Callable:
     def wrap(func: Callable) -> Callable:
+        @wraps(func)
         def deco(*args, **kwargs) -> Any:
             varset = args[0]
             if isinstance(varset, Dataset):
@@ -104,9 +106,8 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         )
         r_data.append(r)
     cr = np.nanmax(r_data, axis=0)
-    x, y = np.meshgrid(x, y)
     ret = Dataset(
-        {"CR": DataArray(cr, coords=[x[0], y[:, 0]], dims=["longitude", "latitude"])}
+        {"CR": DataArray(cr, coords=[x, y], dims=["longitude", "latitude"])}
     )
     ret.attrs = i.attrs
     ret.attrs["elevation"] = 0
