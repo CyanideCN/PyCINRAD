@@ -40,7 +40,7 @@ f.get_raw(tilt, drange, dtype)
 
 The `get_raw` method returns radar records without other geographic information.
 
-The `get_data` method returns `xarray.Dataset` with radar records, geographic coordinates, and all extra attributes. So, all benefits of `xarray` can be enjoyed. For example, it's very convenient to save data as netcdf format.
+The `get_data` method returns `xarray.Dataset` with radar records, geographic coordinates, and all extra attributes. So, all benefits of `xarray` can be enjoyed.
 
 ```python
 >>> print(data)
@@ -65,8 +65,38 @@ Attributes:
     tangential_reso:  0.25
     nyquist_vel:      8.37801
     task:             VCP21D
+```
+For example, it's very convenient to save data as netcdf format.
+```python
 >>> data.to_netcdf('1.nc')
 ```
+
+`xarray` also makes interpolation very convenient.
+```python
+>>> data.interp(azimuth=np.deg2rad(300), distance=180)
+<xarray.Dataset>
+Dimensions:    ()
+Coordinates:
+    azimuth    float64 5.236
+    distance   int32 180
+Data variables:
+    ZDR        float64 0.3553
+    longitude  float64 118.5
+    latitude   float64 36.8
+    height     float64 3.6
+Attributes:
+    elevation:        0.48339844
+    range:            230
+    scan_time:        2020-05-17 11:00:28
+    site_code:        Z9532
+    site_name:        青岛
+    site_longitude:   120.23028
+    site_latitude:    35.98861
+    tangential_reso:  0.25
+    nyquist_vel:      8.37801
+    task:             VCP21D
+```
+
 
 #### Export data to `Py-ART` defined class
 

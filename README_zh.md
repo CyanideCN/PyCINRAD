@@ -41,7 +41,7 @@ f.get_data(tilt, drange, dtype) #获取数据
 f.get_raw(tilt, drange, dtype)
 ```
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
-`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。`get_data`返回的数据类型为`xarray.Dataset`，因此可以享受`xarray`模块的便利。例如可以很轻松的把数据保存成netcdf格式。
+`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。`get_data`返回的数据类型为`xarray.Dataset`，因此可以享受`xarray`模块的便利。
 
 ```python
 >>> print(data)
@@ -66,8 +66,37 @@ Attributes:
     tangential_reso:  0.25
     nyquist_vel:      8.37801
     task:             VCP21D
+```
+例如，可以很轻松的把数据保存成netcdf格式。
+```python
 >>> data.to_netcdf('1.nc')
 ```
+`xarray`的插值也很简单，例如获取方位角300度，距离180km的数据。
+```python
+>>> data.interp(azimuth=np.deg2rad(300), distance=180)
+<xarray.Dataset>
+Dimensions:    ()
+Coordinates:
+    azimuth    float64 5.236
+    distance   int32 180
+Data variables:
+    ZDR        float64 0.3553
+    longitude  float64 118.5
+    latitude   float64 36.8
+    height     float64 3.6
+Attributes:
+    elevation:        0.48339844
+    range:            230
+    scan_time:        2020-05-17 11:00:28
+    site_code:        Z9532
+    site_name:        青岛
+    site_longitude:   120.23028
+    site_latitude:    35.98861
+    tangential_reso:  0.25
+    nyquist_vel:      8.37801
+    task:             VCP21D
+```
+
 
 #### 转换为`pyart.core.Radar`类型
 
