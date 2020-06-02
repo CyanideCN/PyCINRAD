@@ -2,7 +2,6 @@
 # Author: Puyuan Du
 
 import copy
-import warnings
 
 import numpy as np
 from xarray import Dataset
