@@ -21,6 +21,8 @@ class Section(object):
         interpolate: bool = True,
         figsize: tuple = (10, 5),
     ):
+        # TODO: Use context manager to control style
+        plt.style.use("dark_background")
         self.data = data
         self.dtype = get_dtype(data)
         self.settings = {
