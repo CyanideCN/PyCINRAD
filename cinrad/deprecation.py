@@ -3,6 +3,7 @@
 
 import warnings
 
+
 class Deprecated(object):
     def __init__(self, obj, warn_msg):
         self.obj = obj

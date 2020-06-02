@@ -10,5 +10,8 @@ from .deprecation import Deprecated
 __version__ = "1.5.1"
 
 # deprecate `easycalc` namespace
-easycalc = Deprecated(calc, 'Please use `calc` instead of `easycalc`.\
-The use of namespace `easycalc` is deprecated and will be removed in the future.')
+easycalc = Deprecated(
+    calc,
+    "Please use `calc` instead of `easycalc`.\
+The use of namespace `easycalc` is deprecated and will be removed in the future.",
+)
