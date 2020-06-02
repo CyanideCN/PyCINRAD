@@ -6,7 +6,6 @@ import datetime
 from pathlib import Path
 from collections import namedtuple, defaultdict
 from typing import Union, Optional, List, Any, Generator
-import re
 
 import numpy as np
 import xarray as xr
@@ -723,6 +722,8 @@ class StandardData(RadarBase):
             ds["longitude"] = (["azimuth", "distance"], x)
             ds["latitude"] = (["azimuth", "distance"], y)
             ds["height"] = (["azimuth", "distance"], z)
+            if dtype in ["VEL", "SW"]:
+                ds["RF"] = (["azimuth", "distance"], ret[1])
         else:
             # Manual projection
             dist = np.linspace(reso, self.drange, ret.shape[1])

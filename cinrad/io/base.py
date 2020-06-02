@@ -11,7 +11,6 @@ import gzip
 import numpy as np
 
 from cinrad.constants import MODULE_DIR
-from cinrad.error import RadarDecodeError
 from cinrad._typing import Number_T
 
 with open(os.path.join(MODULE_DIR, "data", "RadarStation.pickle"), "rb") as buf:
