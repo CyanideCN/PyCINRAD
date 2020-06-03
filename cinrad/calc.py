@@ -413,11 +413,15 @@ class GridMapper(object):
             }
         )
         r_attr = self.attr
-        del (
-            r_attr["tangential_reso"],
-            r_attr["range"],
-        )
+        # Keep this attribute temporarily waiting for future fix
+        r_attr["tangential_reso"] = np.nan
+        r_attr["elevation"] = 0
         r_attr["site_name"] = "RADMAP"
         r_attr["site_code"] = "RADMAP"
+        del (
+            r_attr["site_longitude"],
+            r_attr["site_latitude"],
+            r_attr["nyquist_vel"],
+        )
         ret.attrs = r_attr
         return ret
