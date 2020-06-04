@@ -23,12 +23,26 @@ def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
 
 # As metpy use a different table to map the data
 # The color table constructed from PUP software is used to replace metpy
-# fmt: off
-velocity_map = {0: np.ma.masked, 1: -27.5, 2: -20.5, 3: -15.5, 4: -10.5, 5: -5.5,
-                6: -1.5, 7: -0.5, 8: 0.5, 9: 4.5, 10: 9.5, 11: 14.5, 12: 19.5,
-                13: 26.5, 14: 27.5, 15: 30}
-# fmt: on
-velocity_mapper = np.vectorize(velocity_map.__getitem__)
+velocity_tbl = np.array(
+    [
+        np.nan,
+        -27.5,
+        -20.5,
+        -15.5,
+        -10.5,
+        -5.5,
+        -1.5,
+        -0.5,
+        0.5,
+        4.5,
+        9.5,
+        14.5,
+        19.5,
+        26.5,
+        27.5,
+        30,
+    ]
+)
 
 
 class PUP(RadarBase):
@@ -52,18 +66,21 @@ class PUP(RadarBase):
         self.dtype = self._det_product_type(product_code)
         self.radial_flag = self._is_radial(product_code)
         data_block = f.sym_block[0][0]
-        data = np.ma.array(data_block["data"])
+        data = np.array(data_block["data"], dtype=int)
         if self.dtype == "VEL":
-            mapped_data = np.ma.masked_invalid(velocity_mapper(data))
+            mapped_data = np.ma.masked_invalid(velocity_tbl[data])
             rf = np.ma.masked_not_equal(mapped_data, 30)
             data = np.ma.masked_equal(mapped_data, 30)
             self.data = (data, rf)
         else:
             data[data == 0] = np.ma.masked
             self.data = np.ma.masked_invalid(f.map_data(data))
-        if self.dtype == "ET":
-            # convert kft to km
-            self.data *= 0.30478
+            if self.dtype == "ET":
+                # convert kft to km
+                self.data *= 0.30478
+            elif self.dtype == "OHP":
+                # convert in to mm
+                self.data *= 25.4
         station_info = _get_radar_info(self.code)
         self.radar_type = station_info[3]
         self.max_range = int(f.max_range)
@@ -76,7 +93,7 @@ class PUP(RadarBase):
             elif self.radar_type == "CD":
                 self.max_range = 125
         if self.radial_flag:
-            self.az = np.array(data_block["start_az"]) * deg2rad
+            self.az = np.linspace(0, self.data.shape[0], 360) * deg2rad
             self.reso = self.max_range / data.shape[1]
             self.rng = np.arange(self.reso, self.max_range + self.reso, self.reso)
         else:
@@ -87,7 +104,7 @@ class PUP(RadarBase):
             self.reso = self.max_range / data.shape[0] * 2
         self.stationlat = f.lat
         self.stationlon = f.lon
-        self.el = np.round_(f.metadata["el_angle"], 1)
+        self.el = np.round_(f.metadata.get("el_angle", 0), 1)
         self.scantime = f.metadata["vol_time"]
 
     def get_data(self) -> Dataset:
@@ -143,7 +160,7 @@ class PUP(RadarBase):
 
     @staticmethod
     def _is_radial(code: int) -> bool:
-        return code in range(16, 31)
+        return code in range(16, 31) or code == 78
 
     def projection(self) -> tuple:
         return get_coordinate(
@@ -164,6 +181,8 @@ class PUP(RadarBase):
             return "ET"
         elif spec == 57:
             return "VIL"
+        elif spec == 78:
+            return "OHP"
         else:
             raise RadarDecodeError("Unsupported product type {}".format(spec))
 
