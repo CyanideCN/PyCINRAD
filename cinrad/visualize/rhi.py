@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from xarray import Dataset
 
 from cinrad.common import get_dtype
-from cinrad.visualize.utils import sec_plot, norm_plot, prodname, save
+from cinrad.visualize.utils import sec_plot, norm_plot, prodname, save, plot_kw
 
 __all__ = ["Section"]
 
@@ -34,7 +34,6 @@ class Section(object):
         self._plot()
 
     def _plot(self):
-        from cinrad.visualize.utils import plot_kw
 
         rhi = self.data[self.dtype]
         xcor = self.data["x_cor"]

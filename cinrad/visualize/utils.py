@@ -7,6 +7,7 @@ from typing import Union, Optional, Any, List
 from functools import lru_cache
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.lines import Line2D
@@ -47,6 +48,8 @@ __all__ = [
     "prodname",
     "unit",
     "cbar_text",
+    "is_inline",
+    "plot_kw",
 ]
 
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
@@ -139,7 +142,7 @@ plot_kw = {"fontproperties": font, "fontsize": 12}
 def set_font(font_path: str):
     glb = globals()
     font = FontProperties(fname=font_path)
-    glb["plot_kw"] = {"fontproperties": font}
+    glb["plot_kw"].update({"fontproperties": font})
 
 
 class ShpReader(shapereader.BasicReader):
@@ -325,3 +328,7 @@ def create_geoaxes(fig: Any, proj: ccrs.Projection, extent: List[Number_T]) -> G
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
     ax.set_extent([x_min, x_max, y_min, y_max], crs=ccrs.PlateCarree())
     return ax
+
+
+def is_inline() -> bool:
+    return "inline" in mpl.get_backend()

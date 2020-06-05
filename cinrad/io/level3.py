@@ -23,8 +23,10 @@ def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
 
 # As metpy use a different table to map the data
 # The color table constructed from PUP software is used to replace metpy
+# fmt: off
 velocity_tbl = np.array([np.nan, -27.5, -20.5, -15.5, -10.5, -5.5, -1.5,
                          -0.5, 0.5, 4.5, 9.5, 14.5, 19.5, 26.5, 27.5, 30])
+# fmt: on
 
 
 class PUP(RadarBase):
@@ -75,7 +77,7 @@ class PUP(RadarBase):
             elif self.radar_type == "CD":
                 self.max_range = 125
         if self.radial_flag:
-            self.az = np.linspace(0, 360, self.data.shape[0]) * deg2rad
+            self.az = np.linspace(0, 360, data.shape[0]) * deg2rad
             self.reso = self.max_range / data.shape[1]
             self.rng = np.arange(self.reso, self.max_range + self.reso, self.reso)
         else:
@@ -229,7 +231,7 @@ class SWAN(object):
         ds = Dataset(
             {dtype: da},
             attrs={
-                "scan_time": self.scantime,
+                "scan_time": self.data_time,
                 "site_code": "SWAN",
                 "site_name": "SWAN",
                 "tangential_reso": np.nan,

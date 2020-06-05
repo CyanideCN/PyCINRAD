@@ -13,6 +13,7 @@ from cartopy.mpl.geoaxes import GeoAxes
 from xarray import Dataset
 
 from cinrad.visualize.utils import *
+from cinrad.constants import MODULE_DIR
 from cinrad.projection import get_coordinate
 from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
@@ -74,6 +75,7 @@ class PPI(object):
             "style": style,
             "add_city_names": add_city_names,
             "plot_labels": plot_labels,
+            "is_inline": is_inline(),
         }
         if fig is None:
             self.fig = setup_plot(dpi, style=style)
@@ -84,6 +86,10 @@ class PPI(object):
         self.cbar_pos = CBAR_POS.copy()
         self._plot_ctx = dict()
         self._plot(**kwargs)
+        if is_inline():
+            # In inline mode, figure will not be dynamically changed
+            # call this action at initialization
+            self._text_before_save()
 
     def __call__(self, fpath: Optional[str] = None):
         if not fpath:
@@ -180,9 +186,7 @@ class PPI(object):
         if self.settings["slice"]:
             self.plot_cross_section(self.settings["slice"])
 
-    def text(self):
-        from cinrad.visualize.utils import plot_kw
-
+    def _text(self):
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
         var = self._plot_ctx["var"]
@@ -217,17 +221,21 @@ class PPI(object):
                 **plot_kw
             )
 
-    def _save(self, fpath: str):
+    def _text_before_save(self):
         # Finalize texting here
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.settings["plot_labels"]:
-            self.text()
+            self._text()
         cbar = setup_axes(self.fig, ccmap, cnorm, self.cbar_pos)
         if not isinstance(clabel, type(None)):
             change_cbar_text(
                 cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel
             )
+
+    def _save(self, fpath: str):
+        if not self.settings["is_inline"]:
+            self._text_before_save()
         if not self.settings["path_customize"]:
             if not fpath.endswith(os.path.sep):
                 fpath += os.path.sep
@@ -284,6 +292,11 @@ class PPI(object):
     ):
         # May add check to ensure the data is slice data
         r"""Plot cross section data below the PPI plot."""
+        if self.settings["is_inline"]:
+            raise RuntimeError(
+                "Adding cross section dynamically is not supported in\
+                inline backend, add section keyword when initializing PPI instead."
+            )
         if not linecolor:
             if self.settings["style"] == "black":
                 linecolor = "white"
@@ -403,8 +416,6 @@ class PPI(object):
         liner.ylabels_right = False
 
     def _add_city_names(self):
-        from cinrad.visualize.utils import MODULE_DIR, plot_kw
-
         with open(
             os.path.join(MODULE_DIR, "data", "chinaCity.json"), encoding="utf-8"
         ) as j:
