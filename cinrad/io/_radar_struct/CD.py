@@ -3,13 +3,13 @@
 import numpy as np
 
 radarsite = [
-    ("country", "30c"),
-    ("province", "20c"),
-    ("station", "40c"),
-    ("stationnumber", "10c"),
-    ("radartype", "20c"),
-    ("Longitude", "16c"),
-    ("Latitude", "16c"),
+    ("country", "S30"),
+    ("province", "S20"),
+    ("station", "S40"),
+    ("stationnumber", "S10"),
+    ("radartype", "S20"),
+    ("Longitude", "S16"),
+    ("Latitude", "S16"),
     ("Longitudevalue", "i4"),
     ("Latitudevalue", "i4"),
     ("height", "i4"),

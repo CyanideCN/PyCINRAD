@@ -3,14 +3,14 @@
 import numpy as np
 
 header = [
-    ("cFileType", "16c"),
-    ("cCountry", "30c"),
-    ("cProvince", "20c"),
-    ("cStation", "40c"),
-    ("cStationNumber", "10c"),
-    ("cRadarType", "20c"),
-    ("cLongitude", "16c"),
-    ("cLatitude", "16c"),
+    ("cFileType", "S16"),
+    ("cCountry", "S30"),
+    ("cProvince", "S20"),
+    ("cStation", "S40"),
+    ("cStationNumber", "S10"),
+    ("cRadarType", "S20"),
+    ("cLongitude", "S16"),
+    ("cLatitude", "S16"),
     ("lLongitudeValue", "i4"),
     ("lLatitudeValue", "i4"),
     ("lHeight", "i4"),
