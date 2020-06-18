@@ -41,8 +41,7 @@ setup(
             [
                 join(data_pth, "RadarStation.pickle"),
                 join(data_pth, "chinaCity.json"),
-                join(data_pth),
-                "hca_params.npy",
+                join(data_pth, "hca_params.npy"),
             ],
         ),
         (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
