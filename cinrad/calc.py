@@ -38,7 +38,10 @@ def require(var_names: List[str]) -> Callable:
     def wrap(func: Callable) -> Callable:
         @wraps(func)
         def deco(*args, **kwargs) -> Any:
-            varset = args[0]
+            if len(args) == 1:
+                varset = args[0]
+            else:
+                varset = list(args)
             if isinstance(varset, Dataset):
                 var_list = list(varset.keys())
             elif isinstance(varset, list):
@@ -443,7 +446,7 @@ def hydro_class(
     )
     result = result.reshape(z_data.shape).astype(float)
     result[np.isnan(z_data)] = np.nan
-    hcl = z_data.copy()
+    hcl = z.copy()
+    hcl["HCL"] = (["azimuth", "distance"], result)
     del hcl["REF"]
-    hcl["HCL"] = [("azimuth", "distance"), result]
     return hcl

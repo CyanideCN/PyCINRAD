@@ -94,7 +94,7 @@ norm8 = cmx.Normalize(0, 0.99)  # correlation coefficient
 norm9 = cmx.Normalize(-0.8, 21)  # specific differential phase
 norm10 = cmx.Normalize(0.1, 6)  # vertically integrated liquid density
 norm11 = cmx.Normalize(0, 204)  # One-hour precipitation
-norm12 = cmx.Normalize(0, 10)
+norm12 = cmx.Normalize(1, 11)
 
 # fmt: off
 norm_plot = {"REF":norm1, "VEL":norm2, "CR":norm1, "ET":norm5, "VIL":norm1, "RF":norm3,
@@ -114,7 +114,7 @@ sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PH
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
-            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.", "HCL":"Hydro Class"}
+            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.", "HCL":"Hydrometeor Class"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
         "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "HCL":""}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",

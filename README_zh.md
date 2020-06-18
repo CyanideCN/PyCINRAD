@@ -163,6 +163,10 @@ fig('D:\\')
 
 `cinrad.calc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图。
 
+#### 水凝物分类
+
+`cinrad.calc.hydro_class`从反射率，差分反射率，协相关系数和差分传播相移率计算出10种水凝物类型。
+
 ### cinrad.correct
 
 提供雷达原数据的校正。
@@ -238,6 +242,8 @@ fig('D:\\')
 ## 其他
 
 回波顶高及垂直积分液态含水量（密度）算法来源：肖艳姣, 马中元, 李中华. 改进的雷达回波顶高、垂直积分液态水含量及其密度算法[J]. 暴雨灾害, 2009, 28(3):20-24.
+
+水凝物分类算法来源：Dolan, B., S. A. Rutledge, S. Lim, V. Chandrasekar, and M. Thurai, 2013: A Robust C-Band Hydrometeor Identification Algorithm and Application to a Long-Term Polarimetric Radar Dataset. J. Appl. Meteor. Climatol., 52, 2162–2186, https://doi.org/10.1175/JAMC-D-12-0275.1.
 
 如果你对这个模块感兴趣，欢迎加入这个模块的开发者行列！
 
