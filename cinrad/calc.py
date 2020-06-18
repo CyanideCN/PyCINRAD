@@ -21,6 +21,7 @@ from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
 from cinrad.common import get_dtype
+from cinrad.hca import hydro_class as _hca
 
 __all__ = [
     "quick_cr",
@@ -28,6 +29,8 @@ __all__ = [
     "quick_vil",
     "VCS",
     "quick_vild",
+    "GridMapper",
+    "hydro_class",
 ]
 
 
@@ -425,3 +428,22 @@ class GridMapper(object):
         )
         ret.attrs = r_attr
         return ret
+
+
+@require(["REF", "ZDR", "RHO", "KDP"])
+def hydro_class(
+    z: Dataset, zdr: Dataset, rho: Dataset, kdp: Dataset, band: str = "S"
+) -> Dataset:
+    z_data = z["REF"].values
+    zdr_data = zdr["ZDR"].values
+    rho_data = rho["RHO"].values
+    kdp_data = kdp["KDP"].values
+    result = _hca(
+        z_data.ravel(), zdr_data.ravel(), rho_data.ravel(), kdp_data.ravel(), band=band
+    )
+    result = result.reshape(z_data.shape).astype(float)
+    result[np.isnan(z_data)] = np.nan
+    hcl = z_data.copy()
+    del hcl["REF"]
+    hcl["HCL"] = [("azimuth", "distance"), result]
+    return hcl
