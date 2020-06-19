@@ -152,6 +152,10 @@ fig('D:\\')
 
 `cinrad.calc.GridMapper` can merge different radar scans into a cartesian grid.
 
+#### Hydrometeor classification
+
+`cinrad.calc.hydro_class` uses algorithm suggested by Dolan to classify hydrometeors into 10 categories. (Requires REF, ZDR, RHO, and KDP)
+
 ### cinrad.correct
 
 This submodule provides algorithms to correct raw radar fields.
@@ -242,6 +246,8 @@ Plot PUP STI product on the current PPI map, including past positions, current p
 1. Recognition and Analysis of Biological Echo Using WSR-88D Dual-polarization Weather Radar in Nanhui of Shanghai doi: 10.16765/j.cnki.1673-7148.2019.03.015
 
 ## Notes
+
+The hydrometeor classfication algorithm comes from Dolan, B., S. A. Rutledge, S. Lim, V. Chandrasekar, and M. Thurai, 2013: A Robust C-Band Hydrometeor Identification Algorithm and Application to a Long-Term Polarimetric Radar Dataset. J. Appl. Meteor. Climatol., 52, 2162–2186, https://doi.org/10.1175/JAMC-D-12-0275.1.
 
 If you are interested in this program, you can join the developers of this program. Any contribution is appreciated!
 

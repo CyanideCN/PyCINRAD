@@ -13,6 +13,7 @@ from matplotlib.colorbar import ColorbarBase
 from matplotlib.lines import Line2D
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
+import matplotlib.cm as mcm
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -93,28 +94,29 @@ norm8 = cmx.Normalize(0, 0.99)  # correlation coefficient
 norm9 = cmx.Normalize(-0.8, 21)  # specific differential phase
 norm10 = cmx.Normalize(0.1, 6)  # vertically integrated liquid density
 norm11 = cmx.Normalize(0, 204)  # One-hour precipitation
+norm12 = cmx.Normalize(1, 11)
 
 # fmt: off
 norm_plot = {"REF":norm1, "VEL":norm2, "CR":norm1, "ET":norm5, "VIL":norm1, "RF":norm3,
              "ZDR":norm6, "PHI":norm7, "RHO":norm8, "TREF":norm1, "KDP":norm9, "VILD":norm10,
-             "OHP":norm11} # Normalize object used to plot
+             "OHP":norm11, "HCL":norm12} # Normalize object used to plot
 norm_cbar = {"REF":norm1, "VEL":norm4, "CR":norm1, "ET":norm4, "VIL":norm4,
              "ZDR":norm4, "PHI":norm4, "RHO":norm4, "TREF":norm1, "KDP":norm4,
-             "VILD":norm4, "OHP":norm4} # Normalize object used for colorbar
+             "VILD":norm4, "OHP":norm4, "HCL":norm4} # Normalize object used for colorbar
 cmap_plot = {"REF":r_cmap, "VEL":v_cmap, "CR":r_cmap, "ET":et_cmap, "VIL":vil_cmap, "RF":rf_cmap,
              "ZDR":zdr_cmap, "PHI":kdp_cmap, "RHO":cc_cmap, "TREF":r_cmap, "KDP":kdp_cmap,
-             "VILD":vil_cmap, "OHP":ohp_cmap}
+             "VILD":vil_cmap, "OHP":ohp_cmap, "HCL":mcm.tab10}
 cmap_cbar = {"REF":r_cmap, "VEL":v_cbar, "CR":r_cmap, "ET":et_cbar, "VIL":vil_cbar,
              "ZDR":zdr_cbar, "PHI":kdp_cbar, "RHO":cc_cbar, "TREF":r_cmap, "KDP":kdp_cbar,
-             "VILD":vil_cbar, "OHP":ohp_cbar}
+             "VILD":vil_cbar, "OHP":ohp_cbar, "HCL":mcm.tab10}
 sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PHI":kdp_cmap_smooth, "RHO":cc_cmap_smooth,
             "KDP":kdp_cmap_smooth}
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
-            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip."}
+            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.", "HCL":"Hydrometeor Class"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
-        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm"}
+        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "HCL":""}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
                                 "-1", "-5", "-10", "-15", "-20", "-27", "-35"],
              "CR":None, "ET":["", "21", "20", "18", "17", "15", "14", "12",
@@ -131,7 +133,9 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
              "VILD":["", "6", "5", "4", "3.5", "3", "2.5", "2.1", "1.8", "1.5", "1.2",
                      "0.9", "0.7", "0.5", "0.3", "0.1"],
              "OHP":["", "203.2", "152.4", "101.6", "76.2", "63.5", "50.8", "44.45", "38.1", "31.75",
-                    "25.4", "19.05", "12.7", "6.35", "2.54", "0"]}
+                    "25.4", "19.05", "12.7", "6.35", "2.54", "0"],
+             "HCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice", "Low-Dens Graupel",
+                    "High-Dens Graupel", "Hail", "Big Drops", ""]}
 # fmt: on
 font = FontProperties(
     fname=os.path.join(MODULE_DIR, "data", "font", "NotoSansHans-Regular.otf")
