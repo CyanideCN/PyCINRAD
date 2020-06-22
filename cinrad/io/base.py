@@ -66,4 +66,6 @@ class RadarBase(abc.ABC):
 
     @staticmethod
     def get_range(drange: Number_T, reso: Number_T) -> np.ndarray:
-        return np.arange(reso, drange + reso, reso)
+        rng = np.arange(reso, drange + reso, reso)
+        valid_entry = int(drange // reso)
+        return rng[:valid_entry]
