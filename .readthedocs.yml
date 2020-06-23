@@ -19,4 +19,4 @@ formats:
 
 # Optionally set the version of Python and requirements required to build your docs
 conda:
-  environment: doc/rtd_environment.yml
+  environment: docs/environment.yml
