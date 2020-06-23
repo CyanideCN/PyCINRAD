@@ -11,3 +11,4 @@
 /cinrad/correct/_unwrap_2d.c
 /.mypy_cache/*
 *.spec
+docs/build
