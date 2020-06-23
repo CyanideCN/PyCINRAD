@@ -90,17 +90,13 @@ def _extract(r_list: Volume_T, dtype: str) -> tuple:
 
 @require(["REF"])
 def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
-    r"""
-    Calculate composite reflectivity
+    r"""Calculate composite reflectivity
 
-    Paramters
-    ---------
-    r_list: list of xarray.Dataset
+    Args:
+        r_list (list(xarray.Dataset)): Reflectivity data.
 
-    Returns
-    -------
-    ret: `xarray.Dataset`
-        composite reflectivity
+    Returns:
+        xarray.Dataset: composite reflectivity
     """
     r_data = list()
     for i in r_list:
@@ -120,17 +116,13 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
 
 @require(["REF"])
 def quick_et(r_list: Volume_T) -> Dataset:
-    r"""
-    Calculate echo tops
+    r"""Calculate echo tops
 
-    Paramters
-    ---------
-    r_list: list of xarray.Dataset
+    Args:
+        r_list (list(xarray.Dataset)): Reflectivity data.
 
-    Returns
-    -------
-    ret: `xarray.Dataset`
-        echo tops
+    Returns:
+        xarray.Dataset: echo tops
     """
     r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
@@ -158,17 +150,18 @@ def quick_et(r_list: Volume_T) -> Dataset:
 
 @require(["REF"])
 def quick_vil(r_list: Volume_T) -> Dataset:
-    r"""
-    Calculate vertically integrated liquid
+    r"""Calculate vertically integrated liquid.
 
-    Paramters
-    ---------
-    r_list: list of xarray.Dataset
+    This algorithm process data in polar coordinates, which avoids the loss of
+    data. By default, this function calls low-level function `vert_integrated_liquid`
+    in C-extension. If the C-extension is not available, the python version will
+    be used instead but with much slower speed.
 
-    Returns
-    -------
-    ret: `xarray.Dataset`
-        vertically integrated liquid
+    Args:
+        r_list (list(xarray.Dataset)): Reflectivity data.
+
+    Returns:
+        xarray.Dataset: vertically integrated liquid
     """
     r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
@@ -195,17 +188,17 @@ def quick_vil(r_list: Volume_T) -> Dataset:
 
 
 def quick_vild(r_list: Volume_T) -> Dataset:
-    r"""
-    Calculate vertically integrated liquid density
+    r"""Calculate vertically integrated liquid density.
 
-    Paramters
-    ---------
-    r_list: list of xarray.Dataset
+    By default, this function calls low-level function `vert_integrated_liquid`
+    in C-extension. If the C-extension is not available, the python version will
+    be used instead but with much slower speed.
 
-    Returns
-    -------
-    l2_obj: `xarray.Dataset`
-        vertically integrated liquid density
+    Args:
+        r_list (list(xarray.Dataset)): Reflectivity data.
+
+    Returns:
+        xarray.Dataset: Vertically integrated liquid
     """
     r_data, d, a, elev = _extract(r_list, "REF")
     i = r_list[0]
@@ -235,7 +228,12 @@ def quick_vild(r_list: Volume_T) -> Dataset:
 
 
 class VCS(object):
-    r"""Class performing vertical cross-section calculation"""
+    r"""
+    Class performing vertical cross-section calculation
+    
+    Args:
+        r_list (list(xarray.Dataset)): The whole volume scan.
+    """
 
     def __init__(self, r_list: Volume_T):
         el = [i.elevation for i in r_list]
@@ -313,20 +311,17 @@ class VCS(object):
         r"""
         Get cross-section data from input points
 
-        Parameters
-        ----------
-        start_polar: `tuple`
-            polar coordinates of start point i.e.(distance, azimuth)
-        end_polar: `tuple`
-            polar coordinates of end point i.e.(distance, azimuth)
-        start_cart: `tuple`
-            geographic coordinates of start point i.e.(longitude, latitude)
-        end_cart: `tuple`
-            geographic coordinates of end point i.e.(longitude, latitude)
+        Args:
+            start_polar (tuple): polar coordinates of start point i.e.(distance, azimuth)
 
-        Returns
-        -------
-        sl: `xarray.Dataset`
+            end_polar (tuple): polar coordinates of end point i.e.(distance, azimuth)
+
+            start_cart (tuple): geographic coordinates of start point i.e.(longitude, latitude)
+
+            end_cart (tuple): geographic coordinates of end point i.e.(longitude, latitude)
+
+        Returns:
+            xarray.Dataset: Cross-section data
         """
         if start_polar and end_polar:
             stlat = self.rl[0].stp["lat"]
@@ -349,6 +344,18 @@ class VCS(object):
 
 
 class GridMapper(object):
+    r'''
+    This class can merge scans from different radars to a single cartesian grid.
+
+    Args:
+        fields (list(xarray.Dataset)): Lists of scans to be merged.
+
+        max_dist (int, float): The maximum distance in kdtree searching.
+
+    Example:
+        >>> gm = GridMapper([r1, r2, r3])
+        >>> grid = gm(0.1)
+    '''
     def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
         # Process data type
         self.dtype = get_dtype(fields[0])
@@ -408,6 +415,13 @@ class GridMapper(object):
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
     def __call__(self, step: Number_T) -> Dataset:
+        r'''
+        Args:
+            step (int, float): Output grid spacing.
+
+        Returns:
+            xarray.Dataset: Merged grid data.
+        '''
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
@@ -437,6 +451,22 @@ class GridMapper(object):
 def hydro_class(
     z: Dataset, zdr: Dataset, rho: Dataset, kdp: Dataset, band: str = "S"
 ) -> Dataset:
+    r'''Hydrometeor classification
+
+    Args:
+        z (xarray.Dataset): Reflectivity data.
+
+        zdr (xarray.Dataset): Differential reflectivity data.
+
+        rho (xarray.Dataset): Cross-correlation coefficient data.
+
+        kdp (xarray.Dataset): Specific differential phase data.
+
+        band (str): Band of the radar, default to S.
+
+    Returns:
+        xarray.Dataset: Classification result.
+    '''
     z_data = z["REF"].values
     zdr_data = zdr["ZDR"].values
     rho_data = rho["RHO"].values

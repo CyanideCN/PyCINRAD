@@ -79,58 +79,22 @@ def _detect_radartype(
 
 class CinradReader(RadarBase):
     r"""
-    Class handling CINRAD radar reading
+    Class reading old-version CINRAD data.
 
-    Attributes
-    ----------
-    radartype: str
-        type of radar (SA, SB, etc.)
-    scantime: datetime.datetime
-        time of scan for this data
-    code: str
-        code for this radar
-    angleindex_r: list
-        indices of tilts which have reflectivity data
-    angleindex_v: list
-        indices of tilts which have velocity data
-    stationlon: float
-        logitude of this radar
-    stationlat: float
-        latitude of this radar
-    radarheight: float
-        height of this radar
-    name: str
-        name of this radar
-    Rreso: float
-        radial resolution of reflectivity data
-    Vreso: float
-        radial resolution of velocity data
-    a_reso: int
-        number of radials in one scan
-    el: np.ndarray
-        elevation angles for tilts
-    drange: float
-        current selected radius of data
-    elev: float
-        elevation angle of current selected tilt
-    tilt: int
-        current selected tilt
+    Args:
+        file (str, IO): Path points to the file or a file object.
+
+        radar_type (str): Type of the radar.
+
+        file_name (str): Name of the file, only used when `file` argument is
+        a file object.
     """
-
     def __init__(
         self,
         file: Any,
         radar_type: Optional[str] = None,
         file_name: Optional[str] = None,
     ):
-        r"""
-        Parameters
-        ----------
-        file: str / obj with read method
-            path directed to the file to read / file object
-        radar_type: str, optional
-            type of radar
-        """
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
         self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
@@ -354,18 +318,15 @@ class CinradReader(RadarBase):
         r"""
         Get radar raw data
 
-        Parameters
-        ----------
-        tilt: int
-            index of elevation angle
-        drange: float
-            radius of data
-        dtype: str
-            type of product (REF, VEL, etc.)
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+            
+            drange (float): Radius of data.
 
-        Returns
-        -------
-        ret: ndarray or tuple of ndarray
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            numpy.ndarray or tuple of numpy.ndarray: Raw data
         """
         rf_flag = False
         self.tilt = tilt
@@ -407,20 +368,17 @@ class CinradReader(RadarBase):
 
     def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
         r"""
-        Get radar data
+        Get radar data with extra information
 
-        Parameters
-        ----------
-        tilt: int
-            index of elevation angle
-        drange: float
-            radius of data
-        dtype: str
-            type of product (REF, VEL, etc.)
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+            
+            drange (float): Radius of data.
 
-        Returns
-        -------
-        ds: xarray.Dataset
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            xarray.Dataset: Data.
         """
         task = getattr(self, "task_name", None)
         reso = self.Rreso if dtype == "REF" else self.Vreso
@@ -477,36 +435,10 @@ class CinradReader(RadarBase):
 
 class StandardData(RadarBase):
     r"""
-    Class handling new cinrad standard data reading
+    Class reading data in standard format.
 
-    Attributes
-    ----------
-    scantime: datetime.datetime
-        time of scan for this data
-    code: str
-        code for this radar
-    angleindex_r: list
-        indices of tilts which have reflectivity data
-    angleindex_v: list
-        indices of tilts which have velocity data
-    stationlon: float
-        logitude of this radar
-    stationlat: float
-        latitude of this radar
-    radarheight: float
-        height of this radar
-    name: str
-        name of this radar
-    a_reso: int
-        number of radials in one scan
-    el: np.ndarray
-        elevation angles for tilts
-    drange: float
-        current selected radius of data
-    elev: float
-        elevation angle of current selected tilt
-    tilt: int
-        current selected tilt
+    Args:
+        file (str, IO): Path points to the file or a file object.
     """
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
@@ -514,12 +446,6 @@ class StandardData(RadarBase):
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
     # fmt: on
     def __init__(self, file: Any):
-        r"""
-        Parameters
-        ----------
-        file: str
-            path directed to the file to read
-        """
         self.f = prepare_file(file)
         self._parse()
         self.f.close()
@@ -625,18 +551,15 @@ class StandardData(RadarBase):
         r"""
         Get radar raw data
 
-        Parameters
-        ----------
-        tilt: int
-            index of elevation angle
-        drange: float
-            radius of data
-        dtype: str
-            type of product (REF, VEL, etc.)
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+            
+            drange (float): Radius of data.
 
-        Returns
-        -------
-        ret: ndarray or tuple of ndarray
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            numpy.ndarray or tuple of numpy.ndarray: Raw data
         """
         # The scan number is set to zero in RHI mode.
         self.tilt = tilt if self.scan_type == "PPI" else 0
@@ -681,20 +604,17 @@ class StandardData(RadarBase):
 
     def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
         r"""
-        Get radar data
+        Get radar data with extra information
 
-        Parameters
-        ----------
-        tilt: int
-            index of elevation angle
-        drange: float
-            radius of data
-        dtype: str
-            type of product (REF, VEL, etc.)
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+            
+            drange (float): Radius of data.
 
-        Returns
-        -------
-        ds: xarray.Dataset
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            xarray.Dataset: Data.
         """
         reso = self.scan_config[tilt].dop_reso / 1000
         ret = self.get_raw(tilt, drange, dtype)

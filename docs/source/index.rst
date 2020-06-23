@@ -3,8 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PyCINRAD's documentation!
+PyCINRAD的文档
 ====================================
+
+PyCINRAD是一个气象雷达开源库，支持中国所有主流雷达格式的读取，并提供一些实用的算法以及可视化。
 
 .. toctree::
    :maxdepth: 3

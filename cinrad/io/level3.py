@@ -32,8 +32,10 @@ velocity_tbl = np.array([np.nan, -27.5, -20.5, -15.5, -10.5, -5.5, -1.5,
 class PUP(RadarBase):
     r"""
     Class handling PUP data (Nexrad Level III data)
-    """
 
+    Args:
+        file (str, IO): Path points to the file or a file object.
+    """
     def __init__(self, file: Any):
         from metpy.io.nexrad import Level3File
 
@@ -92,6 +94,12 @@ class PUP(RadarBase):
         self.scantime = f.metadata["vol_time"]
 
     def get_data(self) -> Dataset:
+        r"""
+        Get radar data with extra information.
+
+        Returns:
+            xarray.Dataset: Data.
+        """
         if self.radial_flag:
             lon, lat = self.projection()
             if self.dtype in ["VEL", "SW"]:
@@ -172,6 +180,12 @@ class PUP(RadarBase):
 
 
 class SWAN(object):
+    r'''
+    Class reading SWAN grid data.
+    
+    Args:
+        file (str, IO): Path points to the file or a file object.
+    '''
     dtype_conv = {0: "B", 1: "b", 2: "u2", 3: "i2", 4: "u2"}
     size_conv = {0: 1, 1: 1, 2: 2, 3: 2, 4: 2}
 
@@ -219,7 +233,16 @@ class SWAN(object):
             # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.masked_equal(out, 0)
 
-    def get_data(self, level=0) -> Dataset:
+    def get_data(self, level: int = 0) -> Dataset:
+        r"""
+        Get radar data with extra information
+
+        Args:
+            level (int): The level of reflectivity data. Only used in `3DREF` data.
+
+        Returns:
+            xarray.Dataset: Data.
+        """
         dtype = self.product_name
         if self.data.ndim == 2:
             ret = self.data
