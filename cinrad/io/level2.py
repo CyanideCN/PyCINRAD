@@ -384,8 +384,9 @@ class CinradReader(RadarBase):
             # The value of this sub-dictionary is the data stored in np.ma.MaskedArray.
         except KeyError:
             raise RadarDecodeError("Invalid product name")
-        cut = data.T[: int(np.round(drange / reso))]
-        shape_diff = np.round(drange / reso) - cut.shape[0]
+        ngates = int(drange // reso)
+        cut = data.T[: ngates]
+        shape_diff = ngates - cut.shape[0]
         append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
         if dtype in ["VEL", "SW"]:
             try:
@@ -394,7 +395,7 @@ class CinradReader(RadarBase):
                 pass
             else:
                 rf_flag = True
-                rf = rf.T[: int(np.round(drange / reso))]
+                rf = rf.T[: ngates]
                 rf = np.ma.vstack([rf, append])
         r = np.ma.vstack([cut, append])
         if rf_flag:
@@ -650,18 +651,18 @@ class StandardData(RadarBase):
             raw = np.array(self.data[tilt][dtype])
         except KeyError:
             raise RadarDecodeError("Invalid product name")
+        ngates = int(drange // reso)
         if raw.size == 0:
             warnings.warn("Empty data", RuntimeWarning)
             # Calculate size equivalent
             nrays = len(self.aux[tilt]["azimuth"])
-            ngates = int(drange / reso)
             out = np.zeros((nrays, ngates)) * np.ma.masked
             return out
         # Data below 5 are used as reserved codes, which are used to indicate other
         # information instead of real data, so they should be masked.
         data = np.ma.masked_less(raw, 5)
-        cut = data[:, : int(drange / reso)]
-        shape_diff = np.round(drange / reso) - cut.shape[1]
+        cut = data[:, :ngates]
+        shape_diff = ngates - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
         if dtype in ["VEL", "SW"]:
             # The reserved code 1 indicates folded velocity.
@@ -708,7 +709,7 @@ class StandardData(RadarBase):
                 {dtype: da},
                 attrs={
                     "elevation": self.elev,
-                    "range": int(shape * reso),
+                    "range": int(np.round(shape * reso)),
                     "scan_time": self.scantime,
                     "site_code": self.code,
                     "site_name": self.name,
@@ -766,7 +767,7 @@ class StandardData(RadarBase):
         return ds
 
     def projection(self, reso: float) -> tuple:
-        r = np.arange(reso, self.drange + reso, reso)
+        r = self.get_range(self.drange, reso)
         theta = np.array(self.aux[self.tilt]["azimuth"]) * deg2rad
         lonx, latx = get_coordinate(
             r, theta, self.elev, self.stationlon, self.stationlat
