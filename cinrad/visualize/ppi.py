@@ -28,14 +28,31 @@ class PPI(object):
     r"""
     Create a figure plotting plan position indicator
 
-    Attributes
-    ----------
-    data: xarray.Dataset
-    settings: dict
-        settings extracted from __init__ function
-    geoax: cartopy.mpl.geoaxes.GeoAxes
-        cartopy axes plotting georeferenced data
-    fig: matplotlib.figure.Figure
+    By default, norm, cmap, and colorbar labels will be determined by the
+    data type.
+
+    Args:
+        data (xarray.Dataset): The data to be plotted.
+
+        fig (matplotlib.figure.Figure): The figure to plot on. Optional.
+
+        norm (matplotlib.colors.Normalize): Customized norm data. Optional.
+
+        cmap (matplotlib.colors.Colormap): Customized colormap. Optional.
+
+        nlabel (int): Number of labels on the colorbar. Optional.
+
+        dpi (int): DPI of the figure. Optional.
+
+        highlight (str, list(str)): Areas to be highlighted. Optional.
+
+        coastline (bool): Plot coastline on the figure if set to True. Default False.
+
+        extent (list(float)): The extent of figure. Optional.
+
+        add_city_names (bool): Label city names on the figure if set to True. Default True.
+
+        plot_labels (bool): Text scan information on the side of the plot. Default True.
     """
 
     # The CRS of data is believed to be PlateCarree.

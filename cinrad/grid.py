@@ -44,23 +44,19 @@ def resample(
     Resample radar radial data which have different number of radials
     in one scan into that of 360 radials
 
-    Parameters
-    ----------
-    data: numpy.ndarray
-        radar radial data
-    distance: numpy.ndarray
-        original distance
-    azimuth: numpy.ndarray
-        original azimuth
+    Args:
+        data (numpy.ndarray): Radar radial data.
 
-    Returns
-    -------
-    r: numpy.ndarray
-        resampled radial data
-    dist: numpy.ndarray
-        resampled distance
-    theta: numpy.ndarray
-        resampled azimuth
+        distance (numpy.ndarray): Original distance.
+
+        azimuth (numpy.ndarray): Original azimuth.
+
+    Returns:
+        numpy.ndarray: Resampled radial data.
+        
+        numpy.ndarray: Resampled distance.
+        
+        numpy.ndarray: Resampled azimuth.
     """
     # Target grid
     Rrange = np.arange(d_reso, distance.max() + d_reso, d_reso)
@@ -84,24 +80,21 @@ def grid_2d(
     r"""
     Interpolate data in polar coordinates into geographic coordinates
 
-    Parameters
-    ----------
-    data: numpy.ndarray
-        original radial data
-    x: numpy.ndarray
-        original longitude data arranged in radials
-    y: numpy.ndarray
-        original latitude data arranged in radials
-    resolution: tuple
-        the size of output
+    Args:
+        data (numpy.ndarray): Original radial data.
+
+        x (numpy.ndarray): Original longitude data arranged in radials.
+
+        y (numpy.ndarray): Original latitude data arranged in radials.
+
+        resolution (tuple): The size of output.
 
     Returns:
-    r: numpy.ndarray
-        interpolated data in grid
-    x_cor: numpy.ndarray
-        interpolated longitude in grid
-    y_cor: numpy.ndarray
-        interpolated latitude in grid
+        numpy.ndarray: Interpolated data in grid.
+
+        numpy.ndarray: Interpolated longitude in grid.
+        
+        numpy.ndarray: Interpolated latitude in grid.
     """
     r_x, r_y = resolution
     if isinstance(x_out, type(None)):
