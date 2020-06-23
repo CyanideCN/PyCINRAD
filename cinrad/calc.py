@@ -99,7 +99,7 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
 
     Returns
     -------
-    ret: xarray.Dataset
+    ret: `xarray.Dataset`
         composite reflectivity
     """
     r_data = list()
@@ -129,7 +129,7 @@ def quick_et(r_list: Volume_T) -> Dataset:
 
     Returns
     -------
-    ret: xarray.Dataset
+    ret: `xarray.Dataset`
         echo tops
     """
     r_data, d, a, elev = _extract(r_list, "REF")
@@ -167,7 +167,7 @@ def quick_vil(r_list: Volume_T) -> Dataset:
 
     Returns
     -------
-    ret: xarray.Dataset
+    ret: `xarray.Dataset`
         vertically integrated liquid
     """
     r_data, d, a, elev = _extract(r_list, "REF")
@@ -204,7 +204,7 @@ def quick_vild(r_list: Volume_T) -> Dataset:
 
     Returns
     -------
-    l2_obj: xarray.Dataset
+    l2_obj: `xarray.Dataset`
         vertically integrated liquid density
     """
     r_data, d, a, elev = _extract(r_list, "REF")
@@ -315,18 +315,18 @@ class VCS(object):
 
         Parameters
         ----------
-        start_polar: list or tuple
+        start_polar: `tuple`
             polar coordinates of start point i.e.(distance, azimuth)
-        end_polar: list or tuple
+        end_polar: `tuple`
             polar coordinates of end point i.e.(distance, azimuth)
-        start_cart: list or tuple
+        start_cart: `tuple`
             geographic coordinates of start point i.e.(longitude, latitude)
-        end_cart: list or tuple
+        end_cart: `tuple`
             geographic coordinates of end point i.e.(longitude, latitude)
 
         Returns
         -------
-        sl: cinrad.datastruct.Slice_
+        sl: `xarray.Dataset`
         """
         if start_polar and end_polar:
             stlat = self.rl[0].stp["lat"]
