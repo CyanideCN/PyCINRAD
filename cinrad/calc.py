@@ -344,7 +344,7 @@ class VCS(object):
 
 
 class GridMapper(object):
-    r'''
+    r"""
     This class can merge scans from different radars to a single cartesian grid.
 
     Args:
@@ -355,7 +355,8 @@ class GridMapper(object):
     Example:
         >>> gm = GridMapper([r1, r2, r3])
         >>> grid = gm(0.1)
-    '''
+    """
+
     def __init__(self, fields: Volume_T, max_dist: Number_T = 0.1):
         # Process data type
         self.dtype = get_dtype(fields[0])
@@ -415,13 +416,13 @@ class GridMapper(object):
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
     def __call__(self, step: Number_T) -> Dataset:
-        r'''
+        r"""
         Args:
             step (int, float): Output grid spacing.
 
         Returns:
             xarray.Dataset: Merged grid data.
-        '''
+        """
         x, y = self._process_grid(step, step)
         grid = self._map_points(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
@@ -451,7 +452,7 @@ class GridMapper(object):
 def hydro_class(
     z: Dataset, zdr: Dataset, rho: Dataset, kdp: Dataset, band: str = "S"
 ) -> Dataset:
-    r'''Hydrometeor classification
+    r"""Hydrometeor classification
 
     Args:
         z (xarray.Dataset): Reflectivity data.
@@ -466,7 +467,7 @@ def hydro_class(
 
     Returns:
         xarray.Dataset: Classification result.
-    '''
+    """
     z_data = z["REF"].values
     zdr_data = zdr["ZDR"].values
     rho_data = rho["RHO"].values

@@ -36,6 +36,7 @@ class PUP(RadarBase):
     Args:
         file (str, IO): Path points to the file or a file object.
     """
+
     def __init__(self, file: Any):
         from metpy.io.nexrad import Level3File
 
@@ -180,12 +181,12 @@ class PUP(RadarBase):
 
 
 class SWAN(object):
-    r'''
+    r"""
     Class reading SWAN grid data.
     
     Args:
         file (str, IO): Path points to the file or a file object.
-    '''
+    """
     dtype_conv = {0: "B", 1: "b", 2: "u2", 3: "i2", 4: "u2"}
     size_conv = {0: 1, 1: 1, 2: 2, 3: 2, 4: 2}
 
