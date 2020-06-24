@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
-import copy
-
 import numpy as np
 from xarray import Dataset
 
@@ -17,10 +15,11 @@ except ImportError:
     )
 
 
-def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarray:
+def dealias_unwrap_2d(vdata: np.ndarray, nyquist_vel: float) -> np.ndarray:
     """ Dealias using 2D phase unwrapping (sweep-by-sweep). """
-    scaled_sweep = vdata.data * np.pi / nyquist_vel
-    sweep_mask = vdata.mask
+    scaled_sweep = vdata * np.pi / nyquist_vel
+    sweep_mask = np.isnan(vdata)
+    scaled_sweep[sweep_mask] = 0
     wrapped = np.require(scaled_sweep, np.float64, ["C"])
     mask = np.require(sweep_mask, np.uint8, ["C"])
     unwrapped = np.empty_like(wrapped, dtype=np.float64, order="C")
@@ -29,10 +28,10 @@ def dealias_unwrap_2d(vdata: np.ma.MaskedArray, nyquist_vel: float) -> np.ndarra
 
 
 def dealias(v_data: Dataset) -> Dataset:
-    v_field = v_data["VEL"]
-    nyq = v_data.attrs.get("nyquist_velocity")
+    v_field = v_data["VEL"].data
+    nyq = v_data.attrs.get("nyquist_vel")
     out_data = dealias_unwrap_2d(v_field, nyq)
-    out_masked = np.ma.array(out_data, mask=v_field.mask)
-    v_ret = copy.deepcopy(v_data)
+    out_masked = np.ma.array(out_data, mask=np.isnan(v_field))
+    v_ret = v_data.copy()
     v_ret["VEL"] = (["azimuth", "distance"], out_masked)
     return v_ret

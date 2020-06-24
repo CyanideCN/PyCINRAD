@@ -40,40 +40,32 @@ def vcp(el_num: int) -> str:
     return task_name
 
 
-def _detect_radartype(
-    f: Any, filename: str, type_assert: Optional[str] = None
-) -> tuple:
+def infer_type(f: Any, filename: str) -> tuple:
     r"""Detect radar type from records in file"""
     # Attempt to find information in file, which has higher
     # priority compared with information obtained from file name
+    radartype = None
+    code = None
     f.seek(100)
     typestring = f.read(9)
-    det_sc = typestring == b"CINRAD/SC"
-    det_cd = typestring == b"CINRAD/CD"
+    if typestring == b"CINRAD/SC":
+        radartype = "SC"
+    elif typestring == b"CINRAD/CD":
+        radartype = "CD"
     f.seek(116)
-    det_cc = f.read(9) == b"CINRAD/CC"
+    if f.read(9) == b"CINRAD/CC":
+        radartype = "CC" 
     # Read information from filename (if applicable)
     if filename.startswith("RADA"):
         spart = filename.split("-")
-        code = spart[1]
-        radartype = spart[2]
+        if len(spart > 2):
+            code = spart[1]
+            radartype = spart[2]
     elif filename.startswith("Z"):
         spart = filename.split("_")
-        code = spart[3]
-        radartype = spart[7]
-    else:
-        radartype = None
-        code = None
-    if det_sc:
-        radartype = "SC"
-    elif det_cd:
-        radartype = "CD"
-    elif det_cc:
-        radartype = "CC"
-    if type_assert:
-        radartype = type_assert
-    if radartype is None:
-        raise RadarDecodeError("Radar type undefined")
+        if len(spart) > 7:
+            code = spart[3]
+            radartype = spart[7]
     return code, radartype
 
 
@@ -98,16 +90,21 @@ class CinradReader(RadarBase):
     ):
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
-        self.code, radartype = _detect_radartype(f, filename, type_assert=radar_type)
+        self.code, t_infer = infer_type(f, filename)
         if radar_type:
-            if radartype is not radar_type:
+            if t_infer != radar_type:
                 warnings.warn(
                     "Contradictory information from input radar type and\
-                              radar type detected from input file."
+                    radar type detected from input file."
                 )
             self.radartype = radar_type
         else:
-            self.radartype = radartype
+            if not t_infer:
+                raise RadarDecodeError(
+                    "Unable to determine the file type. Use `radar_type` keyword\
+                    to specify the radar type."
+                )
+            self.radartype = t_infer
         f.seek(0)
         if radartype in ["SA", "SB"]:
             self._SAB_handler(f)
