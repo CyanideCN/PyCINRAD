@@ -89,6 +89,7 @@ class CinradReader(RadarBase):
         file_name (str): Name of the file, only used when `file` argument is
         a file object.
     """
+
     def __init__(
         self,
         file: Any,
@@ -346,7 +347,7 @@ class CinradReader(RadarBase):
         except KeyError:
             raise RadarDecodeError("Invalid product name")
         ngates = int(drange // reso)
-        cut = data.T[: ngates]
+        cut = data.T[:ngates]
         shape_diff = ngates - cut.shape[0]
         append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
         if dtype in ["VEL", "SW"]:
@@ -356,7 +357,7 @@ class CinradReader(RadarBase):
                 pass
             else:
                 rf_flag = True
-                rf = rf.T[: ngates]
+                rf = rf.T[:ngates]
                 rf = np.ma.vstack([rf, append])
         r = np.ma.vstack([cut, append])
         if rf_flag:
