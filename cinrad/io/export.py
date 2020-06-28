@@ -48,7 +48,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
 
     _range = filemetadata("range")
     reso = f.scan_config[0].dop_reso
-    _range["data"] = np.arange(reso, radius * 1000 + reso, reso, "float32")
+    _range["data"] = f.get_range(radius * 1000, reso)
     _range["meters_to_center_of_first_gate"] = float(reso)
     _range["meters_between_gates"] = float(reso)
 
