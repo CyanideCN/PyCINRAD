@@ -14,3 +14,4 @@ dependencies:
   - xarray
   - metpy
   - pyshp
+  - arm_pyart

@@ -106,9 +106,9 @@ class CinradReader(RadarBase):
                 )
             self.radartype = t_infer
         f.seek(0)
-        if radartype in ["SA", "SB"]:
+        if self.radartype in ["SA", "SB"]:
             self._SAB_handler(f)
-        elif radartype in ["CA", "CB"]:
+        elif self.radartype in ["CA", "CB"]:
             self._SAB_handler(f, dtype="CAB")
         else:
             try:
