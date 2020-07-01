@@ -9,7 +9,7 @@ from io import BytesIO
 import numpy as np
 from xarray import Dataset, DataArray
 
-from cinrad.projection import get_coordinate
+from cinrad.projection import get_coordinate, height
 from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
 from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
@@ -436,18 +436,18 @@ class StandardPUP(RadarBase):
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = b"".join(site_config["site_code"][0]).decode().replace("\x00", "")
+        self.code = site_config["site_code"][0].decode().replace("\x00", "")
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"]
         geo["lon"] = site_config["Longitude"]
         geo["height"] = site_config["ground_height"]
         task = np.frombuffer(self.f.read(256), SDD_task)
-        self.task_name = b"".join(task["task_name"][0]).decode().replace("\x00", "")
+        self.task_name = task["task_name"][0].decode().replace("\x00", "")
         cut_num = task["cut_number"][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
         ptype = ph["product_type"][0]
-        self.scantime = datetime.datetime(*time.gmtime(ph["scan_start_time"])[:6])
+        self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
         self.dtype = self.dtype_corr[ph["dtype_1"][0]]
         params = get_product_param(ptype, self.f.read(64))
 
@@ -483,10 +483,13 @@ class StandardPUP(RadarBase):
         lon, lat = get_coordinate(
             dist, self.azi, self.el, self.stationlon, self.stationlat
         )
-        hgt = height(dist, self.el, self.radarheight)
+        hgt = (
+            height(dist, self.el, self.radarheight)
+            * np.ones(self.azi.shape[0])[:, np.newaxis]
+        )
         da = DataArray(self.data, coords=[self.azi, dist], dims=["azimuth", "distance"])
         ds = Dataset(
-            {dtype: da},
+            {self.dtype: da},
             attrs={
                 "elevation": self.el,
                 "range": self.end_range,
@@ -502,6 +505,6 @@ class StandardPUP(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
-        if dtype in ["VEL", "SW"]:
+        if self.dtype in ["VEL", "SW"]:
             ds["RF"] = (["azimuth", "distance"], self.data[1])
-        return radial
+        return ds

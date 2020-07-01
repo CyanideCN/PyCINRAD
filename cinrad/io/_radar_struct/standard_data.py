@@ -14,7 +14,7 @@ generic_header = [
 generic_header_dtype = np.dtype(generic_header)
 
 site_config = [
-    ("site_code", "8c"),
+    ("site_code", "S8"),
     ("site_name", "S32"),
     ("Latitude", "f4"),
     ("Longitude", "f4"),
@@ -36,7 +36,7 @@ site_config_dtype = np.dtype(site_config)
 
 task_config = [
     ("task_name", "S32"),
-    ("task_dsc", "128c"),
+    ("task_dsc", "S128"),
     ("polar_type", "i4"),
     ("scan_type", "i4"),
     ("pulse_width", "i4"),

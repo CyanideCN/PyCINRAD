@@ -23,10 +23,6 @@ ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
 
 
-def merge_bytes(byte_list: List[bytes]) -> bytes:
-    return b"".join(byte_list)
-
-
 def vcp(el_num: int) -> str:
     r"""Determine volume coverage pattern by number of scans."""
     if el_num == 5:
@@ -54,7 +50,7 @@ def infer_type(f: Any, filename: str) -> tuple:
         radartype = "CD"
     f.seek(116)
     if f.read(9) == b"CINRAD/CC":
-        radartype = "CC" 
+        radartype = "CC"
     # Read information from filename (if applicable)
     if filename.startswith("RADA"):
         spart = filename.split("-")
@@ -464,7 +460,7 @@ class StandardData(RadarBase):
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = merge_bytes(site_config["site_code"][0])[:5].decode()
+        self.code = site_config["site_code"][0].decode().replace("\x00", "")
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"]
         geo["lon"] = site_config["Longitude"]
