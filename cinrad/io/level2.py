@@ -58,7 +58,7 @@ def infer_type(f: Any, filename: str) -> tuple:
     # Read information from filename (if applicable)
     if filename.startswith("RADA"):
         spart = filename.split("-")
-        if len(spart > 2):
+        if len(spart) > 2:
             code = spart[1]
             radartype = spart[2]
     elif filename.startswith("Z"):
@@ -112,9 +112,9 @@ class CinradReader(RadarBase):
             self._SAB_handler(f, dtype="CAB")
         else:
             try:
-                if radartype == "CC":
+                if self.radartype == "CC":
                     self._CC_handler(f)
-                elif radartype in ["SC", "CD"]:
+                elif self.radartype in ["SC", "CD"]:
                     self._CD_handler(f)
                 else:
                     raise RadarDecodeError("Unrecognized data")
