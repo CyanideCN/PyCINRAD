@@ -479,7 +479,9 @@ class StandardPUP(RadarBase):
         self.azi = np.deg2rad(azi)
 
     def get_data(self):
-        dist = np.arange(self.start_range, self.end_range, self.reso)
+        dist = np.arange(
+            self.start_range + self.reso, self.end_range + self.reso, self.reso
+        )
         lon, lat = get_coordinate(
             dist, self.azi, self.el, self.stationlon, self.stationlat
         )
