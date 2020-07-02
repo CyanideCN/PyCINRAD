@@ -460,7 +460,7 @@ class StandardData(RadarBase):
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = site_config["site_code"][0].decode().replace("\x00", "")
+        self.code = site_config["site_code"][0].decode("ascii", errors="ignore").replace("\x00", "")
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"]
         geo["lon"] = site_config["Longitude"]
