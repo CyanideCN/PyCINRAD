@@ -80,7 +80,11 @@ class PUP(RadarBase):
             elif self.radar_type == "CD":
                 self.max_range = 125
         if self.radial_flag:
-            self.az = np.linspace(0, 360, data.shape[0]) * deg2rad
+            start_az = data_block["start_az"][0]
+            az = np.linspace(0, 360, data.shape[0])
+            az += start_az
+            az[az > 360] -= 360
+            self.az = az * deg2rad
             self.reso = self.max_range / data.shape[1]
             self.rng = np.arange(self.reso, self.max_range + self.reso, self.reso)
         else:
