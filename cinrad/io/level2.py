@@ -377,9 +377,10 @@ class CinradReader(RadarBase):
         task = getattr(self, "task_name", None)
         reso = self.Rreso if dtype == "REF" else self.Vreso
         ret = self.get_raw(tilt, drange, dtype)
+        rf_flag = (dtype in ["VEL", "SW"]) and ("RF" in self.data[tilt])
         x, y, z, d, a = self.projection(reso)
-        shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
-        if dtype in ["VEL", "SW"]:
+        shape = ret[0].shape[1] if rf_flag else ret.shape[1]
+        if rf_flag:
             da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
         else:
             da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
@@ -401,7 +402,7 @@ class CinradReader(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], x)
         ds["latitude"] = (["azimuth", "distance"], y)
         ds["height"] = (["azimuth", "distance"], z)
-        if dtype in ["VEL", "SW"]:
+        if rf_flag:
             ds["RF"] = (["azimuth", "distance"], ret[1])
         return ds
 
