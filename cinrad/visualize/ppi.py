@@ -102,6 +102,7 @@ class PPI(object):
         self.text_pos = TEXT_AXES_POS.copy()
         self.cbar_pos = CBAR_POS.copy()
         self._plot_ctx = dict()
+        self.rf_flag = "RF" in data
         self._plot(**kwargs)
         if is_inline():
             # In inline mode, figure will not be dynamically changed
@@ -169,15 +170,14 @@ class PPI(object):
         self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=self.settings["extent"]
         )
-        if self.dtype in ["VEL", "SW"]:
-            rf = self.data["RF"].values
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(
             lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs
         )
-        if self.dtype in ["VEL", "SW"]:
+        if self.rf_flag:
+            rf = self.data["RF"].values
             self.geoax.pcolormesh(
                 lon,
                 lat,
