@@ -103,6 +103,7 @@ class PPI(object):
         self.cbar_pos = CBAR_POS.copy()
         self._plot_ctx = dict()
         self.rf_flag = "RF" in data
+        self._fig_init = False
         self._plot(**kwargs)
         if is_inline():
             # In inline mode, figure will not be dynamically changed
@@ -202,6 +203,7 @@ class PPI(object):
 
         if self.settings["slice"]:
             self.plot_cross_section(self.settings["slice"])
+        self._fig_init = True
 
     def _text(self):
         # axes used for text which has the same x-position as
@@ -309,10 +311,10 @@ class PPI(object):
     ):
         # May add check to ensure the data is slice data
         r"""Plot cross section data below the PPI plot."""
-        if self.settings["is_inline"]:
+        if self.settings["is_inline"] and self._fig_init:
             raise RuntimeError(
-                "Adding cross section dynamically is not supported in\
-                inline backend, add section keyword when initializing PPI instead."
+                "Adding cross section dynamically is not supported in"
+                "inline backend, add section keyword when initializing PPI instead."
             )
         if not linecolor:
             if self.settings["style"] == "black":
