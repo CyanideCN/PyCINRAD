@@ -501,7 +501,7 @@ class StandardData(RadarBase):
             if radial_header["zip_type"][0] == 1:  # LZO compression
                 raise NotImplementedError("LZO compressed file is not supported")
             self._time_radial.append(
-                radial_header["seconds"][0] + radial_header["microseconds"][0]
+                radial_header["seconds"][0] + radial_header["microseconds"][0] / 1e6
             )
             el_num = radial_header["elevation_number"][0] - 1
             if el_num not in data.keys():
