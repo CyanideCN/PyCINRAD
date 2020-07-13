@@ -497,7 +497,11 @@ class StandardData(RadarBase):
         # Time for each radial
         radial_count = 0
         while 1:
-            radial_header = np.frombuffer(self.f.read(64), SDD_rad_header)
+            header_bytes = self.f.read(64)
+            if not header_bytes:
+                # Fix for single-tilt file
+                break
+            radial_header = np.frombuffer(header_bytes, SDD_rad_header)
             if radial_header["zip_type"][0] == 1:  # LZO compression
                 raise NotImplementedError("LZO compressed file is not supported")
             self._time_radial.append(
