@@ -24,12 +24,13 @@ class KDResampler(object):
         self.data = data
         self.roi = roi
 
-    def map_data(self, x_out: np.ndarray, y_out: np.ndarray) -> np.ma.MaskedArray:
+    def map_data(self, x_out: np.ndarray, y_out: np.ndarray) -> np.ndarray:
         out_coords = np.dstack((x_out.ravel(), y_out.ravel()))[0]
         _, indices = self.tree.query(out_coords, distance_upper_bound=self.roi)
         invalid_mask = indices == self.tree.n
         indices[invalid_mask] = 0
-        data = np.ma.array(self.data.ravel()[indices], mask=invalid_mask)
+        data = self.data.ravel()[indices]
+        data[invalid_mask] = np.nan
         return data.reshape(x_out.shape)
 
 
@@ -104,5 +105,5 @@ def grid_2d(
     t_x, t_y = np.meshgrid(x_out, y_out)
     kds = KDResampler(data, x, y)
     # TODO: Rewrite the logic for conversion between np.ma.masked and np.nan
-    result = kds.map_data(t_x, t_y).data
+    result = kds.map_data(t_x, t_y)
     return result, x_out, y_out
