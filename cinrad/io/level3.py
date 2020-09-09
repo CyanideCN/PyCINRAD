@@ -448,7 +448,7 @@ class StandardPUP(RadarBase):
         task = np.frombuffer(self.f.read(256), SDD_task)
         self.task_name = task["task_name"][0].decode().replace("\x00", "")
         cut_num = task["cut_number"][0]
-        scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
+        self.scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
         ptype = ph["product_type"][0]
         self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
@@ -480,7 +480,11 @@ class StandardPUP(RadarBase):
         raw = np.ma.masked_less_equal(raw, 5)
         self.data = (raw - offset) / scale
         self.el = params["elevation"]
-        self.azi = np.deg2rad(azi)
+        az = np.linspace(0, 360, raw.shape[0])
+        az += azi[0]
+        az[az > 360] -= 360
+        self.azi = az * deg2rad
+        # self.azi = np.deg2rad(azi)
 
     def get_data(self):
         dist = np.arange(
