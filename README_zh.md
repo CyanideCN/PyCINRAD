@@ -3,6 +3,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/932a383368954e8cb37ada9b3d783169)](https://app.codacy.com/app/CyanideCN/PyCINRAD?utm_source=github.com&utm_medium=referral&utm_content=CyanideCN/PyCINRAD&utm_campaign=Badge_Grade_Dashboard)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://pepy.tech/badge/cinrad)](https://pepy.tech/project/cinrad)
+[![DOI](https://zenodo.org/badge/139155365.svg)](https://zenodo.org/badge/latestdoi/139155365)
 
 Decode CINRAD (China New Generation Weather Radar) data and visualize. 
 
@@ -234,6 +235,12 @@ fig('D:\\')
 ## 相关链接
 
 [利用PyCINRAD处理、显示天气雷达基数据](http://climate2weather.cc/2019/05/12/radar/)
+
+## 引用
+
+如果你在你的论文中使用了本模块，请使用下方的DOI添加引用。
+
+[![DOI](https://zenodo.org/badge/139155365.svg)](https://zenodo.org/badge/latestdoi/139155365)
 
 ### 使用本模块绘制图片的论文
 
