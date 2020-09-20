@@ -441,9 +441,8 @@ class StandardData(RadarBase):
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
     # fmt: on
     def __init__(self, file: Any):
-        self.f = prepare_file(file)
-        self._parse()
-        self.f.close()
+        with prepare_file(file) as self.f:
+            self._parse()
         self._update_radar_info()
         # In standard data, station information stored in file
         # has higher priority, so we override some information.
@@ -466,6 +465,8 @@ class StandardData(RadarBase):
             .decode("ascii", errors="ignore")
             .replace("\x00", "")
         )
+        freq = site_config["frequency"][0]
+        self.wavelength = 3e8 / freq / 10000
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"]
         geo["lon"] = site_config["Longitude"]
