@@ -21,7 +21,7 @@ def height(
     elevation: int or float
         elevation angle in degree
     radarheight: int or float
-        height of radar in kilometer
+        height of radar in meter
 
     Returns
     -------

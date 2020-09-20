@@ -324,8 +324,8 @@ class VCS(object):
             xarray.Dataset: Cross-section data
         """
         if start_polar and end_polar:
-            stlat = self.rl[0].stp["lat"]
-            stlon = self.rl[0].stp["lon"]
+            stlat = self.rl[0].site_latitude
+            stlon = self.rl[0].site_longitude
             stp = np.round_(
                 get_coordinate(
                     start_polar[0], start_polar[1] * deg2rad, 0, stlon, stlat
