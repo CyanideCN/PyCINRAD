@@ -8,7 +8,7 @@ __all__ = [
     'CC_param', 'CC_header', 'CC_data', 'SDD_header', 'SDD_site', 'SDD_task',
     'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
     'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock',
-    'S_SPECIAL_dtype'
+    'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -31,6 +31,12 @@ from cinrad.io._radar_struct.CD import (
     radarsite_dtype as CD_site,
     performance_dtype as CD_perf,
     observation_param_dtype as CD_obs,
+)
+from cinrad.io._radar_struct.CC2 import (
+    header_dtype as CC2_header,
+    observation_param_dtype as CC2_obs,
+    other_info_dtype as CC2_other,
+    data_block_dtype as CC2_data,
 )
 
 _S_HEADER = [("spare", "u2", 7), ("a", "u2"), ("res", "u2", 6)]

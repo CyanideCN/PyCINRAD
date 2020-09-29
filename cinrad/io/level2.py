@@ -90,22 +90,25 @@ class CinradReader(RadarBase):
         if radar_type:
             if t_infer != radar_type:
                 warnings.warn(
-                    "Contradictory information from input radar type and\
-                    radar type detected from input file."
+                    "Contradictory information from input radar type and"
+                    "radar type detected from input file."
                 )
             self.radartype = radar_type
         else:
             if not t_infer:
                 raise RadarDecodeError(
-                    "Unable to determine the file type. Use `radar_type` keyword\
-                    to specify the radar type."
+                    "Unable to determine the file type. Use `radar_type` keyword"
+                    "to specify the radar type."
                 )
             self.radartype = t_infer
+        self.site_info = {}
         f.seek(0)
         if self.radartype in ["SA", "SB"]:
             self._SAB_handler(f)
         elif self.radartype in ["CA", "CB"]:
             self._SAB_handler(f, dtype="CAB")
+        elif self.radartype == "CC2":
+            self._CC2_handler(f)
         else:
             try:
                 if self.radartype == "CC":
@@ -124,6 +127,18 @@ class CinradReader(RadarBase):
                 except:
                     raise err
         self._update_radar_info()
+        # TODO: Override information
+        if "longitude" in self.site_info:
+            self.stationlon = self.site_info["longitude"]
+        if "latitude" in self.site_info:
+            self.stationlat = self.site_info["latitude"]
+        if "height" in self.site_info:
+            self.radarheight = self.site_info["height"]
+        if "name" in self.site_info:
+            self.name = self.site_info["name"]
+        if self.code == None and self.name:
+            # Use name as code when code is missing
+            self.code = self.name
         f.close()
 
     def _SAB_handler(self, f: Any, dtype: str = "SAB"):
@@ -265,6 +280,67 @@ class CinradReader(RadarBase):
         self.data = data
         self.angleindex_r = self.angleindex_v = list(range(el_num))
 
+    def _CC2_handler(self, f: Any):
+        header = np.frombuffer(f.read(CC2_header.itemsize), CC2_header)
+        self.site_info = {
+            "longitude": header["lLongitudeValue"][0] / 1000,
+            "latitude": header["lLatitudeValue"][0] / 1000,
+            "height": header["lHeight"][0] / 1000,
+            "name": header["sStation"][0].decode(),
+        }
+        obs_param = np.frombuffer(f.read(CC2_obs.itemsize), CC2_obs)
+        self.scantime = (
+            datetime.datetime(
+                obs_param["usSYear"][0],
+                obs_param["ucSMonth"][0],
+                obs_param["ucSDay"][0],
+                obs_param["ucSHour"][0],
+                obs_param["ucSMinute"][0],
+                obs_param["ucSSecond"][0],
+            )
+            - utc_offset
+        )
+        layer_info = obs_param["LayerInfo"]
+        scan_type = obs_param["ucType"][0]
+        if scan_type == 1:
+            # RHI
+            raise NotImplementedError("RHI scan type is not supported")
+        elif scan_type == 10:
+            # PPI
+            raise NotImplementedError("Single layer PPI scan type is not supported")
+        elif 100 < scan_type < 200:
+            # VOL
+            el_num = scan_type - 100
+            radial_num = layer_info["usRecordNumber"][0][:el_num]
+            self.el = layer_info["sSwpAngle"][0][:el_num] / 100
+            self.nyquist_v = layer_info["usMaxV"][0][:el_num] / 100
+            self.Rreso = layer_info["usZBinWidth"][0][0] / 10000
+            self.Vreso = layer_info["usVBinWidth"][0][0] / 10000
+            other_info = np.frombuffer(f.read(CC2_other.itemsize), CC2_other)
+            self.task_name = other_info["sScanName"][0].decode()
+            data_block = np.frombuffer(f.read(), CC2_data)
+            raw_azimuth = data_block["usAzimuth"] / 100 * deg2rad
+            raw_dbz = np.ma.masked_equal(data_block["ucCorZ"].astype(int), 0)
+            dbz = (raw_dbz - 64) / 2
+            zdr = np.ma.masked_equal(data_block["siZDR"].astype(int), -32768) * 0.01
+            phi = np.ma.masked_equal(data_block["siPHDP"].astype(int), -32768) * 0.01
+            rho = np.ma.masked_equal(data_block["siROHV"].astype(int), 0) * 0.001
+            kdp = np.ma.masked_equal(data_block["uKDP"].astype(int), -32768) * 0.01
+            data = dict()
+            radial_idx = [0] + (np.cumsum(radial_num) - 1).tolist()
+            for el in range(el_num):
+                start_radial_idx = radial_idx[el]
+                end_radial_idx = radial_idx[el + 1]
+                data[el] = dict()
+                data[el]["azimuth"] = raw_azimuth[start_radial_idx:end_radial_idx]
+                data[el]["REF"] = dbz[start_radial_idx:end_radial_idx]
+                data[el]["ZDR"] = zdr[start_radial_idx:end_radial_idx]
+                data[el]["PHI"] = phi[start_radial_idx:end_radial_idx]
+                data[el]["RHO"] = rho[start_radial_idx:end_radial_idx]
+                data[el]["KDP"] = kdp[start_radial_idx:end_radial_idx]
+            self.data = data
+            self.angleindex_r = self.angleindex_v = list(range(el_num))
+
     def get_nrays(self, scan: int) -> int:
         r"""Get number of radials in certain scan"""
         if self.radartype in ["SA", "SB", "CA", "CB"]:
@@ -276,7 +352,7 @@ class CinradReader(RadarBase):
 
     def get_azimuth_angles(self, scans: Optional[int] = None) -> np.ndarray:
         r"""Get index of input azimuth angle (radian)"""
-        if self.radartype in ["SA", "SB", "CA", "CB"]:
+        if self.radartype in ["SA", "SB", "CA", "CB", "CC2"]:
             if scans is None:
                 return self.azimuth
             else:
