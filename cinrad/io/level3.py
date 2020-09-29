@@ -515,6 +515,4 @@ class StandardPUP(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
-        if self.dtype in ["VEL", "SW"]:
-            ds["RF"] = (["azimuth", "distance"], self.data[1])
         return ds
