@@ -477,6 +477,7 @@ class StandardPUP(RadarBase):
             data.append(raw)
             azi.append(start_a)
         raw = np.vstack(data).astype(int)
+        self.data_rf = np.ma.masked_not_equal(raw, 1)
         raw = np.ma.masked_less_equal(raw, 5)
         self.data = (raw - offset) / scale
         self.el = params["elevation"]
@@ -515,4 +516,6 @@ class StandardPUP(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
+        if self.dtype in ['VEL', 'RF']:
+            ds['RF'] = (["azimuth", "distance"], self.data_rf)
         return ds
