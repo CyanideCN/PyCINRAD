@@ -394,7 +394,7 @@ class _ProductParams(object):
     def __init__(self, ptype: int, param_bytes: bytes):
         self.buf = BytesIO(param_bytes)
         self.params = dict()
-        map_func = {1: self._ppi, 2: self._rhi}
+        map_func = {1: self._ppi, 2: self._rhi, 51: self._ppi}
         map_func[ptype]()
         self.buf.close()
 
@@ -478,7 +478,7 @@ class StandardPUP(RadarBase):
             azi.append(start_a)
         raw = np.vstack(data).astype(int)
         self.data_rf = np.ma.masked_not_equal(raw, 1)
-        raw = np.ma.masked_less_equal(raw, 5)
+        raw = np.ma.masked_less(raw, 5)
         self.data = (raw - offset) / scale
         self.el = params["elevation"]
         az = np.linspace(0, 360, raw.shape[0])
