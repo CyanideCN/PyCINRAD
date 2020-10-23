@@ -217,9 +217,9 @@ class CinradReader(RadarBase):
                 header["ucEYear1"][0] * 100 + header["ucEYear2"][0],
                 header["ucEMonth"][0],
                 header["ucEDay"][0],
-                header["ucEHour"],
-                header["ucEMinute"],
-                header["ucESecond"],
+                header["ucEHour"][0],
+                header["ucEMinute"][0],
+                header["ucESecond"][0],
             )
             - utc_offset
         )
@@ -522,12 +522,12 @@ class StandardData(RadarBase):
         self._update_radar_info()
         # In standard data, station information stored in file
         # has higher priority, so we override some information.
-        self.stationlat = self.geo["lat"][0]
-        self.stationlon = self.geo["lon"][0]
-        self.radarheight = self.geo["height"][0]
+        self.stationlat = self.geo["lat"]
+        self.stationlon = self.geo["lon"]
+        self.radarheight = self.geo["height"]
         if self.name == "None":
             # Last resort to find info
-            self.name = self.code
+            self.name = self.geo["name"]
         self.angleindex_r = self.available_tilt("REF")  # API consistency
         del self.geo
 
@@ -544,9 +544,10 @@ class StandardData(RadarBase):
         freq = site_config["frequency"][0]
         self.wavelength = 3e8 / freq / 10000
         self.geo = geo = dict()
-        geo["lat"] = site_config["Latitude"]
-        geo["lon"] = site_config["Longitude"]
-        geo["height"] = site_config["ground_height"]
+        geo["lat"] = site_config["Latitude"][0]
+        geo["lon"] = site_config["Longitude"][0]
+        geo["height"] = site_config["ground_height"][0]
+        geo["name"] = site_config["site_name"][0].decode("ascii", errors="ignore")
         task = np.frombuffer(self.f.read(256), SDD_task)
         self.task_name = (
             task["task_name"][0].decode("ascii", errors="ignore").split("\x00")[0]
