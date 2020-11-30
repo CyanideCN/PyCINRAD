@@ -136,6 +136,8 @@ class CinradReader(RadarBase):
             self.radarheight = self.site_info["height"]
         if "name" in self.site_info:
             self.name = self.site_info["name"]
+        if "code" in self.site_info:
+            self.code = self.site_info["code"]
         if self.code == None and self.name:
             # Use name as code when code is missing
             self.code = self.name
@@ -208,6 +210,13 @@ class CinradReader(RadarBase):
 
     def _CC_handler(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
+        self.site_info = {
+            #"longitude": header["lLongitudeValue"][0] / 1000,
+            #"latitude": header["lLatitudeValue"][0] / 1000,
+            #"height": header["lHeight"][0] / 1000,
+            "name": header["cStation"][0].decode(),
+            "code": header["cStationNumber"][0].decode()
+        }
         scan_mode = header["ucScanMode"][0]
         if scan_mode < 100:
             raise NotImplementedError("Only VPPI scan mode is supported")
