@@ -212,7 +212,7 @@ class SWAN(object):
             out = data_body.reshape(xdim, ydim)
         else:
             # 3D data
-            out = data_body.reshape(zdim, ydim, xdim)
+            out = data_body.reshape(zdim, xdim, ydim)
         self.data_time = datetime.datetime(
             header["year"],
             header["month"],
