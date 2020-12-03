@@ -189,7 +189,7 @@ def text(
     ax: Any,
     drange: Number_T,
     reso: float,
-    scantime: datetime,
+    scantime: str,
     name: str,
     task: str,
     elev: float,
@@ -217,13 +217,17 @@ def text(
     ax.text(
         0,
         INIT_TEXT_POS - TEXT_SPACING * 3,
-        "Date: {}".format(scantime.strftime("%Y.%m.%d")),
+        "Date: {}".format(
+            datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%Y.%m.%d")
+        ),
         **plot_kw
     )
     ax.text(
         0,
         INIT_TEXT_POS - TEXT_SPACING * 4,
-        "Time: {}".format(scantime.strftime("%H:%M")),
+        "Time: {}".format(
+            datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+        ),
         **plot_kw
     )
     if name is None:

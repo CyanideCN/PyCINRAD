@@ -98,6 +98,7 @@ Attributes:
     task:             VCP21D
 ```
 
+For single-tilt data (i.e. files that contain only one elevation angle), `cinrad.io.StandardData.merge` can merge these files to a file contains full volumetric scan.
 
 #### Export data to `Py-ART` defined class
 

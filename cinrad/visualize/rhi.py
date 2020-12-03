@@ -2,6 +2,7 @@
 # Author: Puyuan Du
 
 import os
+from datetime import datetime
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,7 +68,9 @@ class Section(object):
         else:
             title += "Start: {}N {}E ".format(self.data.start_lat, self.data.start_lon)
             title += "End: {}N {}E ".format(self.data.end_lat, self.data.end_lon)
-        title += "Time: " + self.data.scan_time.strftime("%Y.%m.%d %H:%M ")
+        title += "Time: " + datetime.strptime(
+            self.data.scan_time, "%Y-%m-%d %H:%M:%S"
+        ).strftime("%Y.%m.%d %H:%M ")
         title += "Max: {:.1f}".format(rmax)
         plt.title(title, **plot_kw)
         lat_pos = np.linspace(self.data.start_lat, self.data.end_lat, 6)
@@ -84,7 +87,9 @@ class Section(object):
                 path_string = "{}{}_{}_RHI_{:.0f}_{:.0f}_{}.png".format(
                     fpath,
                     self.data.site_code,
-                    self.data.scan_time.strftime("%Y%m%d%H%M%S"),
+                    datetime.strptime(
+                        self.data.scan_time, "%Y-%m-%d %H:%M:%S"
+                    ).strftime("%Y%m%d%H%M%S"),
                     self.data.azimuth,
                     self.data.range,
                     self.dtype,
@@ -92,7 +97,9 @@ class Section(object):
             else:
                 path_string = "{}_{}_VCS_{}N{}E_{}N{}E.png".format(
                     self.data.site_code,
-                    self.data.scan_time.strftime("%Y%m%d%H%M%S"),
+                    datetime.strptime(
+                        self.data.scan_time, "%Y-%m-%d %H:%M:%S"
+                    ).strftime("%Y%m%d%H%M%S"),
                     self.data.start_lat,
                     self.data.start_lon,
                     self.data.end_lat,

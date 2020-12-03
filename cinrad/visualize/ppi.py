@@ -6,6 +6,7 @@ from pathlib import Path
 import warnings
 import json
 from typing import Union, Optional, Any, List
+from datetime import datetime
 
 import numpy as np
 import cartopy.crs as ccrs
@@ -268,7 +269,9 @@ class PPI(object):
             path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
                 fpath,
                 self.data.site_code,
-                self.data.scan_time.strftime("%Y%m%d%H%M%S"),
+                datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
+                    "%Y%m%d%H%M%S"
+                ),
                 self.data.elevation,
                 self.data.range,
                 self.dtype.upper(),
