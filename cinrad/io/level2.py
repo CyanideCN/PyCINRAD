@@ -211,11 +211,11 @@ class CinradReader(RadarBase):
     def _CC_handler(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
         self.site_info = {
-            #"longitude": header["lLongitudeValue"][0] / 1000,
-            #"latitude": header["lLatitudeValue"][0] / 1000,
-            #"height": header["lHeight"][0] / 1000,
+            # "longitude": header["lLongitudeValue"][0] / 1000,
+            # "latitude": header["lLatitudeValue"][0] / 1000,
+            # "height": header["lHeight"][0] / 1000,
             "name": header["cStation"][0].decode(),
-            "code": header["cStationNumber"][0].decode()
+            "code": header["cStationNumber"][0].decode(),
         }
         scan_mode = header["ucScanMode"][0]
         if scan_mode < 100:
@@ -474,7 +474,7 @@ class CinradReader(RadarBase):
             attrs={
                 "elevation": self.elev,
                 "range": int(np.round(shape * reso)),
-                "scan_time": self.scantime,
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": self.code,
                 "site_name": self.name,
                 "site_longitude": self.stationlon,
@@ -635,6 +635,39 @@ class StandardData(RadarBase):
         self.aux = aux
         self.el = [i.elev for i in self.scan_config]
 
+    @classmethod
+    def merge(cls, files: List[str], output: str):
+        r"""
+        Merge single-tilt standard data into a volumetric scan
+
+        Args:
+            files (List[str]): List of path of data to be merged
+
+            output (str): The file path to store the merged data
+        """
+        with prepare_file(files[0]) as first_file:
+            first_file.seek(160)
+            task = np.frombuffer(first_file.read(256), SDD_task)
+            cut_num = task["cut_number"][0]
+            total_seek_bytes = first_file.tell() + 256 * cut_num
+            all_tilt_data = [b""] * cut_num
+            first_file.seek(0)
+            header_bytes = first_file.read(total_seek_bytes)
+            rad = np.frombuffer(first_file.read(64), SDD_rad_header)
+            el_num = rad["elevation_number"][0] - 1
+            first_file.seek(total_seek_bytes)
+            all_tilt_data[el_num] = first_file.read()
+            for f in files[1:]:
+                with prepare_file(f) as buf:
+                    buf.seek(total_seek_bytes)
+                    rad = np.frombuffer(buf.read(64), SDD_rad_header)
+                    buf.seek(total_seek_bytes)
+                    el_num = rad["elevation_number"][0] - 1
+                    all_tilt_data[el_num] = buf.read()
+        with open(output, "wb") as out:
+            out.write(header_bytes)
+            out.write(b"".join(all_tilt_data))
+
     def get_raw(
         self, tilt: int, drange: Number_T, dtype: str
     ) -> Union[np.ndarray, tuple]:
@@ -720,7 +753,7 @@ class StandardData(RadarBase):
                 attrs={
                     "elevation": self.elev,
                     "range": int(np.round(shape * reso)),
-                    "scan_time": self.scantime,
+                    "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                     "site_code": self.code,
                     "site_name": self.name,
                     "site_longitude": self.stationlon,
@@ -759,7 +792,7 @@ class StandardData(RadarBase):
                 {dtype: da},
                 attrs={
                     "range": drange,
-                    "scan_time": self.scantime,
+                    "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                     "site_code": self.code,
                     "site_name": self.name,
                     "site_longitude": self.stationlon,

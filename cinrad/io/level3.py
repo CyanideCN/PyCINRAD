@@ -2,7 +2,7 @@
 # Author: Puyuan Du
 
 from collections import OrderedDict, defaultdict
-from typing import Union, Any
+from typing import Optional, Union, Any
 import datetime
 from io import BytesIO
 
@@ -122,7 +122,7 @@ class PUP(RadarBase):
                 attrs={
                     "elevation": self.el,
                     "range": self.max_range,
-                    "scan_time": self.scantime,
+                    "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                     "site_code": self.code,
                     "site_name": self.name,
                     "site_longitude": self.stationlon,
@@ -145,7 +145,7 @@ class PUP(RadarBase):
                 attrs={
                     "elevation": 0,
                     "range": self.max_range,
-                    "scan_time": self.scantime,
+                    "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                     "site_code": self.code,
                     "site_name": self.name,
                     "site_longitude": self.stationlon,
@@ -259,7 +259,7 @@ class SWAN(object):
         ds = Dataset(
             {dtype: da},
             attrs={
-                "scan_time": self.data_time,
+                "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": "SWAN",
                 "site_name": "SWAN",
                 "tangential_reso": np.nan,
@@ -318,7 +318,7 @@ class StormTrackInfo(object):
         )
         return lonlat
 
-    def track(self, storm_id: str, tracktype: str) -> tuple:
+    def track(self, storm_id: str, tracktype: str) -> Optional[tuple]:
         if tracktype == "forecast":
             key = "forecast storm position"
         elif tracktype == "past":
@@ -504,7 +504,7 @@ class StandardPUP(RadarBase):
             attrs={
                 "elevation": self.el,
                 "range": self.end_range,
-                "scan_time": self.scantime,
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": self.code,
                 "site_name": self.name,
                 "site_longitude": self.stationlon,

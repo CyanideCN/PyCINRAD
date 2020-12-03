@@ -98,6 +98,8 @@ Attributes:
     task:             VCP21D
 ```
 
+`cinrad.io.StandardData.merge`可以合并单仰角的数据，返回一个完整的体扫文件。
+
 
 #### 转换为`pyart.core.Radar`类型
 

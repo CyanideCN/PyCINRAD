@@ -361,7 +361,16 @@ class GridMapper(object):
         # Process data type
         self.dtype = get_dtype(fields[0])
         # Process time
-        t_arr = np.array([time.mktime(i.scan_time.timetuple()) for i in fields])
+        t_arr = np.array(
+            [
+                time.mktime(
+                    datetime.datetime.strptime(
+                        i.scan_time, "%Y-%m-%d %H:%M:%S"
+                    ).timetuple()
+                )
+                for i in fields
+            ]
+        )
         if (t_arr.max() - t_arr.min()) / 60 > 10:
             raise RadarCalculationError(
                 "Time difference of input data should not exceed 10 minutes"
@@ -439,6 +448,7 @@ class GridMapper(object):
         r_attr["elevation"] = 0
         r_attr["site_name"] = "RADMAP"
         r_attr["site_code"] = "RADMAP"
+        r_attr["scan_time"] = self.scan_time.strftime("%Y-%m-%d %H:%M:%S")
         del (
             r_attr["site_longitude"],
             r_attr["site_latitude"],

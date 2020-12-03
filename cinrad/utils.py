@@ -178,7 +178,7 @@ def lanczos_differentiator(winlen: int):
 
 
 def kdp_from_phidp(
-    phidp: np.ndarray, winlen: int = 7, dr: int = 1.0, method: bool = None
+    phidp: np.ndarray, winlen: int = 7, dr: float = 1.0, method: bool = None
 ) -> np.ndarray:
     from scipy.stats import linregress
     from scipy.ndimage.filters import convolve1d
