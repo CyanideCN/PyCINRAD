@@ -137,8 +137,8 @@ class PUP(RadarBase):
         else:
             da = DataArray(
                 self.data,
-                coords=[self.lon[0], self.lat[:, 0]],
-                dims=["longitude", "latitude"],
+                coords=[self.lat[:, 0], self.lon[0]],
+                dims=["latitude", "longitude"],
             )
             ds = Dataset(
                 {self.dtype: da},
@@ -194,7 +194,7 @@ class SWAN(object):
     dtype_conv = {0: "B", 1: "b", 2: "u2", 3: "i2", 4: "u2"}
     size_conv = {0: 1, 1: 1, 2: 2, 3: 2, 4: 2}
 
-    def __init__(self, file: Any):
+    def __init__(self, file: Any, product: Optional[str] = None):
         f = prepare_file(file)
         header = np.frombuffer(f.read(1024), SWAN_dtype)
         xdim, ydim, zdim = (
@@ -209,10 +209,10 @@ class SWAN(object):
         # Convert data to i4 to avoid overflow in later calculation
         if zdim == 1:
             # 2D data
-            out = data_body.reshape(xdim, ydim)
+            out = data_body.reshape(ydim, xdim)
         else:
             # 3D data
-            out = data_body.reshape(zdim, xdim, ydim)
+            out = data_body.reshape(zdim, ydim, xdim)
         self.data_time = datetime.datetime(
             header["year"],
             header["month"],
@@ -221,7 +221,11 @@ class SWAN(object):
             header["minute"],
         )
         # TODO: Recognize correct product name
-        self.product_name = b"".join(header["data_name"]).decode().replace("\x00", "")
+        self.product_name = (
+            (b"".join(header["data_name"]).decode("gbk", "ignore").replace("\x00", ""))
+            if not product
+            else product
+        )
         start_lon = header["start_lon"][0]
         start_lat = header["start_lat"][0]
         center_lon = header["center_lon"][0]
@@ -255,7 +259,7 @@ class SWAN(object):
             ret = self.data[level]
             if self.product_name == "3DREF":
                 dtype = "CR"
-        da = DataArray(ret, coords=[self.lon, self.lat], dims=["longitude", "latitude"])
+        da = DataArray(ret, coords=[self.lat, self.lon], dims=["latitude", "longitude"])
         ds = Dataset(
             {dtype: da},
             attrs={
@@ -263,6 +267,8 @@ class SWAN(object):
                 "site_code": "SWAN",
                 "site_name": "SWAN",
                 "tangential_reso": np.nan,
+                "range": np.nan,
+                "elevation": 0,
             },
         )
         return ds
