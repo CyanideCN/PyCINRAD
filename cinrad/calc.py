@@ -108,7 +108,7 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         )
         r_data.append(r)
     cr = np.nanmax(r_data, axis=0)
-    ret = Dataset({"CR": DataArray(cr, coords=[x, y], dims=["longitude", "latitude"])})
+    ret = Dataset({"CR": DataArray(cr, coords=[y, x], dims=["latitude", "longitude"])})
     ret.attrs = i.attrs
     ret.attrs["elevation"] = 0
     return ret

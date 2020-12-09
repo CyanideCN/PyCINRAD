@@ -110,7 +110,7 @@ cmap_cbar = {"REF":r_cmap, "VEL":v_cbar, "CR":r_cmap, "ET":et_cbar, "VIL":vil_cb
              "ZDR":zdr_cbar, "PHI":kdp_cbar, "RHO":cc_cbar, "TREF":r_cmap, "KDP":kdp_cbar,
              "VILD":vil_cbar, "OHP":ohp_cbar, "HCL":mcm.tab10}
 sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PHI":kdp_cmap_smooth, "RHO":cc_cmap_smooth,
-            "KDP":kdp_cmap_smooth}
+            "KDP":kdp_cmap_smooth, "HCL":mcm.tab10}
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",

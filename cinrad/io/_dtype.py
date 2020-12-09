@@ -105,7 +105,7 @@ SWAN_HEADER = [
     ("x_reso", "f4"),
     ("y_reso", "f4"),
     ("height", "40f4"),
-    ("station_names", "20c16"),
+    ("station_names", "20S16"),
     ("station_lons", "20f4"),
     ("station_lats", "20f4"),
     ("station_alts", "20f4"),
