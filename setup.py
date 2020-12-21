@@ -36,14 +36,7 @@ setup(
         "vanadis",
     ],
     data_files=[
-        (
-            data_pth,
-            [
-                join(data_pth, "RadarStation.pickle"),
-                join(data_pth, "chinaCity.json"),
-                join(data_pth, "hca_params.npy"),
-            ],
-        ),
+        (data_pth, glob.glob(join(data_pth, "*.*")),),
         (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
         (join(data_pth, "shapefile"), glob.glob(join(data_pth, "shapefile", "*"))),
         (join(data_pth, "font"), glob.glob(join(data_pth, "font", "*"))),
