@@ -79,10 +79,7 @@ class CinradReader(RadarBase):
     """
 
     def __init__(
-        self,
-        file: Any,
-        radar_type: Optional[str] = None,
-        file_name: Optional[str] = None,
+        self, file: Any, radar_type: Optional[str] = None,
     ):
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
@@ -104,17 +101,17 @@ class CinradReader(RadarBase):
         self.site_info = {}
         f.seek(0)
         if self.radartype in ["SA", "SB"]:
-            self._SAB_handler(f)
+            self._SAB_reader(f)
         elif self.radartype in ["CA", "CB"]:
-            self._SAB_handler(f, dtype="CAB")
+            self._SAB_reader(f, dtype="CAB")
         elif self.radartype == "CC2":
-            self._CC2_handler(f)
+            self._CC2_reader(f)
         else:
             try:
                 if self.radartype == "CC":
-                    self._CC_handler(f)
+                    self._CC_reader(f)
                 elif self.radartype in ["SC", "CD"]:
-                    self._CD_handler(f)
+                    self._CD_reader(f)
                 else:
                     raise RadarDecodeError("Unrecognized data")
             except Exception as err:
@@ -123,7 +120,7 @@ class CinradReader(RadarBase):
                 # and try this one if possible
                 try:
                     f.seek(0)
-                    self._SAB_handler(f, dtype="special")
+                    self._SAB_reader(f, dtype="special")
                 except:
                     raise err
         self._update_radar_info()
@@ -143,7 +140,7 @@ class CinradReader(RadarBase):
             self.code = self.name
         f.close()
 
-    def _SAB_handler(self, f: Any, dtype: str = "SAB"):
+    def _SAB_reader(self, f: Any, dtype: str = "SAB"):
         _header_size = 128
         if dtype == "SAB":
             radar_dtype = SAB_dtype
@@ -208,7 +205,7 @@ class CinradReader(RadarBase):
             self.angleindex_v = np.delete(angleindex, [0, 2])
         self.data = out_data
 
-    def _CC_handler(self, f: Any):
+    def _CC_reader(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
         self.site_info = {
             # "longitude": header["lLongitudeValue"][0] / 1000,
@@ -254,7 +251,7 @@ class CinradReader(RadarBase):
         self.data = data
         self.angleindex_r = self.angleindex_v = [i for i in range(len(self.el))]
 
-    def _CD_handler(self, f: Any):
+    def _CD_reader(self, f: Any):
         header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
         el_num = header["obs"]["stype"][0] - 100  # VOL
         self.task_name = vcp(el_num)
@@ -289,7 +286,7 @@ class CinradReader(RadarBase):
         self.data = data
         self.angleindex_r = self.angleindex_v = list(range(el_num))
 
-    def _CC2_handler(self, f: Any):
+    def _CC2_reader(self, f: Any):
         header = np.frombuffer(f.read(CC2_header.itemsize), CC2_header)
         self.site_info = {
             "longitude": header["lLongitudeValue"][0] / 1000,

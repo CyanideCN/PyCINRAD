@@ -3,7 +3,7 @@
 
 import abc
 import os
-import pickle
+import json
 from typing import Optional, Any
 import bz2
 import gzip
@@ -13,8 +13,8 @@ import numpy as np
 from cinrad.constants import MODULE_DIR
 from cinrad._typing import Number_T
 
-with open(os.path.join(MODULE_DIR, "data", "RadarStation.pickle"), "rb") as buf:
-    radarinfo = pickle.load(buf)
+with open(os.path.join(MODULE_DIR, "data", "radar_station.json"), "r") as buf:
+    radarinfo = json.load(buf)
 
 
 def _get_radar_info(code: Optional[str]) -> tuple:
