@@ -208,11 +208,8 @@ class CinradReader(RadarBase):
     def _CC_reader(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
         self.site_info = {
-            # "longitude": header["lLongitudeValue"][0] / 1000,
-            # "latitude": header["lLatitudeValue"][0] / 1000,
-            # "height": header["lHeight"][0] / 1000,
-            "name": header["cStation"][0].decode(),
-            "code": header["cStationNumber"][0].decode(),
+            "name": header["cStation"][0].decode("gbk", "ignore"),
+            "code": header["cStationNumber"][0].decode("utf-8", "ignore")[:5],
         }
         scan_mode = header["ucScanMode"][0]
         if scan_mode < 100:
