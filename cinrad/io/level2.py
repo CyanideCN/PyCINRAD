@@ -289,7 +289,7 @@ class CinradReader(RadarBase):
             "longitude": header["lLongitudeValue"][0] / 1000,
             "latitude": header["lLatitudeValue"][0] / 1000,
             "height": header["lHeight"][0] / 1000,
-            "name": header["sStation"][0].decode(),
+            "name": header["sStation"][0].decode('gbk'),
         }
         obs_param = np.frombuffer(f.read(CC2_obs.itemsize), CC2_obs)
         self.scantime = (
