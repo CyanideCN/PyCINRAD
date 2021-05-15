@@ -289,7 +289,7 @@ class CinradReader(RadarBase):
             "longitude": header["lLongitudeValue"][0] / 1000,
             "latitude": header["lLatitudeValue"][0] / 1000,
             "height": header["lHeight"][0] / 1000,
-            "name": header["sStation"][0].decode('gbk'),
+            "name": header["sStation"][0].decode("gbk"),
         }
         obs_param = np.frombuffer(f.read(CC2_obs.itemsize), CC2_obs)
         self.scantime = (
@@ -393,7 +393,7 @@ class CinradReader(RadarBase):
 
         Args:
             tilt (int): Index of elevation angle starting from zero.
-            
+
             drange (float): Radius of data.
 
             dtype (str): Type of product (REF, VEL, etc.)
@@ -445,7 +445,7 @@ class CinradReader(RadarBase):
 
         Args:
             tilt (int): Index of elevation angle starting from zero.
-            
+
             drange (float): Radius of data.
 
             dtype (str): Type of product (REF, VEL, etc.)
@@ -578,52 +578,57 @@ class StandardData(RadarBase):
         # Time for each radial
         radial_count = 0
         while 1:
-            header_bytes = self.f.read(64)
-            if not header_bytes:
-                # Fix for single-tilt file
-                break
-            radial_header = np.frombuffer(header_bytes, SDD_rad_header)
-            if radial_header["zip_type"][0] == 1:  # LZO compression
-                raise NotImplementedError("LZO compressed file is not supported")
-            self._time_radial.append(
-                radial_header["seconds"][0] + radial_header["microseconds"][0] / 1e6
-            )
-            el_num = radial_header["elevation_number"][0] - 1
-            if el_num not in data.keys():
-                data[el_num] = defaultdict(list)
-                aux[el_num] = defaultdict(list)
-            aux[el_num]["azimuth"].append(radial_header["azimuth"][0])
-            aux[el_num]["elevation"].append(radial_header["elevation"][0])
-            for _ in range(radial_header["moment_number"][0]):
-                moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
-                dtype_code = moment_header["data_type"][0]
-                dtype = self.dtype_corr.get(dtype_code, None)
-                data_body = np.frombuffer(
-                    self.f.read(moment_header["block_length"][0]),
-                    "u{}".format(moment_header["bin_length"][0]),
+            try:
+                header_bytes = self.f.read(64)
+                if not header_bytes:
+                    # Fix for single-tilt file
+                    break
+                radial_header = np.frombuffer(header_bytes, SDD_rad_header)
+                if radial_header["zip_type"][0] == 1:  # LZO compression
+                    raise NotImplementedError("LZO compressed file is not supported")
+                self._time_radial.append(
+                    radial_header["seconds"][0] + radial_header["microseconds"][0] / 1e6
                 )
-                if not dtype:
-                    warnings.warn(
-                        "Data type {} not understood, skipping".format(dtype_code),
-                        RuntimeWarning,
+                el_num = radial_header["elevation_number"][0] - 1
+                if el_num not in data.keys():
+                    data[el_num] = defaultdict(list)
+                    aux[el_num] = defaultdict(list)
+                aux[el_num]["azimuth"].append(radial_header["azimuth"][0])
+                aux[el_num]["elevation"].append(radial_header["elevation"][0])
+                for _ in range(radial_header["moment_number"][0]):
+                    moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
+                    dtype_code = moment_header["data_type"][0]
+                    dtype = self.dtype_corr.get(dtype_code, None)
+                    data_body = np.frombuffer(
+                        self.f.read(moment_header["block_length"][0]),
+                        "u{}".format(moment_header["bin_length"][0]),
                     )
-                    continue
-                if dtype not in aux[el_num].keys():
-                    scale = moment_header["scale"][0]
-                    offset = moment_header["offset"][0]
-                    aux[el_num][dtype] = (scale, offset)
-                # In `StandardData`, the `data` dictionary stores raw data instead of data
-                # calibrated by scale and offset.
-                # The calibration process is moved to `get_raw` part.
-                data[el_num][dtype].append(data_body)
-            radial_state = radial_header["radial_state"][0]
-            if radial_state in [0, 3]:
-                # Start of tilt or volume scan
-                self._sweep_start_ray_index.append(radial_count)
-            elif radial_state in [2, 4]:
-                self._sweep_end_ray_index.append(radial_count)
-            radial_count += 1
-            if radial_state in [4, 6]:  # End scan
+                    if not dtype:
+                        warnings.warn(
+                            "Data type {} not understood, skipping".format(dtype_code),
+                            RuntimeWarning,
+                        )
+                        continue
+                    if dtype not in aux[el_num].keys():
+                        scale = moment_header["scale"][0]
+                        offset = moment_header["offset"][0]
+                        aux[el_num][dtype] = (scale, offset)
+                    # In `StandardData`, the `data` dictionary stores raw data instead of data
+                    # calibrated by scale and offset.
+                    # The calibration process is moved to `get_raw` part.
+                    data[el_num][dtype].append(data_body)
+                radial_state = radial_header["radial_state"][0]
+                if radial_state in [0, 3]:
+                    # Start of tilt or volume scan
+                    self._sweep_start_ray_index.append(radial_count)
+                elif radial_state in [2, 4]:
+                    self._sweep_end_ray_index.append(radial_count)
+                radial_count += 1
+                if radial_state in [4, 6]:  # End scan
+                    break
+            except EOFError:
+                # Decode broken files as much as possible
+                warnings.warn("Broken compressed file detected.", RuntimeWarning)
                 break
         self.data = data
         self.aux = aux
@@ -670,7 +675,7 @@ class StandardData(RadarBase):
 
         Args:
             tilt (int): Index of elevation angle starting from zero.
-            
+
             drange (float): Radius of data.
 
             dtype (str): Type of product (REF, VEL, etc.)
@@ -725,7 +730,7 @@ class StandardData(RadarBase):
 
         Args:
             tilt (int): Index of elevation angle starting from zero.
-            
+
             drange (float): Radius of data.
 
             dtype (str): Type of product (REF, VEL, etc.)
