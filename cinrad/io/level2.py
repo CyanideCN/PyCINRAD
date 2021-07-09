@@ -562,11 +562,14 @@ class StandardData(RadarBase):
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         self.scan_config = list()
         for i in scan_config:
-            if i[11] == 39018: # fine detection scan
-                i = i.copy()
-                i[11] = 62.5
-                i[12] = 62.5
-            self.scan_config.append(ScanConfig(*i))
+            _config = ScanConfig(*i)
+            if _config.dop_reso > 32768: # fine detection scan
+                true_reso = np.round_((_config.dop_reso - 32768) / 100, 1)
+                _config_element = list(_config)
+                _config_element[11] = true_reso
+                _config_element[12] = true_reso
+                _config = ScanConfig(*_config_element)
+            self.scan_config.append(_config)
         # TODO: improve repr
         data = dict()
         # `aux` stores some auxiliary information, including azimuth angles, elevation angles,
