@@ -4,7 +4,7 @@ from glob import glob
 def replace_dtype(s: str) -> str:
     s = s.replace("ulong", "u4")
     s = s.replace("ushort", "u2")
-    s = s.replace("long", "i4")
+    s = s.replace(" long", " i4")
     s = s.replace("short", "i2")
     return s.replace("\n", " ")
 
