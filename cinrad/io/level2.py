@@ -17,7 +17,7 @@ from cinrad.io.base import RadarBase, prepare_file
 from cinrad.io._dtype import *
 from cinrad._typing import Number_T
 
-__all__ = ["CinradReader", "StandardData"]
+__all__ = ["CinradReader", "StandardData", "PhasedArrayData"]
 
 ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
@@ -563,7 +563,7 @@ class StandardData(RadarBase):
         self.scan_config = list()
         for i in scan_config:
             _config = ScanConfig(*i)
-            if _config.dop_reso > 32768: # fine detection scan
+            if _config.dop_reso > 32768:  # fine detection scan
                 true_reso = np.round_((_config.dop_reso - 32768) / 100, 1)
                 _config_element = list(_config)
                 _config_element[11] = true_reso
@@ -840,3 +840,197 @@ class StandardData(RadarBase):
     def iter_tilt(self, drange: Number_T, dtype: str) -> Generator:
         for i in self.available_tilt(dtype):
             yield self.get_data(i, drange, dtype)
+
+
+class PhasedArrayData(RadarBase):
+    def __init__(self, file):
+        f = prepare_file(file)
+        filename = Path(file).name if isinstance(file, str) else ""
+        try:
+            self.code = self.name = filename.split("_")[3]
+        except IndexError:
+            self.code = self.name = "None"
+        self._d = data = np.frombuffer(f.read(), dtype=PA_radial)
+        self.stationlon = data["header"]["longitude"][0] * 360 / 65535
+        self.stationlat = data["header"]["latitude"][0] * 360 / 65535
+        self.radarheight = data["header"]["height"][0] * 1000 / 65535
+        self.scantime = datetime.datetime.utcfromtimestamp(
+            data["data"]["radial_time"][0]
+        )
+        self.reso = np.round(data["data"]["gate_length"][0] * 1000 / 65535) / 1000
+        self.first_gate_dist = (
+            np.round(data["data"]["first_gate_dist"][0] * 1000 / 65535) / 1000
+        )
+        el_num = data["data"]["el_num"][0]
+        az_num = data["data"]["az_num"][0]
+        radial_num = 2000
+        el = data["data"]["elevation"].astype(int) * 360 / 65535
+        self.el = el.reshape(az_num, el_num).max(axis=0)
+        self.data = dict()
+        self.aux = dict()
+        # fmt:off
+        tref = (
+            np.ma.masked_equal(
+                data["data"]["tref"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 106 / 255 - 20
+        )
+        ref = (
+            np.ma.masked_equal(
+                data["data"]["ref"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 106 / 255 - 20
+        )
+        vel = (
+            np.ma.masked_equal(
+                data["data"]["vel"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 101 / 255 - 50
+        )
+        sw = (
+            np.ma.masked_equal(
+                data["data"]["sw"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 101 / 255 - 50
+        )
+        zdr = (
+            np.ma.masked_equal(
+                data["data"]["zdr"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 16 / 255 - 5
+        )
+        phi = (
+            np.ma.masked_equal(
+                data["data"]["phi"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 181 / 255
+        )
+        kdp = (
+            np.ma.masked_equal(
+                data["data"]["kdp"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 31 / 255 - 10
+        )
+        rho = (
+            np.ma.masked_equal(
+                data["data"]["rho"].reshape(az_num, el_num, radial_num), 255
+            ).astype(int) * 1.1 / 255
+        )
+        # fmt:on
+        az = data["data"]["azimuth"].astype(int).reshape(az_num, el_num) * 360 / 65535
+        for el_idx in range(el_num):
+            self.data[el_idx] = dict()
+            self.data[el_idx]["TREF"] = tref[:, el_idx, :]
+            self.data[el_idx]["REF"] = ref[:, el_idx, :]
+            self.data[el_idx]["VEL"] = vel[:, el_idx, :]
+            self.data[el_idx]["SW"] = sw[:, el_idx, :]
+            self.data[el_idx]["ZDR"] = zdr[:, el_idx, :]
+            self.data[el_idx]["PHI"] = phi[:, el_idx, :]
+            self.data[el_idx]["KDP"] = kdp[:, el_idx, :]
+            self.data[el_idx]["RHO"] = rho[:, el_idx, :]
+            self.aux[el_idx] = dict()
+            self.aux[el_idx]["azimuth"] = az[:, el_idx]
+
+    def get_raw(
+        self, tilt: int, drange: Number_T, dtype: str
+    ) -> Union[np.ndarray, tuple]:
+        r"""
+        Get radar raw data
+
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+
+            drange (float): Radius of data.
+
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            numpy.ndarray or tuple of numpy.ndarray: Raw data
+        """
+        rf_flag = False
+        self.tilt = tilt
+        dmax = np.round(self.data[tilt][dtype][0].shape[0] * self.reso)
+        if dmax < drange:
+            warnings.warn("Requested data range exceed max range in this tilt")
+        self.drange = drange
+        self.elev = self.el[tilt]
+        try:
+            data = np.ma.array(self.data[tilt][dtype])
+            # The structure of `out_data`:
+            # The key of `out_data` is the number of scan counting from zero (int).
+            # The value of `out_data` is also dictionary, the key of it are the abbreviations of
+            # product name, such as `REF`, `VEL`.
+            # The value of this sub-dictionary is the data stored in np.ma.MaskedArray.
+        except KeyError:
+            raise RadarDecodeError("Invalid product name")
+        ngates = int(drange // self.reso)
+        cut = data.T[:ngates]
+        shape_diff = ngates - cut.shape[0]
+        append = np.zeros((int(np.round(shape_diff)), cut.shape[1])) * np.ma.masked
+        if dtype in ["VEL", "SW"]:
+            try:
+                rf = self.data[tilt]["RF"]
+            except KeyError:
+                pass
+            else:
+                rf_flag = True
+                rf = rf.T[:ngates]
+                rf = np.ma.vstack([rf, append])
+        r = np.ma.vstack([cut, append])
+        if rf_flag:
+            r.mask = np.logical_or(r.mask, ~rf.mask)
+            ret = (r.T, rf.T)
+        else:
+            ret = r.T
+        return ret
+
+    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
+        r"""
+        Get radar data with extra information
+
+        Args:
+            tilt (int): Index of elevation angle starting from zero.
+
+            drange (float): Radius of data.
+
+            dtype (str): Type of product (REF, VEL, etc.)
+
+        Returns:
+            xarray.Dataset: Data.
+        """
+        # task = getattr(self, "task_name", None)
+        task = ""
+        ret = self.get_raw(tilt, drange, dtype)
+        rf_flag = (dtype in ["VEL", "SW"]) and ("RF" in self.data[tilt])
+        x, y, z, d, a = self.projection(self.reso)
+        shape = ret[0].shape[1] if rf_flag else ret.shape[1]
+        if rf_flag:
+            da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
+        else:
+            da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
+        ds = xr.Dataset(
+            {dtype: da},
+            attrs={
+                "elevation": self.elev,
+                "range": int(np.round(shape * self.reso)),
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": self.reso,
+                # "nyquist_vel": self.nyquist_v[tilt],
+                "task": task,
+            },
+        )
+        ds["longitude"] = (["azimuth", "distance"], x)
+        ds["latitude"] = (["azimuth", "distance"], y)
+        ds["height"] = (["azimuth", "distance"], z)
+        if rf_flag:
+            ds["RF"] = (["azimuth", "distance"], ret[1])
+        return ds
+
+    def projection(self, reso: float) -> tuple:
+        r = self.get_range(self.drange, reso)
+        theta = np.array(self.aux[self.tilt]["azimuth"]) * deg2rad
+        lonx, latx = get_coordinate(
+            r, theta, self.elev, self.stationlon, self.stationlat
+        )
+        hght = (
+            height(r, self.elev, self.radarheight)
+            * np.ones(theta.shape[0])[:, np.newaxis]
+        )
+        return lonx, latx, hght, r, theta

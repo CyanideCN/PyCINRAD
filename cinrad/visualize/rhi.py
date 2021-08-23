@@ -6,6 +6,7 @@ from datetime import datetime
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.cm import ScalarMappable
 from xarray import Dataset
 
 from cinrad.common import get_dtype
@@ -80,6 +81,8 @@ class Section(object):
         cor_max = xcor.values.max()
         plt.xticks(np.array([0, 0.2, 0.4, 0.6, 0.8, 1]) * cor_max, ticks)
         plt.ylabel("Height (km)", **plot_kw)  ## 修改于2019-01-22 By WU Fulang
+        sm = ScalarMappable(norm=norm, cmap=cmap)
+        plt.colorbar(sm)
 
     def __call__(self, fpath: str):
         if os.path.isdir(fpath):
