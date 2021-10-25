@@ -700,7 +700,10 @@ class StandardData(RadarBase):
             if drange > max_range:
                 drange = max_range
         self.elev = self.el[tilt]
-        reso = self.scan_config[tilt].dop_reso / 1000
+        if dtype in ["VEL", "SW"]:
+            reso = self.scan_config[tilt].dop_reso / 1000
+        else:
+            reso = self.scan_config[tilt].log_reso / 1000
         try:
             raw = np.array(self.data[tilt][dtype])
         except KeyError:
@@ -747,7 +750,10 @@ class StandardData(RadarBase):
         Returns:
             xarray.Dataset: Data.
         """
-        reso = self.scan_config[tilt].dop_reso / 1000
+        if dtype in ["VEL", "SW"]:
+            reso = self.scan_config[tilt].dop_reso / 1000
+        else:
+            reso = self.scan_config[tilt].log_reso / 1000
         ret = self.get_raw(tilt, drange, dtype)
         shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
         if self.scan_type == "PPI":
