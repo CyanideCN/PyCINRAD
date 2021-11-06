@@ -118,6 +118,16 @@ f = PUP(your_radar_file)
 data = f.get_data()
 ```
 
+#### 读取相控阵雷达数据
+
+`cinrad.io.PhasedArrayData`提供读取相控阵雷达基数据的功能，用法和其他接口非常类似。
+
+```python
+from cinrad.io import PhasedArrayData
+f = PhasedArrayData(your_radar_file)
+data = f.get_data(0, 40, 'REF')
+```
+
 ### cinrad.utils
 
 提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用，

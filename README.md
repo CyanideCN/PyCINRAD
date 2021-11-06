@@ -118,6 +118,16 @@ f = PUP(your_radar_file)
 data = f.get_data()
 ```
 
+#### Decode phased array radar data
+
+`cinrad.io.PhasedArrayData` provides similar interface to decode level 2 data from phased array radar.
+
+```python
+from cinrad.io import PhasedArrayData
+f = PhasedArrayData(your_radar_file)
+data = f.get_data(0, 40, 'REF')
+```
+
 ### cinrad.utils
 
 This submodule provides some useful algorithms in radar meteorology. All functions only accept `numpy.ndarray` as input data. This submodule extends the usage of this program, as these functions can accept customized data rather than only the data decoded by `cinrad.io`.
@@ -226,6 +236,10 @@ Plot PUP STI product on the current PPI map, including past positions, current p
 #### PPI reflectivity
 
 ![PPI reflectivity](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/Z9735_20180304125031_0.6_230_REF.png)
+
+#### Phased array radar reflectivity
+
+![Phased array radar reflectivity](https://raw.githubusercontent.com/CyanideCN/PyCINRAD/master/pictures/ZGZ02_20200826123326_0.9_40_REF.png)
 
 #### PPI reflectivity combined with cross-section
 
