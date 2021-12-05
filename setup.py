@@ -18,7 +18,7 @@ data_pth = join("cinrad", "data")
 
 setup(
     name="cinrad",
-    version="1.6.3",
+    version="1.7.0",
     description="Decode CINRAD radar data and visualize",
     long_description="Decode CINRAD radar data and visualize",
     license="GPL Licence",
@@ -36,7 +36,10 @@ setup(
         "vanadis",
     ],
     data_files=[
-        (data_pth, glob.glob(join(data_pth, "*.*")),),
+        (
+            data_pth,
+            glob.glob(join(data_pth, "*.*")),
+        ),
         (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
         (join(data_pth, "shapefile"), glob.glob(join(data_pth, "shapefile", "*"))),
         (join(data_pth, "font"), glob.glob(join(data_pth, "font", "*"))),
