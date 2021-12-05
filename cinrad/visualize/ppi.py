@@ -156,9 +156,9 @@ class PPI(object):
         lon = self.data["longitude"].values
         lat = self.data["latitude"].values
         var = self.data[self.dtype].values
-        if not self.settings["extent"]:
-            # 增加判断，城市名称绘制在选择区域内，否则自动绘制在data.lon和data.lat范围内
-            self.settings["extent"] = [lon.min(), lon.max(), lat.min(), lat.max()]
+        extent = self.settings["extent"]
+        if not extent:
+            extent = [lon.min(), lon.max(), lat.min(), lat.max()]
         # When plot single radar, azimuthal equidistant projection is used.
         # The data which has code like 'Z9XXX' is considered as single radar.
         code = self.data.site_code
@@ -169,14 +169,19 @@ class PPI(object):
             )
         else:
             proj = ccrs.PlateCarree()
-        self.geoax: GeoAxes = create_geoaxes(
-            self.fig, proj, extent=self.settings["extent"]
-        )
+        self.geoax: GeoAxes = create_geoaxes(self.fig, proj, extent=extent)
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         self.geoax.pcolormesh(
-            lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs
+            lon,
+            lat,
+            var,
+            norm=pnorm,
+            cmap=pcmap,
+            transform=self.data_crs,
+            shading="auto",
+            **kwargs
         )
         if self.rf_flag:
             rf = self.data["RF"].values
@@ -187,9 +192,11 @@ class PPI(object):
                 norm=norm_plot["RF"],
                 cmap=cmap_plot["RF"],
                 transform=self.data_crs,
+                shading="auto",
                 **kwargs
             )
-        self._autoscale()
+        if not self.settings["extent"]:
+            self._autoscale()
         add_shp(
             self.geoax,
             proj,
@@ -416,13 +423,12 @@ class PPI(object):
 
     def gridlines(self, draw_labels: bool = True, linewidth: Number_T = 0, **kwargs):
         r"""Draw grid lines on cartopy axes"""
+        from cartopy import __version__
+
         if not isinstance(self.geoax.projection, ccrs.PlateCarree):
             # Some workaround about the issue that cartopy version lower than 0.18 cannot
             # draw ticks on AzimuthalEquidistant plot
-            from cartopy import __version__
-
-            ver = tuple([i for i in __version__.split(".")])
-            if ver < ("0", "18", "0"):
+            if __version__ < "0.18":
                 warnings.warn(
                     "Cartopy older than 0.18 cannot draw ticks on AzimuthalEquidistant plot.",
                     RuntimeWarning,
@@ -432,10 +438,14 @@ class PPI(object):
             draw_labels=draw_labels,
             linewidth=linewidth,
             transform=self.data_crs,
+            rotate_labels=False,
             **kwargs
         )
-        liner.xlabels_top = False
-        liner.ylabels_right = False
+        liner.top_labels = False
+        liner.right_labels = False
+        if __version__ >= "0.20":
+            liner.ypadding = -5
+            liner.xpadding = -5
 
     def _add_city_names(self):
         with open(
