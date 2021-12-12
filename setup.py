@@ -1,14 +1,29 @@
 from setuptools import setup, find_packages
-from os.path import join
+from setuptools.extension import Extension
+from os.path import join, exists, sep
 import glob
 
 try:
     from Cython.Build import cythonize
     import numpy as np
 
-    ext_modules = cythonize(
-        [join("cinrad", "_utils.pyx"), join("cinrad", "correct", "_unwrap_2d.pyx")]
-    )
+    pyx_paths = [
+        join("cinrad", "_utils.pyx"),
+        join("cinrad", "correct", "_unwrap_2d.pyx"),
+    ]
+    cythonize_flag = True
+    for _pyx in pyx_paths:
+        if not exists(_pyx):
+            cythonize_flag = False
+            break
+    if cythonize_flag:
+        ext_modules = cythonize(pyx_paths)
+    else:
+        ext_modules = list()
+        for _pyx in pyx_paths:
+            name = _pyx.rstrip(".pyx").replace(sep, ".")
+            source = _pyx.replace(".pyx", ".c")
+            ext_modules.append(Extension(name, [source]))
     include_dirs = [np.get_include()]
 except ImportError:
     ext_modules = None
@@ -43,9 +58,9 @@ setup(
         (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
         (join(data_pth, "shapefile"), glob.glob(join(data_pth, "shapefile", "*"))),
         (join(data_pth, "font"), glob.glob(join(data_pth, "font", "*"))),
+        (join("cinrad", "correct"), [join("cinrad", "correct", "unwrap_2d_ljmu.c")]),
     ],
     scripts=[],
     ext_modules=ext_modules,
     include_dirs=include_dirs,
-    entry_points={"console_scripts": ["test = test.help:main"]},
 )
