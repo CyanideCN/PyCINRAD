@@ -27,7 +27,7 @@ jobs:
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
-          activate build
+          conda activate build
           conda install -c conda-forge cartopy
           python setup.py install
       - name: Test with pytest
