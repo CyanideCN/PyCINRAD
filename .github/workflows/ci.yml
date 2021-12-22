@@ -1,8 +1,5 @@
 name: CI
 
-env:
-  PR_PROMPT: "::warning:: Build artifact will not be uploaded due to the workflow is trigged by pull request."
-
 on:
   push:
     branches: [ master ]
@@ -25,19 +22,28 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install dependencies - Linux
+        if : ${{ matrix.os }} == "ubuntu-latest"
         run: |
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
-          if [ $GOOS = "ubuntu-latest" ]; then conda init bash;
+          conda init bash
+          conda activate build
+          conda install -c conda-forge cartopy
+          conda install pytest
+      - name: Install dependencies - Windows
+        if : ${{ matrix.os }} == "windows-latest"
+        run: |
+          conda config --set always_yes yes --set show_channel_urls true
+          conda config --prepend channels conda-forge
+          conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
           conda install -c conda-forge cartopy
           conda install pytest
       - name: Build
         run: |
           python3 setup.py install sdist bdist_wheel
-          if ${{ !!github.head_ref }} ; then echo $PR_PROMPT; fi
       - name: Test with pytest
         run: |
           python3 -m pytest test
