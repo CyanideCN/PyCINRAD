@@ -42,12 +42,6 @@ jobs:
           python3 -m pip install --upgrade setuptools
           python3 -m pip install --upgrade wheel
           python3 setup.py bdist_wheel
-      - name: Test with pytest - Windows
-        if : matrix.os == 'windows-latest'
-        run: |
-          python3 -m pip install --upgrade pytest
-          python3 setup.py install
-          python3 -m pytest test
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: ${{ !github.head_ref }}
