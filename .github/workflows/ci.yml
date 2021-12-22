@@ -36,12 +36,11 @@ jobs:
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
+          conda install -c conda-forge cartopy
+          conda install pytest, wheel
       - name: Build
         run: |
-          python setup.py install sdist bdist_wheel
-      - name: Test with pytest
-        run: |
-          python3 -m pytest test
+          python3 setup.py sdist bdist_wheel
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: ${{ !github.head_ref }}
