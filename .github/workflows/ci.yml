@@ -30,10 +30,14 @@ jobs:
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
-          conda init
+          if [ $GOOS = "ubuntu-latest" ]; then conda init bash;
           conda activate build
           conda install -c conda-forge cartopy
-          python setup.py install sdist bdist_wheel
+          conda install pytest
+      - name: Build
+        run: |
+          python3 setup.py install sdist bdist_wheel
+          if ${{ !!github.head_ref }} ; then echo $PR_PROMPT; fi
       - name: Test with pytest
         run: |
           python3 -m pytest test
