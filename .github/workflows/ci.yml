@@ -28,10 +28,7 @@ jobs:
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
-          conda init bash
-          conda activate build
-          conda install -c conda-forge cartopy
-          conda install pytest, wheel
+          $CONDA/bin/activate activate build
       - name: Install dependencies - Windows
         if : matrix.os == 'windows-latest'
         run: |
@@ -39,11 +36,9 @@ jobs:
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
-          conda install -c conda-forge cartopy
-          conda install pytest, wheel
       - name: Build
         run: |
-          python3 setup.py install sdist bdist_wheel
+          python setup.py install sdist bdist_wheel
       - name: Test with pytest
         run: |
           python3 -m pytest test
