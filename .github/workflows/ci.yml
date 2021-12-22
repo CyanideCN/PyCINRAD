@@ -37,13 +37,14 @@ jobs:
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
           conda install -c conda-forge cartopy
-          pip3 install pytest, wheel
       - name: Build
         run: |
+          pip3 install wheel
           python3 setup.py bdist_wheel
       - name: Test with pytest - Windows
         if : matrix.os == 'windows-latest'
         run: |
+          pip3 install pytest
           python3 setup.py install
           python3 -m pytest test
       - name: Upload artifact
