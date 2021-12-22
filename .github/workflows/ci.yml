@@ -23,7 +23,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies - Linux
-        if : ${{ matrix.os }} == "ubuntu-latest"
+        if : runner.os == "ubuntu-latest"
         run: |
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
@@ -31,16 +31,16 @@ jobs:
           conda init bash
           conda activate build
           conda install -c conda-forge cartopy
-          conda install pytest
+          conda install pytest, wheel
       - name: Install dependencies - Windows
-        if : ${{ matrix.os }} == "windows-latest"
+        if : runner.os == "windows-latest"
         run: |
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
           conda install -c conda-forge cartopy
-          conda install pytest
+          conda install pytest, wheel
       - name: Build
         run: |
           python3 setup.py install sdist bdist_wheel
