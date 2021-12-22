@@ -159,6 +159,7 @@ class PPI(object):
         extent = self.settings["extent"]
         if not extent:
             extent = [lon.min(), lon.max(), lat.min(), lat.max()]
+        self.settings["extent"] = extent
         # When plot single radar, azimuthal equidistant projection is used.
         # The data which has code like 'Z9XXX' is considered as single radar.
         code = self.data.site_code

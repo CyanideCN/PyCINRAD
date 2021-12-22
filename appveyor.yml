@@ -3,21 +3,21 @@ environment:
   CONDA_PATH: "C:\\Miniconda"
 
   matrix:
-    - PYTHON_VERSION: "3.6"
     - PYTHON_VERSION: "3.7"
     - PYTHON_VERSION: "3.8"
+    - PYTHON_VERSION: "3.9"
 
 platform:
     - x64
 
 install:
     # Use the pre-installed Miniconda for the desired arch
-    - ps: if($env:PYTHON_VERSION -eq '3.6')
-            { $env:CONDA_PATH="$($env:CONDA_PATH)36" }
     - ps: if($env:PYTHON_VERSION -eq '3.7')
             { $env:CONDA_PATH="$($env:CONDA_PATH)37" }
-    - ps: if($env:PLATFORM -eq 'x64')
-            { $env:CONDA_PATH="$($env:CONDA_PATH)-x64" }
+    - ps: if($env:PYTHON_VERSION -eq '3.8')
+            { $env:CONDA_PATH="$($env:CONDA_PATH)38" }
+    - ps: if($env:PYTHON_VERSION -eq '3.9')
+            { $env:CONDA_PATH="$($env:CONDA_PATH)39" }
     - ps: $env:path="$($env:CONDA_PATH);$($env:CONDA_PATH)\Scripts;$($env:CONDA_PATH)\Library\bin;C:\cygwin\bin;$($env:PATH)"
     - cmd: conda config --set always_yes yes --set show_channel_urls true
     - cmd: conda update -n base conda
