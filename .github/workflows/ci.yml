@@ -23,7 +23,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies - Linux
-        if : matrix.os == "ubuntu-latest"
+        if : matrix.os == 'ubuntu-latest'
         run: |
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
@@ -33,7 +33,7 @@ jobs:
           conda install -c conda-forge cartopy
           conda install pytest, wheel
       - name: Install dependencies - Windows
-        if : matrix.os == "windows-latest"
+        if : matrix.os == 'windows-latest'
         run: |
           conda config --set always_yes yes --set show_channel_urls true
           conda config --prepend channels conda-forge
