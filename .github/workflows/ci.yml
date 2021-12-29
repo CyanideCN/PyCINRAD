@@ -32,11 +32,6 @@ jobs:
           python -m pip install --upgrade setuptools
           python -m pip install --upgrade wheel
           python setup.py bdist_wheel
-      - name: Test with pytest - Windows
-        run: |
-          python3 -m pip install --upgrade pytest
-          python3 setup.py install
-          python3 -m pytest test
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         if: ${{ !github.head_ref }}
