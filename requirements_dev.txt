@@ -1,6 +1,0 @@
-numpy
-cython>0.15
-metpy>=0.8
-pyshp!=2.0.0, !=2.0.1
-matplotlib>=2.2
-pytest
