@@ -36,11 +36,11 @@ jobs:
           conda config --prepend channels conda-forge
           conda create -n build --strict-channel-priority python=${{ matrix.python-version }} --file requirements_dev.txt
           conda activate build
-          conda install -c conda-forge cartopy
       - name: Build
         run: |
           python -m pip install --upgrade setuptools
           python -m pip install --upgrade wheel
+          python -m pip install --upgrade cython
           python setup.py bdist_wheel
       - name: Upload artifact
         uses: actions/upload-artifact@v2
