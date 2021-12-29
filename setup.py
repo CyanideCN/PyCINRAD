@@ -3,31 +3,27 @@ from setuptools.extension import Extension
 from os.path import join, exists, sep
 import glob
 
-try:
-    from Cython.Build import cythonize
-    import numpy as np
+from Cython.Build import cythonize
+import numpy as np
 
-    pyx_paths = [
-        join("cinrad", "_utils.pyx"),
-        join("cinrad", "correct", "_unwrap_2d.pyx"),
-    ]
-    cythonize_flag = True
+pyx_paths = [
+    join("cinrad", "_utils.pyx"),
+    join("cinrad", "correct", "_unwrap_2d.pyx"),
+]
+cythonize_flag = True
+for _pyx in pyx_paths:
+    if not exists(_pyx):
+        cythonize_flag = False
+        break
+if cythonize_flag:
+    ext_modules = cythonize(pyx_paths)
+else:
+    ext_modules = list()
     for _pyx in pyx_paths:
-        if not exists(_pyx):
-            cythonize_flag = False
-            break
-    if cythonize_flag:
-        ext_modules = cythonize(pyx_paths)
-    else:
-        ext_modules = list()
-        for _pyx in pyx_paths:
-            name = _pyx.rstrip(".pyx").replace(sep, ".")
-            source = _pyx.replace(".pyx", ".c")
-            ext_modules.append(Extension(name, [source]))
-    include_dirs = [np.get_include()]
-except ImportError:
-    ext_modules = None
-    include_dirs = None
+        name = _pyx.rstrip(".pyx").replace(sep, ".")
+        source = _pyx.replace(".pyx", ".c")
+        ext_modules.append(Extension(name, [source]))
+include_dirs = [np.get_include()]
 
 data_pth = join("cinrad", "data")
 
