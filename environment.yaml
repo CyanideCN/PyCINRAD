@@ -1,0 +1,13 @@
+name: build
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - numpy
+  - matplotlib
+  - cartopy
+  - setuptools
+  - cython
+  - xarray
+  - metpy
+  - pyshp
