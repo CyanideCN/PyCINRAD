@@ -187,7 +187,7 @@ class PUP(RadarBase):
 class SWAN(object):
     r"""
     Class reading SWAN grid data.
-    
+
     Args:
         file (str, IO): Path points to the file or a file object.
     """
@@ -214,18 +214,22 @@ class SWAN(object):
             # 3D data
             out = data_body.reshape(zdim, ydim, xdim)
         self.data_time = datetime.datetime(
-            header["year"],
-            header["month"],
-            header["day"],
-            header["hour"],
-            header["minute"],
+            header["year"][0],
+            header["month"][0],
+            header["day"][0],
+            header["hour"][0],
+            header["minute"][0],
         )
         # TODO: Recognize correct product name
-        self.product_name = (
+        product_name = (
             (b"".join(header["data_name"]).decode("gbk", "ignore").replace("\x00", ""))
             if not product
             else product
         )
+        self.product_name = product_name
+        for pname in ["CR", "3DREF"]:
+            if product_name.startswith(pname):
+                self.product_name = pname
         start_lon = header["start_lon"][0]
         start_lat = header["start_lat"][0]
         center_lon = header["center_lon"][0]
