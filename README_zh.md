@@ -9,6 +9,8 @@ Decode CINRAD (China New Generation Weather Radar) data and visualize.
 
 读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
+**使用交流群：480305660**
+
 **`example`文件夹里有详细的使用示例！**
 
 ## 安装
