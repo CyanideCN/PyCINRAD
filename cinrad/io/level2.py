@@ -79,7 +79,9 @@ class CinradReader(RadarBase):
     """
 
     def __init__(
-        self, file: Any, radar_type: Optional[str] = None,
+        self,
+        file: Any,
+        radar_type: Optional[str] = None,
     ):
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
@@ -606,6 +608,9 @@ class StandardData(RadarBase):
                 aux[el_num]["elevation"].append(radial_header["elevation"][0])
                 for _ in range(radial_header["moment_number"][0]):
                     moment_header = np.frombuffer(self.f.read(32), SDD_mom_header)
+                    if moment_header["block_length"][0] == 0:
+                        # Some ill-formed files
+                        continue
                     dtype_code = moment_header["data_type"][0]
                     dtype = self.dtype_corr.get(dtype_code, None)
                     data_body = np.frombuffer(
