@@ -7,7 +7,7 @@ from . import correct
 
 from .deprecation import Deprecated
 
-__version__ = "1.7.0"
+__version__ = "1.7.1"
 
 # deprecate `easycalc` namespace
 easycalc = Deprecated(
