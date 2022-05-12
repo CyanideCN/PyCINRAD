@@ -6,6 +6,7 @@ from . import visualize
 from . import correct
 
 from .deprecation import Deprecated
+from .io import read_level2
 
 __version__ = "1.7.1"
 
