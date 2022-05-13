@@ -33,6 +33,7 @@ mapping = {
     "PHI": "differential_phase",
     "ZDR": "differential_reflectivity",
     "RHO": "cross_correlation_ratio",
+    "KDP": "specific_differential_phase",
 }
 
 
