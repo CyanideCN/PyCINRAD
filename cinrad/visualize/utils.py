@@ -25,7 +25,6 @@ from cinrad.constants import MODULE_DIR
 from cinrad._typing import Array_T, Number_T
 from cinrad.error import RadarPlotError
 from cinrad.visualize.layout import (
-    CBAR_POS,
     FIG_SIZE,
     GEOAXES_POS,
     INIT_TEXT_POS,

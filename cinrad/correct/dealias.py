@@ -11,12 +11,13 @@ except ImportError:
 
     unwrap_2d = ExceptionOnCall(
         RadarCalculationError,
-        "Cython is not installed, velocity dealias function cannot be used.",
+        "Cython is not installed, velocity dealias function cannot be used. If you "
+        "installed Cython after installing cinrad, please re-install cinrad.",
     )
 
 
 def dealias_unwrap_2d(vdata: np.ndarray, nyquist_vel: float) -> np.ndarray:
-    """ Dealias using 2D phase unwrapping (sweep-by-sweep). """
+    """Dealias using 2D phase unwrapping (sweep-by-sweep)."""
     scaled_sweep = vdata * np.pi / nyquist_vel
     sweep_mask = np.isnan(vdata)
     scaled_sweep[sweep_mask] = 0

@@ -16,7 +16,6 @@ from xarray import Dataset
 from cinrad.visualize.utils import *
 from cinrad.constants import MODULE_DIR
 from cinrad.projection import get_coordinate
-from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
 from cinrad.common import get_dtype, is_radial
