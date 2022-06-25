@@ -238,8 +238,8 @@ def text(
     )
 
 
-def save(fpath: str):
-    plt.savefig(fpath, pad_inches=0)
+def save(fpath: str, **kwargs):
+    plt.savefig(fpath, pad_inches=0, **kwargs)
     plt.close("all")
 
 

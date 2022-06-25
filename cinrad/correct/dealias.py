@@ -34,5 +34,5 @@ def dealias(v_data: Dataset) -> Dataset:
     out_data = dealias_unwrap_2d(v_field, nyq)
     out_masked = np.ma.array(out_data, mask=np.isnan(v_field))
     v_ret = v_data.copy()
-    v_ret["VEL"] = (["azimuth", "distance"], out_masked)
+    v_ret["VEL"] = (tuple(v_data.dims.keys()), out_masked)
     return v_ret

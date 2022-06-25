@@ -49,11 +49,20 @@ class Section(object):
         norm = norm_plot[self.dtype]
         if self.settings["interp"]:
             plt.contourf(
-                xcor, ycor, rhi, 128, cmap=cmap, norm=norm,
+                xcor,
+                ycor,
+                rhi,
+                128,
+                cmap=cmap,
+                norm=norm,
             )
         else:
             plt.pcolormesh(
-                xcor, ycor, rhi, cmap=cmap, norm=norm,
+                xcor,
+                ycor,
+                rhi,
+                cmap=cmap,
+                norm=norm,
             )
         plt.ylim(0, self.settings["hlim"])
         if self.rhi_flag:
@@ -73,14 +82,14 @@ class Section(object):
             self.data.scan_time, "%Y-%m-%d %H:%M:%S"
         ).strftime("%Y.%m.%d %H:%M ")
         title += "Max: {:.1f}".format(rmax)
-        plt.title(title, **plot_kw)
+        plt.title(title, **text_kw)
         lat_pos = np.linspace(self.data.start_lat, self.data.end_lat, 6)
         lon_pos = np.linspace(self.data.start_lon, self.data.end_lon, 6)
         tick_formatter = lambda x, y: "{:.2f}N\n{:.2f}E".format(x, y)
         ticks = list(map(tick_formatter, lat_pos, lon_pos))
         cor_max = xcor.values.max()
         plt.xticks(np.array([0, 0.2, 0.4, 0.6, 0.8, 1]) * cor_max, ticks)
-        plt.ylabel("Height (km)", **plot_kw)  ## 修改于2019-01-22 By WU Fulang
+        plt.ylabel("Height (km)", **text_kw)  ## 修改于2019-01-22 By WU Fulang
         sm = ScalarMappable(norm=norm, cmap=cmap)
         plt.colorbar(sm)
 
@@ -111,4 +120,4 @@ class Section(object):
             save_path = os.path.join(fpath, path_string)
         else:
             save_path = fpath
-        save(save_path)
+        save(save_path, bbox_inches="tight")

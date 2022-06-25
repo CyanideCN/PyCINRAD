@@ -699,11 +699,11 @@ class StandardData(RadarBase):
         """
         # The scan number is set to zero in RHI mode.
         self.tilt = tilt if self.scan_type == "PPI" else 0
-        self.drange = drange
         if self.scan_type == "RHI":
             max_range = self.scan_config[0].max_range1 / 1000
             if drange > max_range:
                 drange = max_range
+        self.drange = drange
         self.elev = self.el[tilt]
         if dtype in ["VEL", "SW"]:
             reso = self.scan_config[tilt].dop_reso / 1000
@@ -789,7 +789,8 @@ class StandardData(RadarBase):
                 ds["RF"] = (["azimuth", "distance"], ret[1])
         else:
             # Manual projection
-            dist = np.linspace(reso, self.drange, ret.shape[1])
+            gate_num = ret[0].shape[1] if dtype in ["VEL", "SW"] else ret.shape[1]
+            dist = np.linspace(reso, self.drange, gate_num)
             azimuth = self.aux[tilt]["azimuth"][0]
             elev = self.aux[tilt]["elevation"]
             d, e = np.meshgrid(dist, elev)
@@ -805,12 +806,12 @@ class StandardData(RadarBase):
             start_lon = self.stationlon
             start_lat = self.stationlat
             end_lon, end_lat = get_coordinate(
-                drange, azimuth * deg2rad, 0, self.stationlon, self.stationlat
+                self.drange, azimuth * deg2rad, 0, self.stationlon, self.stationlat
             )
             ds = xr.Dataset(
                 {dtype: da},
                 attrs={
-                    "range": drange,
+                    "range": self.drange,
                     "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                     "site_code": self.code,
                     "site_name": self.name,
@@ -822,6 +823,7 @@ class StandardData(RadarBase):
                     "start_lat": start_lat,
                     "end_lon": end_lon,
                     "end_lat": end_lat,
+                    "nyquist_vel": self.scan_config[tilt].nyquist_spd
                 },
             )
             ds["x_cor"] = (["tilt", "distance"], d)
