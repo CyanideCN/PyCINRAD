@@ -359,7 +359,7 @@ class PPI(object):
         if interpolate:
             ax2.contourf(xcor, ycor, sl, 256, cmap=cmap, norm=norm)
         else:
-            ax2.pcolormesh(xcor, ycor, sl, cmap=cmap, norm=norm)
+            ax2.pcolormesh(xcor, ycor, sl, cmap=cmap, norm=norm, shading="auto")
         if ymax:
             ax2.set_ylim(0, ymax)
         else:

@@ -57,13 +57,7 @@ class Section(object):
                 norm=norm,
             )
         else:
-            plt.pcolormesh(
-                xcor,
-                ycor,
-                rhi,
-                cmap=cmap,
-                norm=norm,
-            )
+            plt.pcolormesh(xcor, ycor, rhi, cmap=cmap, norm=norm, shading="auto")
         plt.ylim(0, self.settings["hlim"])
         if self.rhi_flag:
             title = "Range-Height Indicator\n"
