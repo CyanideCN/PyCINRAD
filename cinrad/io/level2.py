@@ -252,7 +252,24 @@ class CinradReader(RadarBase):
 
     def _CD_reader(self, f: Any):
         header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
-        el_num = header["obs"]["stype"][0] - 100  # VOL
+        self.site_info = {
+            "name": header["site_info"]["station"][0].decode("gbk", "ignore"),
+            "code": header["site_info"]["stationnumber"][0].decode("utf-8", "ignore")[
+                :5
+            ],
+            "longitude": header["site_info"]["Longitudevalue"][0] / 100,
+            "latitude": header["site_info"]["Latitudevalue"][0] / 100,
+            "height": header["site_info"]["height"][0] / 1000,
+        }
+        scan_type = header["obs"]["stype"][0]
+        if scan_type == 1:
+            raise NotImplementedError("RHI scan type is not supported")
+        elif scan_type == 10:
+            el_num = 1
+        elif 100 < scan_type < 200:
+            el_num = scan_type - 100
+        else:
+            raise ValueError("Invalid scan type {}".format(scan_type))
         self.task_name = vcp(el_num)
         self.scantime = (
             datetime.datetime(
@@ -266,7 +283,7 @@ class CinradReader(RadarBase):
             - utc_offset
         )
         self.nyquist_v = header["obs"]["layerparam"]["MaxV"][0][:el_num] / 100
-        self.Rreso = self.Vreso = 0.25
+        self.Rreso = self.Vreso = header["obs"]["layerparam"]["binWidth"][0][0] / 10000
         self.el = header["obs"]["layerparam"]["Swangles"][0][:el_num] / 100
         data = dict()
         for el in range(el_num):
@@ -345,6 +362,8 @@ class CinradReader(RadarBase):
                 data[el]["KDP"] = kdp[start_radial_idx:end_radial_idx]
             self.data = data
             self.angleindex_r = self.angleindex_v = list(range(el_num))
+        else:
+            raise ValueError("Invalid scan type {}".format(scan_type))
 
     def get_nrays(self, scan: int) -> int:
         r"""Get number of radials in certain scan"""
@@ -823,7 +842,7 @@ class StandardData(RadarBase):
                     "start_lat": start_lat,
                     "end_lon": end_lon,
                     "end_lat": end_lat,
-                    "nyquist_vel": self.scan_config[tilt].nyquist_spd
+                    "nyquist_vel": self.scan_config[tilt].nyquist_spd,
                 },
             )
             ds["x_cor"] = (["tilt", "distance"], d)
