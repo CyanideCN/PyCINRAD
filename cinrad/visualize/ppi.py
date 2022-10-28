@@ -273,7 +273,9 @@ class PPI(object):
                 fpath,
                 self.data.site_code,
                 self.dtype.upper(),
-                self.data.scan_time.strftime("%Y%m%d%H%M%S"),
+                datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
+                        "%Y%m%d%H%M%S"
+                    ),
                 exStr,
             )
             plt.savefig(pngFileName,transparent=True, pad_inches=0)
@@ -531,6 +533,10 @@ class PPI(object):
             proj = self.data_crs
         self.geoax: GeoAxes = self.fig.add_axes([0,0,1,1], projection=proj)
         self.geoax.set_aspect("equal")
+        self.geoax.background_patch.set_visible(False)
+        self.geoax.outline_patch.set_visible(False)
+        self.fig.patch.set_alpha(0)
+        self.geoax.background_patch.set_alpha(0)        
         lon = self.data["longitude"].values
         lat = self.data["latitude"].values
         extent = self.settings["extent"]
