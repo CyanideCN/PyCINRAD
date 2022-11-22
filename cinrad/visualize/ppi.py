@@ -512,3 +512,4 @@ class PPI(object):
             llon = lon_center - lon_extend
             ulon = lon_center + lon_extend
         self.geoax.set_extent([llon, ulon, llat, ulat], self.geoax.projection)
+ 
