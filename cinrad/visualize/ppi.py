@@ -16,11 +16,11 @@ from xarray import Dataset
 from cinrad.visualize.utils import *
 from cinrad.constants import MODULE_DIR
 from cinrad.projection import get_coordinate
+from cinrad.error import RadarPlotError
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
 from cinrad.common import get_dtype, is_radial
 from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
-import matplotlib.pyplot as plt
 
 __all__ = ["PPI"]
 
@@ -105,14 +105,11 @@ class PPI(object):
         self._plot_ctx = dict()
         self.rf_flag = "RF" in data
         self._fig_init = False
-        if style=="transparent":
-            self._plotTransparent(**kwargs)
-        else:
-            self._plot(**kwargs)
-            if is_inline():
-                # In inline mode, figure will not be dynamically changed
-                # call this action at initialization
-                self._text_before_save()
+        self._plot(**kwargs)
+        if is_inline():
+            # In inline mode, figure will not be dynamically changed
+            # call this action at initialization
+            self._text_before_save()
 
     def __call__(self, fpath: Optional[str] = None):
         if not fpath:
@@ -173,7 +170,9 @@ class PPI(object):
             )
         else:
             proj = ccrs.PlateCarree()
-        self.geoax: GeoAxes = create_geoaxes(self.fig, proj, extent=extent)
+        self.geoax: GeoAxes = create_geoaxes(
+            self.fig, proj, extent=extent, style=self.settings["style"]
+        )
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -254,6 +253,8 @@ class PPI(object):
 
     def _text_before_save(self):
         # Finalize texting here
+        if self.settings["style"] == "transparent":
+            return
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.settings["plot_labels"]:
@@ -265,47 +266,39 @@ class PPI(object):
             )
 
     def _save(self, fpath: str):
-        if(self.settings["style"]=="transparent"):
-            extent=self.geoax.get_extent(crs=self.data_crs)
-            ex=[ str(x)[0:6] for x in extent]
-            exStr="GIS_"+'_'.join(ex)
-            pngFileName="{}{}_{}_{}_{}.png".format(
-                fpath,
-                self.data.site_code,
-                self.dtype.upper(),
-                datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
-                        "%Y%m%d%H%M%S"
-                    ),
-                exStr,
-            )
-            plt.savefig(pngFileName,transparent=True, pad_inches=0)
-        else:
-            if not self.settings["is_inline"]:
-                self._text_before_save()
-            if not self.settings["path_customize"]:
-                if not fpath.endswith(os.path.sep):
-                    fpath += os.path.sep
-                if self.settings["slice"]:
-                    data = self.settings["slice"]
-                    sec = "_{:.2f}_{:.2f}_{:.2f}_{:.2f}".format(
-                        data.start_lat, data.start_lon, data.end_lat, data.end_lon
-                    )
-                else:
-                    sec = ""
-                path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
-                    fpath,
-                    self.data.site_code,
-                    datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
-                        "%Y%m%d%H%M%S"
-                    ),
-                    self.data.elevation,
-                    self.data.range,
-                    self.dtype.upper(),
-                    sec,
+        if not self.settings["is_inline"]:
+            self._text_before_save()
+        if not self.settings["path_customize"]:
+            if not fpath.endswith(os.path.sep):
+                fpath += os.path.sep
+            if self.settings["slice"]:
+                data = self.settings["slice"]
+                sec = "_{:.2f}_{:.2f}_{:.2f}_{:.2f}".format(
+                    data.start_lat, data.start_lon, data.end_lat, data.end_lon
                 )
             else:
-                path_string = fpath
-            save(path_string)
+                sec = ""
+            if self.settings["style"] == "transparent":
+                extent = self.geoax.get_extent(crs=self.data_crs)
+                ex = [str(x)[0:6] for x in extent]
+                gis = "GIS_" + "_".join(ex)
+            else:
+                gis = ""
+            path_string = "{}{}_{}_{:.1f}_{}_{}{}_{}.png".format(
+                fpath,
+                self.data.site_code,
+                datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
+                    "%Y%m%d%H%M%S"
+                ),
+                self.data.elevation,
+                self.data.range,
+                self.dtype.upper(),
+                sec,
+                gis,
+            )
+        else:
+            path_string = fpath
+        save(path_string, self.settings["style"])
 
     def plot_range_rings(
         self,
@@ -378,7 +371,7 @@ class PPI(object):
         if interpolate:
             ax2.contourf(xcor, ycor, sl, 256, cmap=cmap, norm=norm)
         else:
-            ax2.pcolormesh(xcor, ycor, sl, cmap=cmap, norm=norm, shading="auto")
+            ax2.pcolormesh(xcor, ycor, sl, cmap=cmap, norm=norm)
         if ymax:
             ax2.set_ylim(0, ymax)
         else:
@@ -519,36 +512,3 @@ class PPI(object):
             llon = lon_center - lon_extend
             ulon = lon_center + lon_extend
         self.geoax.set_extent([llon, ulon, llat, ulat], self.geoax.projection)
-
-    def _plotTransparent(self,**kwargs):
-        plt.clf()
-        plt.axis("off")
-        code = self.data.site_code
-        if is_radial(self.data) or (code.startswith("Z") and code[1:].isnumeric()):
-            proj = ccrs.AzimuthalEquidistant(
-                central_longitude=self.data.site_longitude,
-                central_latitude=self.data.site_latitude,
-            )
-        else:
-            proj = self.data_crs
-        self.geoax: GeoAxes = self.fig.add_axes([0,0,1,1], projection=proj)
-        self.geoax.set_aspect("equal")
-        self.geoax.background_patch.set_visible(False)
-        self.geoax.outline_patch.set_visible(False)
-        self.fig.patch.set_alpha(0)
-        self.geoax.background_patch.set_alpha(0)        
-        lon = self.data["longitude"].values
-        lat = self.data["latitude"].values
-        extent = self.settings["extent"]
-        if not extent:
-            extent = [lon.min(), lon.max(), lat.min(), lat.max()]
-        self.settings["extent"] = extent
-        self.geoax.set_extent(extent, crs=self.data_crs)
-        dtype = get_dtype(self.data)
-        pnorm = norm_plot[dtype]
-        pcmap = cmap_plot[dtype]
-        var = self.data[dtype].values        
-        self.geoax.pcolormesh(lon, lat, var, norm=pnorm, cmap=pcmap, transform=self.data_crs, **kwargs)
-        if not self.settings["extent"]:
-            self._autoscale() 
-        self._fig_init = True

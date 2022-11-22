@@ -25,6 +25,7 @@ from cinrad.constants import MODULE_DIR
 from cinrad._typing import Array_T, Number_T
 from cinrad.error import RadarPlotError
 from cinrad.visualize.layout import (
+    CBAR_POS,
     FIG_SIZE,
     GEOAXES_POS,
     INIT_TEXT_POS,
@@ -167,6 +168,8 @@ class ShpReader(shapereader.BasicReader):
 
 
 def setup_plot(dpi: Number_T, figsize: tuple = FIG_SIZE, style: str = "black") -> Any:
+    if style == "transparent":
+        figsize=(10,10)
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.axis("off")
     if style == "black":
@@ -238,8 +241,11 @@ def text(
     )
 
 
-def save(fpath: str, **kwargs):
-    plt.savefig(fpath, pad_inches=0, **kwargs)
+def save(fpath: str, style: str = "black"):
+    if style == "transparent":
+        plt.savefig(fpath, transparent=True, pad_inches=0)
+    else:
+        plt.savefig(fpath, pad_inches=0)
     plt.close("all")
 
 
@@ -258,6 +264,7 @@ def add_shp(
     style: str = "black",
     extent: Optional[Array_T] = None,
 ):
+    if style == "transparent": return
     shp_crs = ccrs.PlateCarree()
     shps = get_shp()
     if style == "black":
@@ -328,8 +335,13 @@ def draw_highlight_area(area: Union[Array_T, str]):
         pat.set_zorder(4)
 
 
-def create_geoaxes(fig: Any, proj: ccrs.Projection, extent: List[Number_T]) -> GeoAxes:
-    ax = fig.add_axes(GEOAXES_POS, projection=proj)
+def create_geoaxes(fig: Any, proj: ccrs.Projection, extent: List[Number_T], style: str = "black") -> GeoAxes:
+    if style == 'transparent':
+        plt.clf()
+        ax = fig.add_axes([0, 0, 1, 1], projection=proj)
+        ax.set_aspect("equal")
+    else:
+        ax = fig.add_axes(GEOAXES_POS, projection=proj)
     ax.background_patch.set_visible(False)
     ax.outline_patch.set_visible(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
