@@ -403,7 +403,7 @@ class GridMapper(object):
         y_lower = np.round_(self.lat_ravel.min(), 2)
         y_upper = np.round_(self.lat_ravel.max(), 2)
         x_grid = np.arange(x_lower, x_upper + x_step, x_step)
-        y_grid = np.arange(y_lower, y_upper + x_step, x_step)
+        y_grid = np.arange(y_lower, y_upper + y_step, y_step)
         return np.meshgrid(x_grid, y_grid)
 
     def _map_points(self, x: np.ndarray, y: np.ndarray) -> np.ma.MaskedArray:
@@ -449,11 +449,9 @@ class GridMapper(object):
         r_attr["site_name"] = "RADMAP"
         r_attr["site_code"] = "RADMAP"
         r_attr["scan_time"] = self.scan_time.strftime("%Y-%m-%d %H:%M:%S")
-        del (
-            r_attr["site_longitude"],
-            r_attr["site_latitude"],
-            r_attr["nyquist_vel"],
-        )
+        for k in ["site_longitude", "site_latitude", "nyquist_vel"]:
+            if k in r_attr:
+                del r_attr[k]
         ret.attrs = r_attr
         return ret
 
