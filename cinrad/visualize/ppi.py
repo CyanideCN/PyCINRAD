@@ -169,7 +169,9 @@ class PPI(object):
             )
         else:
             proj = ccrs.PlateCarree()
-        self.geoax: GeoAxes = create_geoaxes(self.fig, proj, extent=extent)
+        self.geoax: GeoAxes = create_geoaxes(
+            self.fig, proj, extent=extent, style=self.settings["style"]
+        )
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -250,6 +252,8 @@ class PPI(object):
 
     def _text_before_save(self):
         # Finalize texting here
+        if self.settings["style"] == "transparent":
+            return
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
         if self.settings["plot_labels"]:
@@ -273,7 +277,13 @@ class PPI(object):
                 )
             else:
                 sec = ""
-            path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
+            if self.settings["style"] == "transparent":
+                extent = self.geoax.get_extent(crs=self.data_crs)
+                ex = [str(x)[0:6] for x in extent]
+                gis = "GIS_" + "_".join(ex)
+            else:
+                gis = ""
+            path_string = "{}{}_{}_{:.1f}_{}_{}{}_{}.png".format(
                 fpath,
                 self.data.site_code,
                 datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
@@ -283,10 +293,11 @@ class PPI(object):
                 self.data.range,
                 self.dtype.upper(),
                 sec,
+                gis,
             )
         else:
             path_string = fpath
-        save(path_string)
+        save(path_string, self.settings["style"])
 
     def plot_range_rings(
         self,
