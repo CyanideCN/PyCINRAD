@@ -18,7 +18,7 @@ from cinrad.error import RadarDecodeError
 
 
 def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
-    return np.sqrt(x ** 2 + y ** 2), np.arctan2(x, y) * 180 / np.pi
+    return np.sqrt(x**2 + y**2), np.arctan2(x, y) * 180 / np.pi
 
 
 # As metpy use a different table to map the data

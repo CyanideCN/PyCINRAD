@@ -54,9 +54,9 @@ def resample(
 
     Returns:
         numpy.ndarray: Resampled radial data.
-        
+
         numpy.ndarray: Resampled distance.
-        
+
         numpy.ndarray: Resampled azimuth.
     """
     # Target grid
@@ -94,7 +94,7 @@ def grid_2d(
         numpy.ndarray: Interpolated data in grid.
 
         numpy.ndarray: Interpolated longitude in grid.
-        
+
         numpy.ndarray: Interpolated latitude in grid.
     """
     r_x, r_y = resolution

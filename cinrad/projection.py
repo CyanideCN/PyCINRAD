@@ -29,7 +29,7 @@ def height(
     """
     return (
         distance * np.sin(elevation * deg2rad)
-        + distance ** 2 / (2 * rm)
+        + distance**2 / (2 * rm)
         + radarheight / 1000
     )
 

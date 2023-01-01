@@ -230,7 +230,7 @@ def quick_vild(r_list: Volume_T) -> Dataset:
 class VCS(object):
     r"""
     Class performing vertical cross-section calculation
-    
+
     Args:
         r_list (list(xarray.Dataset)): The whole volume scan.
     """
