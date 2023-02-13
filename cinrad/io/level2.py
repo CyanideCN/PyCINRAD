@@ -725,7 +725,7 @@ class StandardData(RadarBase):
                 drange = max_range
         self.drange = drange
         self.elev = self.el[tilt]
-        if dtype in ["VEL", "SW"]:
+        if dtype in ["VEL", "SW", "VELSZ"]:
             reso = self.scan_config[tilt].dop_reso / 1000
         else:
             reso = self.scan_config[tilt].log_reso / 1000
@@ -746,7 +746,7 @@ class StandardData(RadarBase):
         cut = data[:, :ngates]
         shape_diff = ngates - cut.shape[1]
         append = np.zeros((cut.shape[0], int(shape_diff))) * np.ma.masked
-        if dtype in ["VEL", "SW"]:
+        if dtype in ["VEL", "SW", "VELSZ"]:
             # The reserved code 1 indicates folded velocity.
             # These region will be shaded by color of `RF`.
             rf = np.ma.masked_not_equal(cut.data, 1)
@@ -754,7 +754,7 @@ class StandardData(RadarBase):
         cut = np.ma.hstack([cut, append])
         scale, offset = self.aux[tilt][dtype]
         r = (cut - offset) / scale
-        if dtype in ["VEL", "SW"]:
+        if dtype in ["VEL", "SW", "VELSZ"]:
             ret = (r, rf)
             # RF data is separately packed into the data.
         else:
@@ -775,7 +775,7 @@ class StandardData(RadarBase):
         Returns:
             xarray.Dataset: Data.
         """
-        if dtype in ["VEL", "SW"]:
+        if dtype in ["VEL", "SW", "VELSZ"]:
             reso = self.scan_config[tilt].dop_reso / 1000
         else:
             reso = self.scan_config[tilt].log_reso / 1000
@@ -783,7 +783,7 @@ class StandardData(RadarBase):
         shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
         if self.scan_type == "PPI":
             x, y, z, d, a = self.projection(reso)
-            if dtype in ["VEL", "SW"]:
+            if dtype in ["VEL", "SW", "VELSZ"]:
                 da = xr.DataArray(ret[0], coords=[a, d], dims=["azimuth", "distance"])
             else:
                 da = xr.DataArray(ret, coords=[a, d], dims=["azimuth", "distance"])
@@ -805,7 +805,7 @@ class StandardData(RadarBase):
             ds["longitude"] = (["azimuth", "distance"], x)
             ds["latitude"] = (["azimuth", "distance"], y)
             ds["height"] = (["azimuth", "distance"], z)
-            if dtype in ["VEL", "SW"]:
+            if dtype in ["VEL", "SW", "VELSZ"]:
                 ds["RF"] = (["azimuth", "distance"], ret[1])
         else:
             # Manual projection
@@ -815,7 +815,7 @@ class StandardData(RadarBase):
             elev = self.aux[tilt]["elevation"]
             d, e = np.meshgrid(dist, elev)
             h = height(d, e, self.radarheight)
-            if dtype in ["VEL", "SW"]:
+            if dtype in ["VEL", "SW", "VELSZ"]:
                 da = xr.DataArray(
                     ret[0], coords=[elev, dist], dims=["tilt", "distance"]
                 )
