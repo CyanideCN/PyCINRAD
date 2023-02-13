@@ -538,7 +538,8 @@ class StandardData(RadarBase):
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
-                  17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc'}
+                  17:'SNRV', 19:'POTS', 21:'COP', 26:'VELSZ', 27:'DR', 32:'Zc', 33:'Vc',
+                  34:'Wc', 35:'ZDRc'}
     # fmt: on
     def __init__(self, file: Any):
         with prepare_file(file) as self.f:

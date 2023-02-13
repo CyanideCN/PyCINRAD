@@ -242,7 +242,7 @@ class PPI(object):
             "Max: {:.1f}{}".format(np.nanmax(var), unit[self.dtype]),
             **plot_kw
         )
-        if self.dtype == "VEL":
+        if self.dtype.startswith("VEL"):
             ax2.text(
                 0,
                 INIT_TEXT_POS - TEXT_SPACING * 9,
@@ -280,10 +280,10 @@ class PPI(object):
             if self.settings["style"] == "transparent":
                 extent = self.geoax.get_extent(crs=self.data_crs)
                 ex = [str(x)[0:6] for x in extent]
-                gis = "GIS_" + "_".join(ex)
+                gis = "_GIS_" + "_".join(ex)
             else:
                 gis = ""
-            path_string = "{}{}_{}_{:.1f}_{}_{}{}_{}.png".format(
+            path_string = "{}{}_{}_{:.1f}_{}_{}{}{}.png".format(
                 fpath,
                 self.data.site_code,
                 datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(

@@ -113,7 +113,8 @@ sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PH
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
-            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.", "HCL":"Hydrometeor Class"}
+            "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.",
+            "HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ-2 Code"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
         "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "HCL":""}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
@@ -136,6 +137,12 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
              "HCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice", "Low-Dens Graupel",
                     "High-Dens Graupel", "Hail", "Big Drops", ""]}
 # fmt: on
+
+# Add entry for VELSZ
+for dic in zip([norm_plot, norm_cbar, cmap_plot, cmap_cbar, sec_plot, unit, cbar_text]):
+    _d = dic[0]
+    _d["VELSZ"] = _d["VEL"]
+
 font = FontProperties(
     fname=os.path.join(MODULE_DIR, "data", "font", "NotoSansHans-Regular.otf")
 )
