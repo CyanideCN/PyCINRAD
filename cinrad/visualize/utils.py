@@ -345,12 +345,17 @@ def draw_highlight_area(area: Union[Array_T, str]):
 def create_geoaxes(
     fig: Any, proj: ccrs.Projection, extent: List[Number_T], style: str = "black"
 ) -> GeoAxes:
+    from cartopy import __version__
+
     if style == "transparent":
         ax = fig.add_axes([0, 0, 1, 1], projection=proj)
         ax.set_aspect("equal")
     else:
         ax = fig.add_axes(GEOAXES_POS, projection=proj)
-    ax.background_patch.set_visible(False)
+    if __version__ < "0.18":
+        ax.background_patch.set_visible(False)
+    else:
+        ax.patch.set_visible(False)
     ax.outline_patch.set_visible(False)
     x_min, x_max, y_min, y_max = extent[0], extent[1], extent[2], extent[3]
     ax.set_extent([x_min, x_max, y_min, y_max], crs=ccrs.PlateCarree())
