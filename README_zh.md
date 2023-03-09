@@ -110,7 +110,7 @@ Attributes:
 
 #### 读取PUP数据和SWAN数据
 
-`cinrad.io.PUP`提供读取PUP数据的功能，读取出来的数据为`cinrad.datastruct.Radial`格式并且可以用来绘制PPI。目前只支持径向类型的数据。
+`cinrad.io.PUP`提供读取PUP数据的功能，目前只支持径向类型数据以及组合反射率。新格式的PUP产品（ROSE产品）可以用`cinrad.io.level3.StandardPUP`来读取，目前只支持径向类型的部分产品。
 `cinrad.io.SWAN`提供相似的接口来解码SWAN数据。
 
 ```python
@@ -165,7 +165,7 @@ r_list = list(f.iter_tilt(230, 'REF'))
 import cinrad
 from cinrad.visualize import Section
 f = cinrad.io.CinradReader(your_radar_file)
-rl = [f.get_data(i, drange, 'REF') for i in f.angleindex_r]
+rl = list(f.iter_tilt(230, 'REF'))
 vcs = cinrad.calc.VCS(rl)
 sec = vcs.get_section(start_cart=(111, 25.5), end_cart=(112, 26.7)) # 传入经纬度坐标
 sec = vcs.get_section(start_polar=(115, 350), end_polar=(130, 30)) # 传入极坐标
@@ -207,11 +207,11 @@ from cinrad.visualize import PPI
 fig = PPI(R) #绘制基本反射率图片
 fig('D:\\') #传入文件夹路径保存图片
 from cinrad.visualize import Section
-fig = Section(Slice_) #绘制剖面
+fig = Section(sec) #绘制剖面
 fig('D:\\')
 ```
 
-如果读取了其他雷达的数据，转换成`cinrad.datastruct.Radial`即可使用此模块画图，详见`example`下的`read_nexrad_level3_velocity.py`
+如果读取了其他雷达的数据，转换成上文提到的合适的`xarray.Dataset`类型也可使用此模块画图。
 传入的文件路径可以是文件夹路径也可以是文件路径（仅接受以`.png`结尾的文件路径），如果没有传入路径，程序将会把图片保存在用户目录
 （Windows 下称为「个人文件夹」，如 `C:\Users\tom`）下的`PyCINRAD`文件夹。
 
@@ -228,7 +228,7 @@ fig('D:\\')
 |`highlight`|地区边界高亮|
 |`dpi`|分辨率|
 |`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
-|`section`|在`ppi`图中绘制的`Slice_`的数据|
+|`section`|在`ppi`图中绘制的剖面的数据，为`xarray.Dataset`类型|
 |`style`|背景颜色，可设置为黑色`black`或者白色`white`|
 |`add_city_names`|标注城市名|
 
@@ -239,7 +239,11 @@ fig('D:\\')
 
 ##### PPI.plot_cross_section(self, data, ymax=None)
 
-在PPI图下方加入VCS剖面图，和`vcs`参数相似，用此函数还可以自定义y轴的范围。
+在PPI图下方加入VCS剖面图，和`vcs`参数相似，用此函数还可以自定义y轴的范围。需要注意的是，在`%matplotlib inline`环境下，不能使用此方法插入剖面。请在实例化`PPI`时就使用`section`参数来插入剖面。
+
+```python
+fig = cinrad.visualize.PPI(data, section=section_data)
+```
 
 ##### PPI.storm_track_info(self, filepath)
 
