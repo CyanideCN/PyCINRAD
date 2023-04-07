@@ -183,3 +183,24 @@ l3_radial_block = [
 ]
 
 l3_radial_block_dtype = np.dtype(l3_radial_block)
+
+l3_raster_header = [
+    ("dtype", "i4"),
+    ("scale", "i4"),
+    ("offset", "i4"),
+    ("bin_length", "i2"),
+    ("flags", "i2"),
+    ("row_reso", "i4"),
+    ("col_reso", "i4"),
+    ("row_side_length", "i4"),
+    ("col_side_length", "i4"),
+    ("max_val", "int"),
+    ("range_of_max", "i4"),
+    ("az_of_max", "f4"),
+    ("min_val", "i4"),
+    ("range_of_min", "i4"),
+    ("az_of_min", "f4"),
+    ("res", "8c"),
+]
+
+l3_raster_header_dtype = np.dtype(l3_raster_header)

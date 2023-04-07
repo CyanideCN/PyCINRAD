@@ -400,29 +400,37 @@ class HailIndex(object):
         return out
 
 
-class _ProductParams(object):
-    def __init__(self, ptype: int, param_bytes: bytes):
-        self.buf = BytesIO(param_bytes)
-        self.params = dict()
-        map_func = {1: self._ppi, 2: self._rhi, 51: self._ppi}
-        map_func[ptype]()
-        self.buf.close()
+class ProductParamsParser(object):
 
-    def _ppi(self):
-        elev = np.frombuffer(self.buf.read(4), "f4")[0]
-        self.params["elevation"] = elev
+    @staticmethod
+    def _ppi(buf):
+        params = {}
+        elev = np.frombuffer(buf.read(4), "f4")[0]
+        params["elevation"] = elev
+        return params
 
-    def _rhi(self):
-        azi = np.frombuffer(self.buf.read(4), "f4")[0]
-        top = np.frombuffer(self.buf.read(4), "f4")[0]
-        bot = np.frombuffer(self.buf.read(4), "f4")[0]
-        self.params["azimuth"] = azi
-        self.params["top"] = top
-        self.params["bottom"] = bot
+    @staticmethod
+    def _rhi(buf):
+        params = {}
+        azi = np.frombuffer(buf.read(4), "f4")[0]
+        top = np.frombuffer(buf.read(4), "f4")[0]
+        bot = np.frombuffer(buf.read(4), "f4")[0]
+        params["azimuth"] = azi
+        params["top"] = top
+        params["bottom"] = bot
+        return params
 
+    @staticmethod
+    def _empty(buf):
+        pass
 
-def get_product_param(ptype: int, param_bytes: bytes) -> dict:
-    return _ProductParams(ptype, param_bytes).params
+    @classmethod
+    def parse(cls, product_type, param_bytes):
+        buf = BytesIO(param_bytes)
+        map_func = {1: cls._ppi, 2: cls._rhi, 51: cls._ppi, 18: cls._empty}
+        params = map_func[product_type](buf)
+        buf.close()
+        return params
 
 
 class StandardPUP(RadarBase):
@@ -435,17 +443,21 @@ class StandardPUP(RadarBase):
     # fmt: on
     def __init__(self, file):
         self.f = prepare_file(file)
-        self._parse()
+        self._parse_header()
         self._update_radar_info()
         self.stationlat = self.geo["lat"][0]
         self.stationlon = self.geo["lon"][0]
         self.radarheight = self.geo["height"][0]
+        if self.ptype == 1: # PPI radial format
+            self._parse_radial_fmt()
+        elif self.ptype == 18:
+            self._parse_raster_fmt()
         if self.name == "None":
             self.name = self.code
         del self.geo
         self.f.close()
 
-    def _parse(self):
+    def _parse_header(self):
         header = np.frombuffer(self.f.read(32), SDD_header)
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
@@ -460,18 +472,21 @@ class StandardPUP(RadarBase):
         cut_num = task["cut_number"][0]
         self.scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
-        ptype = ph["product_type"][0]
+        self.ptype = ph["product_type"][0]
         self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
         self.dtype = self.dtype_corr[ph["dtype_1"][0]]
-        params = get_product_param(ptype, self.f.read(64))
+        if self.dtype == 'Zc' and self.ptype == 18:
+            self.dtype = 'CR'
+        self.params = ProductParamsParser.parse(self.ptype, self.f.read(64))
 
+    def _parse_radial_fmt(self):
         radial_header = np.frombuffer(self.f.read(64), L3_radial)
         bin_length = radial_header["bin_length"][0]
         scale = radial_header["scale"][0]
         offset = radial_header["offset"][0]
-        self.reso = radial_header["reso"][0] / 1000
-        self.start_range = radial_header["start_range"][0] / 1000
-        self.end_range = radial_header["max_range"][0] / 1000
+        reso = radial_header["reso"][0] / 1000
+        start_range = radial_header["start_range"][0] / 1000
+        end_range = radial_header["max_range"][0] / 1000
         data = list()
         azi = list()
         while True:
@@ -487,39 +502,34 @@ class StandardPUP(RadarBase):
             data.append(raw)
             azi.append(start_a)
         raw = np.vstack(data).astype(int)
-        self.data_rf = np.ma.masked_not_equal(raw, 1)
+        data_rf = np.ma.masked_not_equal(raw, 1)
         raw = np.ma.masked_less(raw, 5)
-        self.data = (raw - offset) / scale
-        self.el = params["elevation"]
+        data = (raw - offset) / scale
         az = np.linspace(0, 360, raw.shape[0])
         az += azi[0]
         az[az > 360] -= 360
-        self.azi = az * deg2rad
+        azi = az * deg2rad
         # self.azi = np.deg2rad(azi)
-
-    def get_data(self):
-        dist = np.arange(
-            self.start_range + self.reso, self.end_range + self.reso, self.reso
-        )
+        dist = np.arange(start_range + reso, end_range + reso, reso)
         lon, lat = get_coordinate(
-            dist, self.azi, self.el, self.stationlon, self.stationlat
+            dist, azi, self.params["elevation"], self.stationlon, self.stationlat
         )
         hgt = (
-            height(dist, self.el, self.radarheight)
-            * np.ones(self.azi.shape[0])[:, np.newaxis]
+            height(dist, self.params["elevation"], self.radarheight)
+            * np.ones(azi.shape[0])[:, np.newaxis]
         )
-        da = DataArray(self.data, coords=[self.azi, dist], dims=["azimuth", "distance"])
+        da = DataArray(data, coords=[azi, dist], dims=["azimuth", "distance"])
         ds = Dataset(
             {self.dtype: da},
             attrs={
-                "elevation": self.el,
-                "range": self.end_range,
+                "elevation": self.params["elevation"],
+                "range": end_range,
                 "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": self.code,
                 "site_name": self.name,
                 "site_longitude": self.stationlon,
                 "site_latitude": self.stationlat,
-                "tangential_reso": self.reso,
+                "tangential_reso": reso,
                 "task": self.task_name,
             },
         )
@@ -527,5 +537,45 @@ class StandardPUP(RadarBase):
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
         if self.dtype in ["VEL", "SW"]:
-            ds["RF"] = (["azimuth", "distance"], self.data_rf)
-        return ds
+            ds["RF"] = (["azimuth", "distance"], data_rf)
+        self._dataset = ds
+
+    def _parse_raster_fmt(self):
+        raster_header = np.frombuffer(self.f.read(64), L3_raster)
+        bin_length = raster_header["bin_length"][0]
+        scale = raster_header["scale"][0]
+        offset = raster_header["offset"][0]
+        reso = raster_header["row_reso"][0] / 1000
+        nx = raster_header['row_side_length'][0]
+        ny = raster_header['col_side_length'][0]
+        raw = np.frombuffer(
+            self.f.read(nx * ny * bin_length), "u{}".format(bin_length)
+        ).reshape(nx, ny).astype(int)
+        raw = np.ma.masked_less(raw, 5)
+        data = (raw - offset) / scale
+        max_range = nx / 2 * reso
+        y = np.linspace(max_range, max_range * -1, ny) / 111 + self.stationlat
+        x = np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(y * deg2rad)) + self.stationlon
+        lon, lat = np.meshgrid(x, y)
+        da = DataArray(
+            data,
+            coords=[lat[:, 0], lon[0]],
+            dims=["latitude", "longitude"],
+        )
+        ds = Dataset(
+            {self.dtype: da},
+            attrs={
+                "elevation": 0,
+                "range": max_range,
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": reso,
+            },
+        )
+        self._dataset = ds
+
+    def get_data(self):
+        return self._dataset
