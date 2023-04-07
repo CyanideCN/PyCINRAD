@@ -17,6 +17,9 @@ from cinrad.io._dtype import *
 from cinrad.error import RadarDecodeError
 
 
+__all__ = ["PUP", "SWAN", "StandardPUP", "StormTrackInfo", "HailIndex"]
+
+
 def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
     return np.sqrt(x**2 + y**2), np.arctan2(x, y) * 180 / np.pi
 
@@ -401,7 +404,6 @@ class HailIndex(object):
 
 
 class ProductParamsParser(object):
-
     @staticmethod
     def _ppi(buf):
         params = {}
@@ -448,7 +450,7 @@ class StandardPUP(RadarBase):
         self.stationlat = self.geo["lat"][0]
         self.stationlon = self.geo["lon"][0]
         self.radarheight = self.geo["height"][0]
-        if self.ptype == 1: # PPI radial format
+        if self.ptype == 1:  # PPI radial format
             self._parse_radial_fmt()
         elif self.ptype == 18:
             self._parse_raster_fmt()
@@ -475,8 +477,8 @@ class StandardPUP(RadarBase):
         self.ptype = ph["product_type"][0]
         self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
         self.dtype = self.dtype_corr[ph["dtype_1"][0]]
-        if self.dtype == 'Zc' and self.ptype == 18:
-            self.dtype = 'CR'
+        if self.dtype in ["Zc", "REF"] and self.ptype == 18:
+            self.dtype = "CR"
         self.params = ProductParamsParser.parse(self.ptype, self.f.read(64))
 
     def _parse_radial_fmt(self):
@@ -546,16 +548,21 @@ class StandardPUP(RadarBase):
         scale = raster_header["scale"][0]
         offset = raster_header["offset"][0]
         reso = raster_header["row_reso"][0] / 1000
-        nx = raster_header['row_side_length'][0]
-        ny = raster_header['col_side_length'][0]
-        raw = np.frombuffer(
-            self.f.read(nx * ny * bin_length), "u{}".format(bin_length)
-        ).reshape(nx, ny).astype(int)
+        nx = raster_header["row_side_length"][0]
+        ny = raster_header["col_side_length"][0]
+        raw = (
+            np.frombuffer(self.f.read(nx * ny * bin_length), "u{}".format(bin_length))
+            .reshape(nx, ny)
+            .astype(int)
+        )
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
         max_range = nx / 2 * reso
         y = np.linspace(max_range, max_range * -1, ny) / 111 + self.stationlat
-        x = np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(y * deg2rad)) + self.stationlon
+        x = (
+            np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(y * deg2rad))
+            + self.stationlon
+        )
         lon, lat = np.meshgrid(x, y)
         da = DataArray(
             data,
