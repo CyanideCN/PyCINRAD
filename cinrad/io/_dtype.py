@@ -9,7 +9,7 @@ __all__ = [
     'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
     'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock',
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
-    'L3_raster'
+    'L3_raster','HAIL_dtype'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -135,3 +135,14 @@ CD_DATA = np.dtype(
         ("rec", _CD_record, 998),
     ]
 )
+
+PUP_HAIL_TABLE=[
+    ("hail_id", "i4"),
+    ("hail_azimuth", "f4"),
+    ("hail_range", "i4"),
+    ("hail_possibility", "i4"),
+    ("hail_severe_possibility", "i4"),
+    ("hail_size", "f4"),
+    ("rcm", "i4"),
+]
+HAIL_dtype= np.dtype(PUP_HAIL_TABLE)
