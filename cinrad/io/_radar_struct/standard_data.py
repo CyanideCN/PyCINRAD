@@ -164,7 +164,7 @@ l3_radial_header = [
     ("start_range", "i4"),
     ("max_range", "i4"),
     ("nradial", "i4"),
-    ("max_val", "int"),
+    ("max_val", "i4"),
     ("range_of_max", "i4"),
     ("az_of_max", "f4"),
     ("min_val", "i4"),

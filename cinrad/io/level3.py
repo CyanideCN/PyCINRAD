@@ -446,11 +446,16 @@ class ProductParamsParser(object):
 class StandardPUP(RadarBase):
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
-                  9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
-                  17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 71:'RR', 72:'HGT',
-                  73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS', 77:'CTR'}
-    ptype_corr = {1:'REF', 6:'ET', 8:'VCS', 9:'LRA', 10:'LRM', 13:'SRR', 14:'SRM', 18:'CR',
-                  23:'VIL', 25:'OHP', 26:'THP', 27:'STP', 28:'USP', 38:'HI',51:'HCL',52:'QPE'}
+                9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
+                17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 36:'PDP', 37:'KDP', 
+                38:'RHO',71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS', 
+                77:'CTR'}
+    
+    ptype_corr = {1:"PPI", 2:"RHI", 3:"CAPPI", 4:"MAX", 6:"ET", 8:"VCS", 
+                9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL", 
+                24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD", 
+                32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M", 
+                40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE"}
     # fmt: on
     def __init__(self, file):
         self.f = prepare_file(file)
@@ -488,7 +493,8 @@ class StandardPUP(RadarBase):
         self.ptype = ph["product_type"][0]
         self.pname = self.ptype_corr[self.ptype]
         self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
-        self.dtype = self.dtype_corr[ph["dtype_1"][0]]
+        if self.ptype == 1:
+            self.pname = self.dtype_corr[ph["dtype_1"][0]]
         self.params = ProductParamsParser.parse(self.ptype, self.f.read(64))
 
     def _parse_radial_fmt(self):
@@ -551,7 +557,7 @@ class StandardPUP(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
-        if self.dtype in ["VEL", "SW"]:
+        if self.pname in ["VEL", "SW"]:
             ds["RF"] = (["azimuth", "distance"], data_rf)
         self._dataset = ds
 
