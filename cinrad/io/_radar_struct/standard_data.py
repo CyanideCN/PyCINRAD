@@ -205,7 +205,7 @@ l3_raster_header = [
 
 l3_raster_header_dtype = np.dtype(l3_raster_header)
 
-l3_hail_table=[
+l3_hail_table = [
     ("hail_id", "i4"),
     ("hail_azimuth", "f4"),
     ("hail_range", "i4"),
@@ -215,4 +215,4 @@ l3_hail_table=[
     ("rcm", "i4"),
 ]
 
-l3_hail_table_dtype= np.dtype(l3_hail_table)
+l3_hail_table_dtype = np.dtype(l3_hail_table)
