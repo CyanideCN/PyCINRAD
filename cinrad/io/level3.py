@@ -447,14 +447,14 @@ class StandardPUP(RadarBase):
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                 9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
-                17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 36:'PDP', 37:'KDP', 
-                38:'RHO',71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS', 
+                17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 36:'PDP', 37:'KDP',
+                38:'RHO',71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS',
                 77:'CTR'}
-    
-    ptype_corr = {1:"PPI", 2:"RHI", 3:"CAPPI", 4:"MAX", 6:"ET", 8:"VCS", 
-                9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL", 
-                24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD", 
-                32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M", 
+
+    ptype_corr = {1:"PPI", 2:"RHI", 3:"CAPPI", 4:"MAX", 6:"ET", 8:"VCS",
+                9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL",
+                24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD",
+                32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M",
                 40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE"}
     # fmt: on
     def __init__(self, file):
@@ -508,7 +508,7 @@ class StandardPUP(RadarBase):
         nradial = radial_header["nradial"][0]
         data = list()
         azi = list()
-        for i in range(nradial):
+        for _ in range(nradial):
             buf = self.f.read(32)
             if not buf:
                 break
@@ -525,6 +525,7 @@ class StandardPUP(RadarBase):
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
         if self.ptype in [25, 26, 27, 28]:
+            # Mask 0 value in precipitation products
             data = np.ma.masked_equal(data, 0)
         az = np.linspace(0, 360, raw.shape[0])
         az += azi[0]
