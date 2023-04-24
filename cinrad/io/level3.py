@@ -429,19 +429,33 @@ class ProductParamsParser(object):
     @classmethod
     def parse(cls, product_type, param_bytes):
         buf = BytesIO(param_bytes)
-        map_func = {1: cls._ppi, 2: cls._rhi, 51: cls._ppi, 18: cls._empty}
-        params = map_func[product_type](buf)
+        map_func = {
+            1: cls._ppi,
+            2: cls._rhi,
+            51: cls._ppi,
+            52: cls._ppi,
+            18: cls._empty,
+        }
+        params = {"elevation": 0}
+        if product_type in map_func:
+            params = map_func[product_type](buf)
         buf.close()
         return params
 
 
 class StandardPUP(RadarBase):
-
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
-                  17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 71:'RR', 72:'HGT',
-                  73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS', 77:'CTR'}
+                  17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 36:'PDP', 37:'KDP',
+                  38:'RHO',71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS',
+                  77:'CTR'}
+
+    ptype_corr = {1:"PPI", 2:"RHI", 3:"CAPPI", 4:"MAX", 6:"ET", 8:"VCS",
+                  9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL",
+                  24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD",
+                  32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M",
+                  40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE"}
     # fmt: on
     def __init__(self, file):
         self.f = prepare_file(file)
@@ -450,13 +464,15 @@ class StandardPUP(RadarBase):
         self.stationlat = self.geo["lat"][0]
         self.stationlon = self.geo["lon"][0]
         self.radarheight = self.geo["height"][0]
-        if self.ptype == 1:  # PPI radial format
-            self._parse_radial_fmt()
-        elif self.ptype == 18:
-            self._parse_raster_fmt()
         if self.name == "None":
             self.name = self.code
         del self.geo
+        if self.ptype in [1, 13, 14, 25, 26, 27, 28, 51, 52]:  # PPI radial format
+            self._parse_radial_fmt()
+        elif self.ptype in [6, 8, 9, 10, 18, 23]:
+            self._parse_raster_fmt()
+        elif self.ptype == 38:
+            self._parse_hail_fmt()
         self.f.close()
 
     def _parse_header(self):
@@ -475,10 +491,10 @@ class StandardPUP(RadarBase):
         self.scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
         self.ptype = ph["product_type"][0]
+        self.pname = self.ptype_corr[self.ptype]
         self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
-        self.dtype = self.dtype_corr[ph["dtype_1"][0]]
-        if self.dtype in ["Zc", "REF"] and self.ptype == 18:
-            self.dtype = "CR"
+        if self.ptype == 1:
+            self.pname = self.dtype_corr[ph["dtype_1"][0]]
         self.params = ProductParamsParser.parse(self.ptype, self.f.read(64))
 
     def _parse_radial_fmt(self):
@@ -489,9 +505,10 @@ class StandardPUP(RadarBase):
         reso = radial_header["reso"][0] / 1000
         start_range = radial_header["start_range"][0] / 1000
         end_range = radial_header["max_range"][0] / 1000
+        nradial = radial_header["nradial"][0]
         data = list()
         azi = list()
-        while True:
+        for _ in range(nradial):
             buf = self.f.read(32)
             if not buf:
                 break
@@ -507,6 +524,9 @@ class StandardPUP(RadarBase):
         data_rf = np.ma.masked_not_equal(raw, 1)
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
+        if self.ptype in [25, 26, 27, 28]:
+            # Mask 0 value in precipitation products
+            data = np.ma.masked_equal(data, 0)
         az = np.linspace(0, 360, raw.shape[0])
         az += azi[0]
         az[az > 360] -= 360
@@ -522,7 +542,7 @@ class StandardPUP(RadarBase):
         )
         da = DataArray(data, coords=[azi, dist], dims=["azimuth", "distance"])
         ds = Dataset(
-            {self.dtype: da},
+            {self.pname: da},
             attrs={
                 "elevation": self.params["elevation"],
                 "range": end_range,
@@ -538,7 +558,7 @@ class StandardPUP(RadarBase):
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
         ds["height"] = (["azimuth", "distance"], hgt)
-        if self.dtype in ["VEL", "SW"]:
+        if self.pname in ["VEL", "SW"]:
             ds["RF"] = (["azimuth", "distance"], data_rf)
         self._dataset = ds
 
@@ -570,7 +590,7 @@ class StandardPUP(RadarBase):
             dims=["latitude", "longitude"],
         )
         ds = Dataset(
-            {self.dtype: da},
+            {self.pname: da},
             attrs={
                 "elevation": 0,
                 "range": max_range,
@@ -582,6 +602,44 @@ class StandardPUP(RadarBase):
                 "tangential_reso": reso,
             },
         )
+        self._dataset = ds
+
+    def _parse_hail_fmt(self):
+        hail_count = np.frombuffer(self.f.read(4), "i4")[0]
+        hail_table = np.frombuffer(self.f.read(hail_count * 28), L3_hail)
+        ht0msl = np.frombuffer(self.f.read(4), "f4")[0]
+        ht20msl = np.frombuffer(self.f.read(4), "f4")[0]
+        hail_azimuth = np.array(hail_table["hail_azimuth"])
+        hail_range = np.array(hail_table["hail_range"])[:, np.newaxis]
+        hail_size = DataArray(hail_table["hail_size"])
+        hail_possibility = DataArray(hail_table["hail_possibility"])
+        hail_severe_possibility = DataArray(hail_table["hail_severe_possibility"])
+        lon, lat = get_coordinate(
+            hail_range / 1000,
+            hail_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        ds = Dataset(
+            {
+                "hail_possibility": hail_possibility,
+                "hail_size": hail_size,
+                "hail_severe_possibility": hail_severe_possibility,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+                "height_0deg": ht0msl,
+                "height_-20deg": ht20msl,
+            },
+        )
+        ds["longitude"] = DataArray(lon[:, 0])
+        ds["latitude"] = DataArray(lat[:, 0])
         self._dataset = ds
 
     def get_data(self):

@@ -164,7 +164,7 @@ l3_radial_header = [
     ("start_range", "i4"),
     ("max_range", "i4"),
     ("nradial", "i4"),
-    ("max_val", "int"),
+    ("max_val", "i4"),
     ("range_of_max", "i4"),
     ("az_of_max", "f4"),
     ("min_val", "i4"),
@@ -194,7 +194,7 @@ l3_raster_header = [
     ("col_reso", "i4"),
     ("row_side_length", "i4"),
     ("col_side_length", "i4"),
-    ("max_val", "int"),
+    ("max_val", "i4"),
     ("range_of_max", "i4"),
     ("az_of_max", "f4"),
     ("min_val", "i4"),
@@ -204,3 +204,15 @@ l3_raster_header = [
 ]
 
 l3_raster_header_dtype = np.dtype(l3_raster_header)
+
+l3_hail_table = [
+    ("hail_id", "i4"),
+    ("hail_azimuth", "f4"),
+    ("hail_range", "i4"),
+    ("hail_possibility", "i4"),
+    ("hail_severe_possibility", "i4"),
+    ("hail_size", "f4"),
+    ("rcm", "i4"),
+]
+
+l3_hail_table_dtype = np.dtype(l3_hail_table)
