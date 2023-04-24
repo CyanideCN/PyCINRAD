@@ -136,4 +136,3 @@ CD_DATA = np.dtype(
         ("rec", _CD_record, 998),
     ]
 )
-
