@@ -455,7 +455,8 @@ class StandardPUP(RadarBase):
                   9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL",
                   24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD",
                   32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M",
-                  40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE"}
+                  40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE",
+                  18:"CR"}
     # fmt: on
     def __init__(self, file):
         self.f = prepare_file(file)
@@ -577,7 +578,7 @@ class StandardPUP(RadarBase):
         )
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
-        max_range = nx / 2 * reso
+        max_range = int(nx / 2 * reso)
         y = np.linspace(max_range, max_range * -1, ny) / 111 + self.stationlat
         x = (
             np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(y * deg2rad))
