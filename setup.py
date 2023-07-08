@@ -49,6 +49,7 @@ setup(
         "pyshp!=2.0.0, !=2.0.1",
         "matplotlib>=2.2",
         "vanadis",
+        "cinrad_data>=0.1"
     ],
     data_files=[
         (
@@ -56,8 +57,6 @@ setup(
             glob.glob(join(data_pth, "*.*")),
         ),
         (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
-        (join(data_pth, "shapefile"), glob.glob(join(data_pth, "shapefile", "*"))),
-        (join(data_pth, "font"), glob.glob(join(data_pth, "font", "*"))),
         (join("cinrad", "correct"), [join("cinrad", "correct", "unwrap_2d_ljmu.c")]),
     ],
     scripts=[],

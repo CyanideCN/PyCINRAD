@@ -19,6 +19,7 @@ import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
 import shapefile
 from vanadis.colormap import Colormap
+from cinrad_data import get_font_path, get_shp_list, get_shp_file
 
 from cinrad.visualize.gpf import _cmap
 from cinrad.constants import MODULE_DIR
@@ -144,7 +145,7 @@ for dic in zip([norm_plot, norm_cbar, cmap_plot, cmap_cbar, sec_plot, unit, cbar
     _d["VELSZ"] = _d["VEL"]
 
 font = FontProperties(
-    fname=os.path.join(MODULE_DIR, "data", "font", "NotoSansHans-Regular.otf")
+    fname=get_font_path()
 )
 plot_kw = {"fontproperties": font, "fontsize": 12}
 
@@ -257,8 +258,7 @@ def save(fpath: str, style: str = "black", **kwargs):
 
 @lru_cache(maxsize=2)
 def get_shp() -> list:
-    root = os.path.join(MODULE_DIR, "data", "shapefile")
-    flist = [os.path.join(root, i) for i in ["County", "City", "Province"]]
+    flist = get_shp_list()
     shps = [list(ShpReader(i).geometries()) for i in flist]
     return shps
 
@@ -315,7 +315,7 @@ def highlight_area(
     area: Union[Array_T, str], linecolor: str = "red", **kwargs
 ) -> List[Line2D]:
     r"""Return list of Line2D object for given area name"""
-    fpath = os.path.join(MODULE_DIR, "data", "shapefile", "City")
+    fpath = get_shp_file('City')
     shp = shapefile.Reader(fpath, encoding="gbk")
     rec = shp.shapeRecords()
     lines = list()
