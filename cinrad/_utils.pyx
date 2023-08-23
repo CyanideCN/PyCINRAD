@@ -70,13 +70,13 @@ def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
     cdef np.ndarray r, h, vert_h, vert_r, hght
     cdef int xshape, yshape, pos, i, j
     cdef list h_
-    cdef double z1, z2, h1, h2, w1, w2
+    cdef double z1, z2, h1, h2, w1, w2, e
     cdef long long[::1] position
     xshape, yshape = ref.shape[1], ref.shape[2]
     cdef double[:, ::1] et = np.zeros((xshape, yshape))
     h_ = list()
-    for i in elev:
-        h = height(np.asarray(distance), i, radarheight)
+    for e in elev:
+        h = height(np.asarray(distance), e, radarheight)
         h_.append(h)
     hght = np.concatenate(h_).reshape(ref.shape[0], ref.shape[1], ref.shape[2])
     r = np.asarray(ref)
