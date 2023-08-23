@@ -474,6 +474,10 @@ class StandardPUP(RadarBase):
             self._parse_raster_fmt()
         elif self.ptype == 38:
             self._parse_hail_fmt()
+        elif self.ptype == 39:
+            self._parse_meso_fmt()
+        elif self.ptype == 40:
+            self._parse_tvs_fmt()
         self.f.close()
 
     def _parse_header(self):
@@ -637,6 +641,136 @@ class StandardPUP(RadarBase):
                 "task": self.task_name,
                 "height_0deg": ht0msl,
                 "height_-20deg": ht20msl,
+            },
+        )
+        ds["longitude"] = DataArray(lon[:, 0])
+        ds["latitude"] = DataArray(lat[:, 0])
+        self._dataset = ds
+
+    def _parse_meso_fmt(self):
+        storm_count = np.frombuffer(self.f.read(4), "i4")[0]
+        meso_count = np.frombuffer(self.f.read(4), "i4")[0]
+        feature_count = np.frombuffer(self.f.read(4), "i4")[0]
+        meso_table = np.frombuffer(self.f.read(meso_count* 68), L3_meso)
+        feature_table = np.frombuffer(self.f.read(feature_count* 72), L3_feature)
+        npvthr = np.frombuffer(self.f.read(4), "i4")[0]
+        fhthr = np.frombuffer(self.f.read(4), "f4")[0]
+        feature_id = DataArray(meso_table["feature_id"])
+        storm_id = DataArray(meso_table["storm_id"])
+        meso_azimuth = np.array(meso_table["meso_azimuth"])
+        meso_azimuth_output = DataArray(meso_table["meso_azimuth"])
+        meso_range = np.array(meso_table["meso_range"])[:, np.newaxis]
+        meso_range_output = DataArray(meso_table["meso_range"])
+        meso_elevation = DataArray(meso_table["meso_elevation"])
+        meso_avgshr = DataArray(meso_table["meso_avgshr"])
+        meso_height = DataArray(meso_table["meso_height"])
+        meso_azdia = DataArray(meso_table["meso_azdia"])
+        meso_radius = DataArray(meso_table["meso_radius"])
+        meso_avgrv = DataArray(meso_table["meso_avgrv"])
+        meso_mxrv = DataArray(meso_table["meso_mxrv"])
+        meso_top = DataArray(meso_table["meso_top"])
+        meso_base = DataArray(meso_table["meso_base"])
+        meso_baseazim = DataArray(meso_table["meso_baseazim"])
+        meso_baserange = DataArray(meso_table["meso_baserange"])
+        meso_baseelevation = DataArray(meso_table["meso_baseelevation"])
+        meso_mxtanshr = DataArray(meso_table["meso_mxtanshr"])
+        lon, lat = get_coordinate(
+            meso_range / 1000,
+            meso_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        ds = Dataset(
+            {
+                "feature_id": feature_id,
+                "storm_id": storm_id,
+                "meso_azimuth": meso_azimuth_output,
+                "meso_range": meso_range_output,
+                "meso_elevation": meso_elevation,
+                "meso_avgshr": meso_avgshr,
+                "meso_height": meso_height,
+                "meso_azdia": meso_azdia,
+                "meso_radius": meso_radius,
+                "meso_avgrv": meso_avgrv,
+                "meso_mxrv": meso_mxrv,
+                "meso_top": meso_top,
+                "meso_base": meso_base,
+                "meso_baseazim": meso_baseazim,
+                "meso_baserange": meso_baserange,
+                "meso_baseelevation": meso_baseelevation,
+                "meso_mxtanshr": meso_mxtanshr,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+                "npvthr": npvthr,
+                "fhthr": fhthr,
+            },
+        )
+        ds["longitude"] = DataArray(lon[:, 0])
+        ds["latitude"] = DataArray(lat[:, 0])
+        self._dataset = ds
+
+    def _parse_tvs_fmt(self):
+        tvs_count = np.frombuffer(self.f.read(4), "i4")[0]
+        etvs_count = np.frombuffer(self.f.read(4), "i4")[0]
+        tvs_table = np.frombuffer(self.f.read((tvs_count + etvs_count) * 56), L3_tvs)
+        minrefl = np.frombuffer(self.f.read(4), "i4")[0]
+        minpvdv = np.frombuffer(self.f.read(4), "i4")[0]
+        tvs_id = DataArray(tvs_table["tvs_id"])
+        tvs_stormtype = DataArray(tvs_table["tvs_stormtype"])
+        tvs_azimuth = np.array(tvs_table["tvs_azimuth"])
+        tvs_azimuth_output = DataArray(tvs_table["tvs_azimuth"])
+        tvs_range = np.array(tvs_table["tvs_range"])[:, np.newaxis]
+        tvs_range_output = DataArray(tvs_table["tvs_range"])
+        tvs_elevation = DataArray(tvs_table["tvs_elevation"])
+        tvs_lldv = DataArray(tvs_table["tvs_lldv"])
+        tvs_avgdv = DataArray(tvs_table["tvs_avgdv"])
+        tvs_mxdv = DataArray(tvs_table["tvs_mxdv"])
+        tvs_mxdvhgt = DataArray(tvs_table["tvs_mxdvhgt"])
+        tvs_depth = DataArray(tvs_table["tvs_depth"])
+        tvs_base = DataArray(tvs_table["tvs_base"])
+        tvs_top = DataArray(tvs_table["tvs_top"])
+        tvs_mxshr = DataArray(tvs_table["tvs_mxshr"])
+        tvs_mxshrhgt = DataArray(tvs_table["tvs_mxshrhgt"])
+        lon, lat = get_coordinate(
+            tvs_range / 1000,
+            tvs_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        ds = Dataset(
+            {
+                "tvs_id": tvs_id,
+                "tvs_stormtype": tvs_stormtype,
+                "tvs_azimuth": tvs_azimuth_output,
+                "tvs_range": tvs_range_output,
+                "tvs_elevation": tvs_elevation,
+                "tvs_lldv": tvs_lldv,
+                "tvs_avgdv": tvs_avgdv,
+                "tvs_mxdv": tvs_mxdv,
+                "tvs_mxdvhgt": tvs_mxdvhgt,
+                "tvs_depth": tvs_depth,
+                "tvs_base": tvs_base,
+                "tvs_top": tvs_top,
+                "tvs_mxshr": tvs_mxshr,
+                "tvs_mxshrhgt": tvs_mxshrhgt,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+                "minrefl": minrefl,
+                "minpvdv": minpvdv,
             },
         )
         ds["longitude"] = DataArray(lon[:, 0])

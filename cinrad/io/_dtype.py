@@ -9,7 +9,7 @@ __all__ = [
     'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
     'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock',
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
-    'L3_raster','L3_hail'
+    'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -29,6 +29,9 @@ from cinrad.io._radar_struct.standard_data import (
     l3_radial_block_dtype as L3_rblock,
     l3_raster_header_dtype as L3_raster,
     l3_hail_table_dtype as L3_hail,
+    l3_meso_table_dtype as L3_meso,
+    l3_feature_table_dtype as L3_feature,
+    l3_tvs_table_dtype as L3_tvs,
 )
 from cinrad.io._radar_struct.CD import (
     radarsite_dtype as CD_site,
