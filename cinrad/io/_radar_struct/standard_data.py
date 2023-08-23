@@ -216,3 +216,67 @@ l3_hail_table = [
 ]
 
 l3_hail_table_dtype = np.dtype(l3_hail_table)
+
+l3_meso_table = [
+    ("feature_id", "i4"),
+    ("storm_id", "i4"),
+    ("meso_azimuth", "f4"),
+    ("meso_range", "i4"),
+    ("meso_elevation", "f4"),
+    ("meso_avgshr", "f4"),
+    ("meso_height", "i4"),
+    ("meso_azdia", "i4"),
+    ("meso_radius", "i4"),
+    ("meso_avgrv", "f4"),
+    ("meso_mxrv", "f4"),
+    ("meso_top", "i4"),
+    ("meso_base", "i4"),
+    ("meso_baseazim", "f4"),
+    ("meso_baserange", "i4"),
+    ("meso_baseelevation", "f4"),
+    ("meso_mxtanshr", "f4"),
+]
+
+l3_meso_table_dtype = np.dtype(l3_meso_table)
+
+l3_feature_table = [
+    ("feature_id", "i4"),
+    ("storm_id", "i4"),
+    ("feature_type", "i4"),
+    ("feature_azimuth", "f4"),
+    ("feature_range", "i4"),
+    ("feature_elevation", "f4"),
+    ("feature_avgshr", "f4"),
+    ("feature_height", "i4"),
+    ("feature_azdia", "i4"),
+    ("feature_radius", "i4"),
+    ("feature_avgrv", "f4"),
+    ("feature_mxrv", "f4"),
+    ("feature_top", "i4"),
+    ("feature_base", "i4"),
+    ("feature_baseazim", "f4"),
+    ("feature_baserange", "i4"),
+    ("feature_baseelevation", "f4"),
+    ("feature_mxtanshr", "f4"),
+]
+
+l3_feature_table_dtype = np.dtype(l3_feature_table)
+
+l3_tvs_table = [
+    ("tvs_id", "i4"),
+    ("tvs_stormtype", "i4"),
+    ("tvs_azimuth", "f4"),
+    ("tvs_range", "i4"),
+    ("tvs_elevation", "f4"),
+    ("tvs_lldv", "f4"),
+    ("tvs_avgdv", "f4"),
+    ("tvs_mxdv", "f4"),
+    ("tvs_mxdvhgt", "i4"),
+    ("tvs_depth", "i4"),
+    ("tvs_base", "i4"),
+    ("tvs_top", "i4"),
+    ("tvs_mxshr", "f4"),
+    ("tvs_mxshrhgt", "i4"),
+]
+
+l3_tvs_table_dtype = np.dtype(l3_tvs_table)
