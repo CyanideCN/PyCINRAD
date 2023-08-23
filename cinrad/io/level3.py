@@ -651,8 +651,8 @@ class StandardPUP(RadarBase):
         storm_count = np.frombuffer(self.f.read(4), "i4")[0]
         meso_count = np.frombuffer(self.f.read(4), "i4")[0]
         feature_count = np.frombuffer(self.f.read(4), "i4")[0]
-        meso_table = np.frombuffer(self.f.read(meso_count* 68), L3_meso)
-        feature_table = np.frombuffer(self.f.read(feature_count* 72), L3_feature)
+        meso_table = np.frombuffer(self.f.read(meso_count * 68), L3_meso)
+        feature_table = np.frombuffer(self.f.read(feature_count * 72), L3_feature)
         npvthr = np.frombuffer(self.f.read(4), "i4")[0]
         fhthr = np.frombuffer(self.f.read(4), "f4")[0]
         meso_azimuth = np.array(meso_table["meso_azimuth"])
@@ -664,10 +664,15 @@ class StandardPUP(RadarBase):
             self.stationlon,
             self.stationlat,
         )
-        
+
         data_dict = {}
-        for key in ["feature_id", "storm_id", "meso_azimuth", "meso_range", "meso_elevation", "meso_avgshr", "meso_height", "meso_azdia", "meso_radius", "meso_avgrv", "meso_mxrv", "meso_top", "meso_base", "meso_baseazim", "meso_baserange", "meso_baseelevation", "meso_mxtanshr"]:
+        # fmt: off
+        for key in ["feature_id", "storm_id", "meso_azimuth", "meso_range", "meso_elevation",
+                    "meso_avgshr", "meso_height", "meso_azdia", "meso_radius", "meso_avgrv",
+                    "meso_mxrv", "meso_top", "meso_base", "meso_baseazim", "meso_baserange",
+                    "meso_baseelevation", "meso_mxtanshr"]:
             data_dict[key] = DataArray(meso_table[key])
+        # fmt: on
         attrs_dict = {
             "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
             "site_code": self.code,
@@ -676,7 +681,7 @@ class StandardPUP(RadarBase):
             "site_latitude": self.stationlat,
             "task": self.task_name,
             "npvthr": npvthr,
-            "fhthr": fhthr
+            "fhthr": fhthr,
         }
         ds = Dataset(data_dict, attrs=attrs_dict)
         ds["longitude"] = DataArray(lon[:, 0])
@@ -698,10 +703,14 @@ class StandardPUP(RadarBase):
             self.stationlon,
             self.stationlat,
         )
-        
+
         data_dict = {}
-        for key in [ "tvs_id", "tvs_stormtype", "tvs_azimuth", "tvs_range", "tvs_elevation", "tvs_lldv", "tvs_avgdv", "tvs_mxdv", "tvs_mxdvhgt", "tvs_depth", "tvs_base", "tvs_top", "tvs_mxshr", "tvs_mxshrhgt"]:
+        # fmt: off
+        for key in ["tvs_id", "tvs_stormtype", "tvs_azimuth", "tvs_range", "tvs_elevation",
+                    "tvs_lldv", "tvs_avgdv", "tvs_mxdv", "tvs_mxdvhgt", "tvs_depth", "tvs_base",
+                    "tvs_top", "tvs_mxshr", "tvs_mxshrhgt"]:
             data_dict[key] = DataArray(tvs_table[key])
+        # fmt: on
         attrs_dict = {
             "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
             "site_code": self.code,
