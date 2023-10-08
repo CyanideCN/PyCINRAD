@@ -144,9 +144,7 @@ for dic in zip([norm_plot, norm_cbar, cmap_plot, cmap_cbar, sec_plot, unit, cbar
     _d = dic[0]
     _d["VELSZ"] = _d["VEL"]
 
-font = FontProperties(
-    fname=get_font_path()
-)
+font = FontProperties(fname=get_font_path())
 plot_kw = {"fontproperties": font, "fontsize": 12}
 
 
@@ -315,7 +313,7 @@ def highlight_area(
     area: Union[Array_T, str], linecolor: str = "red", **kwargs
 ) -> List[Line2D]:
     r"""Return list of Line2D object for given area name"""
-    fpath = get_shp_file('City')
+    fpath = get_shp_file("City")
     shp = shapefile.Reader(fpath, encoding="gbk")
     rec = shp.shapeRecords()
     lines = list()

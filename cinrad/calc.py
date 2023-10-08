@@ -99,11 +99,21 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         xarray.Dataset: composite reflectivity
     """
     r_data = list()
-    for i in r_list:
+    # Get grid from the first tilt
+    r, x, y = grid_2d(
+        r_list[0]["REF"].values,
+        r_list[0]["longitude"].values,
+        r_list[0]["latitude"].values,
+        resolution=resolution,
+    )
+    r_data.append(r)
+    for i in r_list[1:]:
         r, x, y = grid_2d(
             i["REF"].values,
             i["longitude"].values,
             i["latitude"].values,
+            x_out=x,
+            y_out=y,
             resolution=resolution,
         )
         r_data.append(r)
