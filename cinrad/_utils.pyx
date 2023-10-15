@@ -14,10 +14,13 @@ cdef np.ndarray height(np.ndarray distance, double elevation, double radarheight
     # unit is meter
     return distance * sin(elevation * deg2rad) + distance ** 2 / (2 * rm) + radarheight
 
+@cython.cdivision(True)
 cdef double height_single(double distance, double elevation):
     return distance * sin(elevation * deg2rad) + distance ** 2 / (2 * rm)
 
 @cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cpow(True)
 def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
                            double beam_width=0.99, double threshold=18., bint density=False):
     cdef double v_beam_width, m1, mb, mt, factor, ht, dist, r_tmp, h_higher, h_lower
@@ -65,39 +68,44 @@ def vert_integrated_liquid(double[:, :, ::1] ref, double[:, ::1] distance, doubl
     return np.asarray(VIL)
 
 @cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
 def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
              double radarheight, double threshold=18.):
-    cdef np.ndarray r, h, vert_h, vert_r, hght
-    cdef int xshape, yshape, pos, i, j
+    cdef np.ndarray r, h
+    cdef int xshape, yshape, zshape, pos, i, j, k
     cdef list h_
     cdef double z1, z2, h1, h2, w1, w2, e
-    cdef long long[::1] position
-    xshape, yshape = ref.shape[1], ref.shape[2]
+    zshape, xshape, yshape = ref.shape[0], ref.shape[1], ref.shape[2]
     cdef double[:, ::1] et = np.zeros((xshape, yshape))
+    cdef double[:] vert_h, vert_r
     h_ = list()
     for e in elev:
         h = height(np.asarray(distance), e, radarheight)
         h_.append(h)
-    hght = np.concatenate(h_).reshape(ref.shape[0], ref.shape[1], ref.shape[2])
-    r = np.asarray(ref)
-    r[np.isnan(ref)] = 0
+    cdef double[:, :, :] hght = np.concatenate(h_).reshape(ref.shape[0], ref.shape[1], ref.shape[2])
+    #r = np.asarray(ref)
+    #r[np.isnan(ref)] = 0
     for i in range(xshape):
         for j in range(yshape):
             vert_h = hght[:, i, j]
-            vert_r = r[:, i, j]
-            if np.max(vert_r) < threshold: # Vertical points don't satisfy threshold
+            vert_r = ref[:, i, j]
+            pos = -1
+            for k in range(zshape):
+                if vert_r[k] >= threshold:
+                    pos = k
+            if pos == -1: # Vertical points don't satisfy threshold
                 et[i][j] = 0
                 continue
-            elif vert_r[-1] >= threshold: # Point in highest scan exceeds threshold
-                et[i][j] = vert_h[-1]
+            elif vert_r[zshape - 1] >= threshold: # Point in highest scan exceeds threshold
+                et[i][j] = vert_h[zshape - 1]
                 continue
             else:
-                position = np.nonzero(vert_r >= threshold)[0]
-                if position[-1] == 0:
+                # position = np.nonzero(vert_r >= threshold)[0]
+                if pos == 0:
                     et[i][j] = vert_h[0]
                     continue
                 else:
-                    pos = position[-1]
                     z1 = vert_r[pos]
                     z2 = vert_r[pos + 1]
                     h1 = vert_h[pos]

@@ -135,6 +135,7 @@ def quick_et(r_list: Volume_T) -> Dataset:
         xarray.Dataset: echo tops
     """
     r_data, d, a, elev = _extract(r_list, "REF")
+    r_data[np.isnan(r_data)] = 0
     i = r_list[0]
     et = echo_top(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double), 0.0
@@ -174,6 +175,7 @@ def quick_vil(r_list: Volume_T) -> Dataset:
         xarray.Dataset: vertically integrated liquid
     """
     r_data, d, a, elev = _extract(r_list, "REF")
+    r_data[np.isnan(r_data)] = 0
     i = r_list[0]
     vil = vert_integrated_liquid(
         r_data.astype(np.double), d.astype(np.double), elev.astype(np.double)
