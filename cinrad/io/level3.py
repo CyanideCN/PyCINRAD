@@ -5,6 +5,7 @@ from collections import OrderedDict, defaultdict
 from typing import Optional, Union, Any
 import datetime
 from io import BytesIO
+import warnings
 
 import numpy as np
 from xarray import Dataset, DataArray
@@ -448,15 +449,15 @@ class StandardPUP(RadarBase):
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
                   17:'SNRV', 32:'Zc', 33:'Vc', 34:'Wc', 35:'ZDRc', 36:'PDP', 37:'KDP',
-                  38:'RHO',71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS',
+                  38:'RHO', 71:'RR', 72:'HGT', 73:'VIL', 74:'SHR', 75:'RAIN', 76:'RMS',
                   77:'CTR'}
 
     ptype_corr = {1:"PPI", 2:"RHI", 3:"CAPPI", 4:"MAX", 6:"ET", 8:"VCS",
                   9:"LRA", 10:"LRM", 13:"SRR", 14:"SRM", 20:"WER", 23:"VIL",
                   24:"HSR", 25:"OHP", 26:"THP", 27:"STP", 28:"USP", 31:"VAD",
                   32:"VWP", 34:"Shear", 36:"SWP", 37:"STI", 38:"HI", 39:"M",
-                  40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE",
-                  18:"CR"}
+                  40:"TVS", 41:"SS", 48:"GAGE", 51:"HCL", 52:"QPE", 18:"CR",
+                  44:"UAM"}
     # fmt: on
     def __init__(self, file):
         self.f = prepare_file(file)
@@ -472,12 +473,22 @@ class StandardPUP(RadarBase):
             self._parse_radial_fmt()
         elif self.ptype in [6, 8, 9, 10, 18, 23]:
             self._parse_raster_fmt()
+        elif self.ptype == 3:
+            self._parse_cappi_fmt()
+        elif self.ptype == 32:
+            self._parse_vwp_fmt()
+        elif self.ptype == 36:
+            self._parse_swp_fmt()
+        elif self.ptype == 37:
+            self._parse_sti_fmt()
         elif self.ptype == 38:
             self._parse_hail_fmt()
         elif self.ptype == 39:
             self._parse_meso_fmt()
         elif self.ptype == 40:
             self._parse_tvs_fmt()
+        elif self.ptype == 44:
+            self._parse_uam_fmt()
         self.f.close()
 
     def _parse_header(self):
@@ -609,6 +620,118 @@ class StandardPUP(RadarBase):
         )
         self._dataset = ds
 
+    def _parse_cappi_fmt(self):
+        ds = []
+        while 1:
+            try:
+                radial_header = np.frombuffer(self.f.read(64), L3_radial)
+                bin_length = radial_header["bin_length"][0]
+                scale = radial_header["scale"][0]
+                offset = radial_header["offset"][0]
+                reso = radial_header["reso"][0] / 1000
+                start_range = radial_header["start_range"][0] / 1000
+                end_range = radial_header["max_range"][0] / 1000
+                nradial = radial_header["nradial"][0]
+                data = list()
+                azi = list()
+                for _ in range(nradial):
+                    buf = self.f.read(32)
+                    if not buf:
+                        break
+                    data_block = np.frombuffer(buf, L3_rblock)
+                    start_a = data_block["start_az"][0]
+                    nbins = data_block["nbins"][0]
+                    raw = np.frombuffer(
+                        self.f.read(bin_length * nbins), "u{}".format(bin_length)
+                    )
+                    data.append(raw)
+                    azi.append(start_a)
+                raw = np.vstack(data).astype(int)
+                data_rf = np.ma.masked_not_equal(raw, 1)
+                raw = np.ma.masked_less(raw, 5)
+                data = (raw - offset) / scale
+                az = np.linspace(0, 360, raw.shape[0])
+                az += azi[0]
+                az[az > 360] -= 360
+                azi = az * deg2rad
+                # self.azi = np.deg2rad(azi)
+                dist = np.arange(start_range + reso, end_range + reso, reso)
+                da = DataArray(data, coords=[azi, dist], dims=["azimuth", "distance"])
+                # data_dict["{}{:d}".format(self.pname, i)] = da
+                data = Dataset(
+                    {"CAPPI": da},
+                    attrs={
+                        "elevation": 0,
+                        "range": end_range,
+                        "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                        "site_code": self.code,
+                        "site_name": self.name,
+                        "site_longitude": self.stationlon,
+                        "site_latitude": self.stationlat,
+                        "tangential_reso": reso,
+                    },
+                )
+                ds.append(data)
+            except:
+                # Decode broken files as much as possible
+                warnings.warn("Broken compressed file detected.", RuntimeWarning)
+                break
+        self._dataset = ds
+
+    def _parse_vwp_fmt(self):
+        vwp_header = np.frombuffer(self.f.read(32), L3_vwp_header)
+        vwp_count = vwp_header["number_of_vols"][0]
+        vwps = np.frombuffer(self.f.read(32 * vwp_count), L3_vwp)
+        height = DataArray(vwps["height"])
+        wind_direction = DataArray(vwps["wind_direction"])
+        wind_speed = DataArray(vwps["wind_speed"])
+        ds = Dataset(
+            {
+                "wind_direction": wind_direction,
+                "wind_speed": wind_speed,
+                "height": height,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+            },
+        )
+        self._dataset = ds
+
+    def _parse_swp_fmt(self):
+        swp_count = np.frombuffer(self.f.read(4), "i4")[0]
+        swp = np.frombuffer(self.f.read(swp_count * 12), L3_swp)
+        swp_azimuth = np.array(swp["azimuth"])
+        swp_range = np.array(swp["range"])[:, np.newaxis]
+        swp_percent = DataArray(swp["swp"])
+        lon, lat = get_coordinate(
+            swp_range / 1000,
+            swp_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        ds = Dataset(
+            {
+                "swp_percent": swp_percent,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+            },
+        )
+        ds["longitude"] = DataArray(lon[:, 0])
+        ds["latitude"] = DataArray(lat[:, 0])
+        self._dataset = ds
+
     def _parse_hail_fmt(self):
         hail_count = np.frombuffer(self.f.read(4), "i4")[0]
         hail_table = np.frombuffer(self.f.read(hail_count * 28), L3_hail)
@@ -722,6 +845,122 @@ class StandardPUP(RadarBase):
             "minpvdv": minpvdv,
         }
         ds = Dataset(data_dict, attrs=attrs_dict)
+        ds["longitude"] = DataArray(lon[:, 0])
+        ds["latitude"] = DataArray(lat[:, 0])
+        self._dataset = ds
+
+    def _parse_sti_fmt(self):
+        sti_header = np.frombuffer(self.f.read(20), L3_sti_header)
+        sti_count = sti_header["num_of_storms"][0]
+        track_count = sti_count if sti_count < 100 else 100
+        attr_count = track_count
+        sti_current = np.frombuffer(self.f.read(24 * track_count), L3_sti_motion)
+        curr_azimuth = np.array(sti_current["azimuth"])
+        curr_range = np.array(sti_current["range"])[:, np.newaxis]
+        curr_speed = sti_current["speed"]
+        curr_direction = sti_current["direction"]
+        curr_lon, curr_lat = get_coordinate(
+            curr_range / 1000,
+            curr_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        curr = [
+            [curr_lon[i, 0], curr_lat[i, 0], curr_speed[i], curr_direction[i]]
+            for i in range(track_count)
+        ]
+        forecast = []
+        for _ in range(track_count):
+            forecast_positon_count = np.frombuffer(self.f.read(4), "i4")[0]
+            forecast_positon = np.frombuffer(
+                self.f.read(12 * forecast_positon_count), L3_sti_position
+            )
+            fore_azimuth = np.array(forecast_positon["azimuth"])
+            fore_range = np.array(forecast_positon["range"])[:, np.newaxis]
+            fore_lon, fore_lat = get_coordinate(
+                fore_range / 1000,
+                fore_azimuth * deg2rad,
+                self.params["elevation"],
+                self.stationlon,
+                self.stationlat,
+            )
+            fore = [
+                [fore_lon[i, 0], fore_lat[i, 0]] for i in range(forecast_positon_count)
+            ]
+            forecast.append(fore)
+        history = []
+        for _ in range(track_count):
+            history_positon_count = np.frombuffer(self.f.read(4), "i4")[0]
+            history_positon = np.frombuffer(
+                self.f.read(12 * history_positon_count), L3_sti_position
+            )
+            his_azimuth = np.array(history_positon["azimuth"])
+            his_range = np.array(history_positon["range"])[:, np.newaxis]
+            his_lon, his_lat = get_coordinate(
+                his_range / 1000,
+                his_azimuth * deg2rad,
+                self.params["elevation"],
+                self.stationlon,
+                self.stationlat,
+            )
+            his = [[his_lon[i, 0], his_lat[i, 0]] for i in range(history_positon_count)]
+            history.append(his)
+        sti_attributes = np.frombuffer(self.f.read(60), L3_sti_attribute)
+        sti_components = np.frombuffer(self.f.read(12), L3_sti_component)
+        sti_adaptation = np.frombuffer(self.f.read(40), L3_sti_adaptation)
+        sti_data = [[c, f, h] for c, f, h in zip(curr, forecast, history)]
+        attrs = (
+            {
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+                "sti_count": sti_count,
+                "data_info": "[curr_lon,curr_lat,curr_speed,curr_direction],[fore_lon,fore_lat],[his_lon,his_lat]",
+                "sti_attributes": sti_attributes,
+                "sti_components": sti_components,
+                "sti_adaptation": sti_adaptation,
+            },
+        )
+        ds = {
+            "data": sti_data,
+            "attrs": attrs,
+        }
+        self._dataset = ds
+
+    def _parse_uam_fmt(self):
+        uam_count = np.frombuffer(self.f.read(4), "i4")[0]
+        uam_table = np.frombuffer(self.f.read(uam_count * 44), L3_uam)
+        uam_azimuth = np.array(uam_table["azimuth"])
+        uam_range = np.array(uam_table["range"])[:, np.newaxis]
+        uam_a = DataArray(uam_table["a"])
+        uam_b = DataArray(uam_table["b"])
+        uam_deg = DataArray(uam_table["deg"])
+        lon, lat = get_coordinate(
+            uam_range / 1000,
+            uam_azimuth * deg2rad,
+            self.params["elevation"],
+            self.stationlon,
+            self.stationlat,
+        )
+        ds = Dataset(
+            {
+                "a": uam_a,
+                "b": uam_b,
+                "deg": uam_deg,
+            },
+            attrs={
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "task": self.task_name,
+            },
+        )
         ds["longitude"] = DataArray(lon[:, 0])
         ds["latitude"] = DataArray(lat[:, 0])
         self._dataset = ds
