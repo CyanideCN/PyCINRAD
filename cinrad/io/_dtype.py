@@ -9,7 +9,9 @@ __all__ = [
     'SDD_cut', 'SDD_rad_header', 'SDD_mom_header', 'SAB_dtype', 'CAB_dtype',
     'SWAN_dtype', 'CD_dtype', 'CD_DATA', 'SDD_pheader', 'L3_radial', 'L3_rblock',
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
-    'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs'
+    'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
+    'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
+    'L3_vwp_header','L3_vwp','L3_swp','L3_uam'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -32,6 +34,16 @@ from cinrad.io._radar_struct.standard_data import (
     l3_meso_table_dtype as L3_meso,
     l3_feature_table_dtype as L3_feature,
     l3_tvs_table_dtype as L3_tvs,
+    l3_sti_header_dtype as L3_sti_header,
+    l3_sti_motion_dtype as L3_sti_motion,
+    l3_sti_position_dtype as L3_sti_position,
+    l3_sti_attribute_dtype as L3_sti_attribute,
+    l3_sti_component_dtype as L3_sti_component,
+    l3_sti_adaptation_dtype as L3_sti_adaptation,
+    l3_vwp_header_dtype as L3_vwp_header,
+    l3_vwp_table_dtype as L3_vwp,
+    l3_swp as L3_swp,
+    l3_uam_dtype as L3_uam,
 )
 from cinrad.io._radar_struct.CD import (
     radarsite_dtype as CD_site,

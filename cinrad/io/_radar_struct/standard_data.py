@@ -280,3 +280,122 @@ l3_tvs_table = [
 ]
 
 l3_tvs_table_dtype = np.dtype(l3_tvs_table)
+
+l3_sti_header = [
+    ("num_of_storms", "i4"),
+    ("num_of_continuous_storms", "i4"),
+    ("num_of_components", "i4"),
+    ("avg_speed", "f4"),
+    ("avg_direction", "f4"),
+]
+
+l3_sti_header_dtype = np.dtype(l3_sti_header)
+
+l3_sti_motion = [
+    ("azimuth", "f4"),
+    ("range", "i4"),
+    ("speed", "f4"),
+    ("direction", "f4"),
+    ("forecast_error", "i4"),
+    ("mean_forecast_error", "i4"),
+]
+
+l3_sti_motion_dtype = np.dtype(l3_sti_motion)
+
+l3_sti_position = [
+    ("azimuth", "f4"),
+    ("range", "i4"),
+    ("volume_time", "i4"),
+]
+
+l3_sti_position_dtype = np.dtype(l3_sti_position)
+
+l3_sti_attribute = [
+    ("id", "i4"),
+    ("type", "i4"),
+    ("num_of_volumes", "i4"),
+    ("azimuth", "f4"),
+    ("range", "i4"),
+    ("height", "i4"),
+    ("max_ref", "f4"),
+    ("max_ref_height", "i4"),
+    ("vil", "f4"),
+    ("num_of_components", "i4"),
+    ("index_of_first", "i4"),
+    ("top_height", "i4"),
+    ("index_of_top", "i4"),
+    ("bottom_height", "i4"),
+    ("index_of_bottom", "i4"),
+]
+
+l3_sti_attribute_dtype = np.dtype(l3_sti_attribute)
+
+l3_sti_component = [
+    ("height", "i4"),
+    ("max_ref", "f4"),
+    ("index_of_next", "i4"),
+]
+
+l3_sti_component_dtype = np.dtype(l3_sti_component)
+
+l3_sti_adaptation = [
+    ("def_dir", "i4"),
+    ("def_spd", "f4"),
+    ("max_vtime", "i4"),
+    ("num_of_past_volume", "i4"),
+    ("corr_speed", "f4"),
+    ("min_speed", "f4"),
+    ("allow_error", "i4"),
+    ("frc_intvl", "i4"),
+    ("num_frc_intvl", "i4"),
+    ("err_intvl", "i4"),
+]
+
+l3_sti_adaptation_dtype = np.dtype(l3_sti_adaptation)
+
+l3_vwp_header = [
+    ("nyquist_velocity", "f4"),
+    ("number_of_vols", "i4"),
+    ("wind_speed_max", "f4"),
+    ("wind_direction_max", "f4"),
+    ("height_max", "f4"),
+    ("res", "12c"),
+]
+
+l3_vwp_header_dtype = np.dtype(l3_vwp_header)
+
+l3_vwp_table = [
+    ("start_time","i4"),
+    ("height","i4"),
+    ("fitvalid","i4"),
+    ("wind_direction","f4"),
+    ("wind_speed","f4"),
+    ("rms_std","f4"),
+    ("res","8c"),
+]
+
+l3_vwp_table_dtype = np.dtype(l3_vwp_table)
+
+l3_swp = [
+    ("range", "i4"),
+    ("azimuth", "f4"),
+    ("swp", "i4"),
+]
+
+l3_swp_dtype = np.dtype(l3_swp)
+
+l3_uam = [
+    ("range", "i4"),
+    ("azimuth", "f4"),
+    ("a", "i4"),
+    ("b", "i4"),
+    ("deg", "i4"),
+    ("max1", "f4"),
+    ("max2", "f4"),
+    ("max3", "f4"),
+    ("max4", "f4"),
+    ("max5", "f4"),
+    ("area", "f4"),
+]
+
+l3_uam_dtype = np.dtype(l3_uam)
