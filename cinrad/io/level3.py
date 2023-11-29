@@ -416,11 +416,24 @@ class ProductParamsParser(object):
     def _rhi(buf):
         params = {}
         azi = np.frombuffer(buf.read(4), "f4")[0]
-        top = np.frombuffer(buf.read(4), "f4")[0]
-        bot = np.frombuffer(buf.read(4), "f4")[0]
+        top = np.frombuffer(buf.read(4), "i4")[0]
+        bot = np.frombuffer(buf.read(4), "i4")[0]
         params["azimuth"] = azi
         params["top"] = top
         params["bottom"] = bot
+        return params
+
+    @staticmethod
+    def _cappi(buf):
+        params = {}
+        layers_count = np.frombuffer(buf.read(4), "i4")[0]
+        top = np.frombuffer(buf.read(4), "i4")[0]
+        bot = np.frombuffer(buf.read(4), "i4")[0]
+        filled = np.frombuffer(buf.read(4), "i4")[0]
+        params["layers_count"] = layers_count
+        params["top"] = top
+        params["bottom"] = bot
+        params["filled"] = filled
         return params
 
     @staticmethod
@@ -433,6 +446,7 @@ class ProductParamsParser(object):
         map_func = {
             1: cls._ppi,
             2: cls._rhi,
+            3: cls._cappi,
             51: cls._ppi,
             52: cls._ppi,
             18: cls._empty,
@@ -622,6 +636,10 @@ class StandardPUP(RadarBase):
 
     def _parse_cappi_fmt(self):
         ds = []
+        height = self.params["bottom"]
+        height_step = (self.params["top"] - self.params["bottom"]) / (
+            self.params["layers_count"] - 1
+        )
         while 1:
             try:
                 radial_header = np.frombuffer(self.f.read(64), L3_radial)
@@ -661,7 +679,7 @@ class StandardPUP(RadarBase):
                 data = Dataset(
                     {"CAPPI": da},
                     attrs={
-                        "elevation": 0,
+                        "height": height,
                         "range": end_range,
                         "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                         "site_code": self.code,
@@ -672,6 +690,7 @@ class StandardPUP(RadarBase):
                     },
                 )
                 ds.append(data)
+                height += height_step
             except:
                 # Decode broken files as much as possible
                 warnings.warn("Broken compressed file detected.", RuntimeWarning)
