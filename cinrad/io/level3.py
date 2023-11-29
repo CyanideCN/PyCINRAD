@@ -5,7 +5,6 @@ from collections import OrderedDict, defaultdict
 from typing import Optional, Union, Any
 import datetime
 from io import BytesIO
-import warnings
 
 import numpy as np
 from xarray import Dataset, DataArray
@@ -635,66 +634,65 @@ class StandardPUP(RadarBase):
         self._dataset = ds
 
     def _parse_cappi_fmt(self):
-        ds = []
-        height = self.params["bottom"]
-        height_step = (self.params["top"] - self.params["bottom"]) / (
-            self.params["layers_count"] - 1
+        azi = list()
+        dist = list()
+        data = list()
+        height = np.linspace(
+            self.params["bottom"], self.params["top"], self.params["layers_count"]
         )
-        while 1:
-            try:
-                radial_header = np.frombuffer(self.f.read(64), L3_radial)
-                bin_length = radial_header["bin_length"][0]
-                scale = radial_header["scale"][0]
-                offset = radial_header["offset"][0]
-                reso = radial_header["reso"][0] / 1000
-                start_range = radial_header["start_range"][0] / 1000
-                end_range = radial_header["max_range"][0] / 1000
-                nradial = radial_header["nradial"][0]
-                data = list()
-                azi = list()
-                for _ in range(nradial):
-                    buf = self.f.read(32)
-                    if not buf:
-                        break
-                    data_block = np.frombuffer(buf, L3_rblock)
-                    start_a = data_block["start_az"][0]
-                    nbins = data_block["nbins"][0]
-                    raw = np.frombuffer(
-                        self.f.read(bin_length * nbins), "u{}".format(bin_length)
-                    )
-                    data.append(raw)
-                    azi.append(start_a)
+        for _ in range(self.params["layers_count"]):
+            radial_header = np.frombuffer(self.f.read(64), L3_radial)
+            bin_length = radial_header["bin_length"][0]
+            scale = radial_header["scale"][0]
+            offset = radial_header["offset"][0]
+            reso = radial_header["reso"][0] / 1000
+            start_range = radial_header["start_range"][0] / 1000
+            end_range = radial_header["max_range"][0] / 1000
+            nradial = radial_header["nradial"][0]
+            azi0 = list()
+            for _ in range(nradial):
+                buf = self.f.read(32)
+                if not buf:
+                    break
+                data_block = np.frombuffer(buf, L3_rblock)
+                start_a = data_block["start_az"][0]
+                nbins = data_block["nbins"][0]
+                raw = np.frombuffer(
+                    self.f.read(bin_length * nbins), "u{}".format(bin_length)
+                )
+                data.append(raw)
+                azi0.append(start_a)
+            if len(azi) == 0:
                 raw = np.vstack(data).astype(int)
-                data_rf = np.ma.masked_not_equal(raw, 1)
-                raw = np.ma.masked_less(raw, 5)
-                data = (raw - offset) / scale
                 az = np.linspace(0, 360, raw.shape[0])
-                az += azi[0]
+                az += azi0[0]
                 az[az > 360] -= 360
                 azi = az * deg2rad
-                # self.azi = np.deg2rad(azi)
                 dist = np.arange(start_range + reso, end_range + reso, reso)
-                da = DataArray(data, coords=[azi, dist], dims=["azimuth", "distance"])
-                # data_dict["{}{:d}".format(self.pname, i)] = da
-                data = Dataset(
-                    {"CAPPI": da},
-                    attrs={
-                        "height": height,
-                        "range": end_range,
-                        "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
-                        "site_code": self.code,
-                        "site_name": self.name,
-                        "site_longitude": self.stationlon,
-                        "site_latitude": self.stationlat,
-                        "tangential_reso": reso,
-                    },
-                )
-                ds.append(data)
-                height += height_step
-            except:
-                # Decode broken files as much as possible
-                warnings.warn("Broken compressed file detected.", RuntimeWarning)
-                break
+        raw = np.vstack(data).astype(int)
+        raw = np.ma.masked_less(raw, 5)
+        data = (raw - offset) / scale
+        data = np.reshape(data, (self.params["layers_count"], len(azi), len(dist)))
+        lon, lat = get_coordinate(dist, azi, 0, self.stationlon, self.stationlat)
+        da = DataArray(
+            data, coords=[height, azi, dist], dims=["height", "azimuth", "distance"]
+        )
+        ds = Dataset(
+            {self.pname: da},
+            attrs={
+                "elevation": 0,
+                "range": end_range,
+                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": reso,
+                "task": self.task_name,
+            },
+        )
+        ds["longitude"] = (["azimuth", "distance"], lon)
+        ds["latitude"] = (["azimuth", "distance"], lat)
         self._dataset = ds
 
     def _parse_vwp_fmt(self):
@@ -872,7 +870,6 @@ class StandardPUP(RadarBase):
         sti_header = np.frombuffer(self.f.read(20), L3_sti_header)
         sti_count = sti_header["num_of_storms"][0]
         track_count = sti_count if sti_count < 100 else 100
-        attr_count = track_count
         sti_current = np.frombuffer(self.f.read(24 * track_count), L3_sti_motion)
         curr_azimuth = np.array(sti_current["azimuth"])
         curr_range = np.array(sti_current["range"])[:, np.newaxis]
@@ -925,29 +922,24 @@ class StandardPUP(RadarBase):
             )
             his = [[his_lon[i, 0], his_lat[i, 0]] for i in range(history_positon_count)]
             history.append(his)
-        sti_attributes = np.frombuffer(self.f.read(60), L3_sti_attribute)
-        sti_components = np.frombuffer(self.f.read(12), L3_sti_component)
-        sti_adaptation = np.frombuffer(self.f.read(40), L3_sti_adaptation)
-        sti_data = [[c, f, h] for c, f, h in zip(curr, forecast, history)]
-        attrs = (
-            {
-                "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
-                "site_code": self.code,
-                "site_name": self.name,
-                "site_longitude": self.stationlon,
-                "site_latitude": self.stationlat,
-                "task": self.task_name,
-                "sti_count": sti_count,
-                "data_info": "[curr_lon,curr_lat,curr_speed,curr_direction],[fore_lon,fore_lat],[his_lon,his_lat]",
-                "sti_attributes": sti_attributes,
-                "sti_components": sti_components,
-                "sti_adaptation": sti_adaptation,
-            },
-        )
-        ds = {
-            "data": sti_data,
-            "attrs": attrs,
+        if sti_count > 0:
+            self.sti_attributes = np.frombuffer(self.f.read(60), L3_sti_attribute)
+            self.sti_components = np.frombuffer(self.f.read(12), L3_sti_component)
+            self.sti_adaptation = np.frombuffer(self.f.read(40), L3_sti_adaptation)
+        sti_data = [
+            [{"curr": c, "fore": f, "his": h}]
+            for c, f, h in zip(curr, forecast, history)
+        ]
+        attrs = {
+            "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
+            "site_code": self.code,
+            "site_name": self.name,
+            "site_longitude": self.stationlon,
+            "site_latitude": self.stationlat,
+            "task": self.task_name,
+            "sti_count": sti_count,
         }
+        ds = {"data": sti_data, "attrs": attrs}
         self._dataset = ds
 
     def _parse_uam_fmt(self):
