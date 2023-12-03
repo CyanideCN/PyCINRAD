@@ -922,13 +922,37 @@ class StandardPUP(RadarBase):
             )
             his = [[his_lon[i, 0], his_lat[i, 0]] for i in range(history_positon_count)]
             history.append(his)
+        self.sti_attributes = []
+        self.sti_components = []
         if sti_count > 0:
-            self.sti_attributes = np.frombuffer(self.f.read(60), L3_sti_attribute)
-            self.sti_components = np.frombuffer(self.f.read(12), L3_sti_component)
+            for _ in range(track_count):
+                self.sti_attributes.append(
+                    np.frombuffer(self.f.read(60), L3_sti_attribute)
+                )
+            for _ in range(track_count):
+                self.sti_components.append(
+                    np.frombuffer(self.f.read(12), L3_sti_component)
+                )
             self.sti_adaptation = np.frombuffer(self.f.read(40), L3_sti_adaptation)
+        sti_id = [attr["id"] for attr in self.sti_attributes]
+        max_ref = [attr["max_ref"] for attr in self.sti_attributes]
+        max_ref_height = [attr["max_ref_height"] for attr in self.sti_attributes]
+        vil = [attr["vil"] for attr in self.sti_attributes]
+        top_height = [attr["top_height"] for attr in self.sti_attributes]
         sti_data = [
-            [{"curr": c, "fore": f, "his": h}]
-            for c, f, h in zip(curr, forecast, history)
+            {
+                "id": str(sti_id[i][0]),
+                "current_position": [curr[i][0], curr[i][1]],
+                "current_speed": curr[i][2],
+                "current_direction": curr[i][3],
+                "forecast_position": forecast[i],
+                "history_position": history[i],
+                "max_ref": max_ref[i][0],
+                "max_ref_height": max_ref_height[i][0],
+                "vil": vil[i][0],
+                "top_height": top_height[i][0],
+            }
+            for i in range(track_count)
         ]
         attrs = {
             "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
