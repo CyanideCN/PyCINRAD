@@ -12,12 +12,18 @@ from xarray import Dataset, DataArray
 from cinrad.projection import get_coordinate, height
 from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
-from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
+from cinrad.io.base import (
+    RadarBase,
+    prepare_file,
+    _get_radar_info,
+    bz2Decompress,
+    gzipDecompress,
+)
 from cinrad.io._dtype import *
 from cinrad.error import RadarDecodeError
 
 
-__all__ = ["PUP", "SWAN", "StandardPUP", "StormTrackInfo", "HailIndex"]
+__all__ = ["PUP", "SWAN", "StandardPUP", "StormTrackInfo", "HailIndex", "MocMosaic"]
 
 
 def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
@@ -1002,3 +1008,73 @@ class StandardPUP(RadarBase):
 
     def get_data(self):
         return self._dataset
+
+
+class MocMosaic(object):
+    """
+    解析中国气象局探测中心-天气雷达拼图系统V3.0-组网产品
+    """
+
+    def __init__(self, file):
+        self.f = prepare_file(file)
+        self._parse()
+        self.f.close()
+
+    def _parse(self):
+        header = np.frombuffer(self.f.read(256), mocm_dtype)
+        self.header = header  # for future use
+        nx = header["nx"][0]
+        ny = header["ny"][0]
+        compress = header["compress"][0]
+        scale = header["scale"][0]
+        self.dtype = b"".join(header["varname"][0]).decode()
+        self.data_time = datetime.datetime(
+            header["year"][0],
+            header["month"][0],
+            header["day"][0],
+            header["hour"][0],
+            header["minute"][0],
+        )
+        self.time_zone = "bjt" if header["time_zone"][0] == 28800 else "utc"
+        edge_s, edge_w, edge_n, edge_e = (
+            header["edge_s"][0] / 1000,
+            header["edge_w"][0] / 1000,
+            header["edge_n"][0] / 1000,
+            header["edge_e"][0] / 1000,
+        )
+        self.lon = np.linspace(edge_w, edge_e, nx)
+        self.lat = np.linspace(edge_s, edge_n, ny)
+        if compress == 0:
+            databody = self.f.read(nx * ny * 2)
+        elif compress == 1:
+            databody = bz2Decompress(self.f.read(nx * ny * 2))
+        elif compress == 2:
+            databody = gzipDecompress(self.f.read(nx * ny * 2))
+        else:
+            raise ValueError("Unknown compress type")
+        out = np.frombuffer(databody, "u2").astype(int).reshape(ny, nx)
+        out = np.flipud(out)
+        self.data = (np.ma.masked_greater(out, 1000)) / scale
+
+    def get_data(self) -> Dataset:
+        r"""
+        Get radar data with extra information
+
+        Returns:
+            xarray.Dataset: Data.
+        """
+        da = DataArray(
+            self.data, coords=[self.lat, self.lon], dims=["latitude", "longitude"]
+        )
+        ds = Dataset(
+            {self.dtype: da},
+            attrs={
+                "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": "MOC",
+                "site_name": "MOC",
+                "tangential_reso": np.nan,
+                "range": np.nan,
+                "elevation": 0,
+            },
+        )
+        return ds

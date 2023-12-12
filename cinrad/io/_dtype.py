@@ -11,7 +11,7 @@ __all__ = [
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
     'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
     'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
-    'L3_vwp_header','L3_vwp','L3_swp','L3_uam'
+    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -151,3 +151,47 @@ CD_DATA = np.dtype(
         ("rec", _CD_record, 998),
     ]
 )
+
+MOCM_HEADER = [
+    ("label", "4c"),
+    ("version", "4c"),
+    ("file_bytes", "i4"),
+    ("mosaic_id", "u2"),
+    ("coordinate","u2"),
+    ("varname","8c"),
+    ("description", "64c"),
+    ("block_pos","i4"),
+    ("block_len","i4"),
+    ("time_zone","i4"),
+    ("year", "u2"),
+    ("month", "u2"),
+    ("day", "u2"),
+    ("hour", "u2"),
+    ("minute", "u2"),
+    ("second", "u2"),
+    ("obs_seconds", "i4"),
+    ("obs_dates", "u2"),
+    ("gen_dates", "u2"),
+    ("gen_seconds", "i4"),
+    ("edge_s", "i4"),
+    ("edge_w", "i4"),
+    ("edge_n", "i4"),
+    ("edge_e", "i4"),
+    ("cx", "i4"),
+    ("cy", "i4"),
+    ("nx", "i4"),
+    ("ny", "i4"),
+    ("dx", "i4"),
+    ("dy", "i4"),
+    ("height", "u2"),
+    ("compress","u2"),
+    ("num_of_radars", "i4"),
+    ("un_zip_bytes", "i4"),
+    ("scale", "u2"),
+    ("unused", "u2"),
+    ("rgn_id", "8c"),
+    ("units", "8c"),
+    ("res", "60c"),
+]
+
+mocm_dtype = np.dtype(MOCM_HEADER)
