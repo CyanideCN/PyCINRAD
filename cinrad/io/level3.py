@@ -1012,21 +1012,141 @@ class StandardPUP(RadarBase):
 
 class MocMosaic(object):
     """
-    解析中国气象局探测中心-天气雷达拼图系统V3.0-组网产品
+    解析中国气象局探测中心-天气雷达拼图系统V3.0-产品
     """
 
     def __init__(self, file):
         self.f = prepare_file(file)
-        self._parse()
+        radartype = self._check_ftype()
+        self.f.seek(0)
+        if radartype == "single":
+            self._parse_single()
+        elif radartype == "mosaic":
+            self._parse_mosaic()
+        else:
+            raise ValueError("Not a MOC radar mosaic v3.0 product file")
         self.f.close()
 
-    def _parse(self):
+    def _check_ftype(self):
+        r"""Detect file type from bytes"""
+        radartype = None
+        moc = b"".join(np.frombuffer(self.f.read(4), "4c")[0])
+        if not moc.startswith(b"MOC"):
+            return "error"
+        self.f.seek(12)
+        rdaID = b"".join(np.frombuffer(self.f.read(8), "8c")[0])  # RDACode
+        if rdaID.startswith(b"Z"):
+            radartype = "single"
+        else:
+            radartype = "mosaic"
+        return radartype
+
+    def _parse_single(self):
+        r"""Parse single radar data"""
+        header = np.frombuffer(self.f.read(758), mocm_si_dtype)
+        self.header = header  # for future use
+        block_num = header["block_num"][0]
+        compress = header["compress"][0]
+        self.vcp = header["vcp"][0]
+        self.code = b"".join(header["site_code"][0]).decode()
+        self.name = (
+            b''.join(header["site_name"]).decode("utf-8", "ignore").replace("\x00", "")
+        )
+        self.stationlat = header["Latitude"][0] / 10000
+        self.stationlon = header["Longitude"][0] / 10000
+        self.data_time = datetime.datetime(
+            header["year"][0],
+            header["month"][0],
+            header["day"][0],
+            header["hour"][0],
+            header["minute"][0],
+        )
+        out_data = list()
+        databody = self.f.read()
+        if compress == 0:
+            databody = databody
+        elif compress == 1:
+            databody = bz2Decompress(databody)
+        elif compress == 2:
+            databody = gzipDecompress(databody)
+        else:
+            raise ValueError("Unknown compress type")
+        # 常规情况下，只有一层数据
+        # 但是有些数据会有第二层，里面包含了一些文件头信息，没有具体的数据块。
+        # 但是CAPPI这种则会有多层数据的情况
+        p_i = 0
+        heights = list()
+        for idx in range(block_num):
+            block_header = np.frombuffer(
+                databody[p_i : p_i + 132], mocm_si_block
+            )
+            p_i += 132
+            nx = block_header["nx"][0]
+            ny = block_header["ny"][0]
+            height = block_header["height"][0]
+            out = np.frombuffer(databody[p_i : p_i + nx * ny * 2], "i2").astype(int)
+            if len(out) != 0:
+                p_i += nx * ny * 2
+                out_data.append(out)
+                heights.append(int(height))
+            if idx == 0:
+                edge_s, edge_w, edge_n, edge_e = (
+                    block_header["edge_s"][0] / 1000,
+                    block_header["edge_w"][0] / 1000,
+                    block_header["edge_n"][0] / 1000,
+                    block_header["edge_e"][0] / 1000,
+                )
+                self.lon = np.linspace(edge_w, edge_e, nx)
+                self.lat = np.linspace(edge_s, edge_n, ny)
+                self.range = block_header["range"][0]
+                self.scale = block_header["scale"][0]
+                dx, dy = (block_header["dx"][0] / 1000, block_header["dy"][0] / 1000)
+                self.reso = min(dx, dy)
+                self.dtype = b"".join(block_header["varname"][0]).decode()
+                if nx != 0 and ny != 0:
+                    self.nx = nx
+                    self.ny = ny
+        layer_len = len(out_data)
+        if layer_len == 1:
+            r = np.reshape(out_data, (self.ny, self.nx))
+            coords = [self.lat, self.lon]
+            dims = ["latitude", "longitude"]
+        elif layer_len > 1:
+            r = np.reshape(out_data, (layer_len, self.ny, self.nx))
+            coords = [heights, self.lat, self.lon]
+            dims = ["height", "latitude", "longitude"]
+        ret = np.flipud(r)
+        data = (np.ma.masked_less(ret, 0)) / self.scale
+        da = DataArray(
+            data,
+            coords=coords,
+            dims=dims,
+        )
+        ds = Dataset(
+            {self.dtype: da},
+            attrs={
+                "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": self.reso,
+                "range": self.range,
+                "elevation": 0,
+                "task": "VCP{}".format(self.vcp),
+            },
+        )
+        self._dataset = ds
+
+    def _parse_mosaic(self):
+        r"""Parse mosaic data"""
         header = np.frombuffer(self.f.read(256), mocm_dtype)
         self.header = header  # for future use
         nx = header["nx"][0]
         ny = header["ny"][0]
         compress = header["compress"][0]
         scale = header["scale"][0]
+        self.code = self.name = "MOC"
         self.dtype = b"".join(header["varname"][0]).decode()
         self.data_time = datetime.datetime(
             header["year"][0],
@@ -1044,25 +1164,18 @@ class MocMosaic(object):
         )
         self.lon = np.linspace(edge_w, edge_e, nx)
         self.lat = np.linspace(edge_s, edge_n, ny)
+        databody = self.f.read(nx * ny * 2)
         if compress == 0:
-            databody = self.f.read(nx * ny * 2)
+            databody = databody
         elif compress == 1:
-            databody = bz2Decompress(self.f.read(nx * ny * 2))
+            databody = bz2Decompress(databody)
         elif compress == 2:
-            databody = gzipDecompress(self.f.read(nx * ny * 2))
+            databody = gzipDecompress(databody)
         else:
             raise ValueError("Unknown compress type")
-        out = np.frombuffer(databody, "u2").astype(int).reshape(ny, nx)
+        out = np.frombuffer(databody, "i2").astype(int).reshape(ny, nx)
         out = np.flipud(out)
-        self.data = (np.ma.masked_greater(out, 1000)) / scale
-
-    def get_data(self) -> Dataset:
-        r"""
-        Get radar data with extra information
-
-        Returns:
-            xarray.Dataset: Data.
-        """
+        self.data =(np.ma.masked_less(out, 0)) / scale
         da = DataArray(
             self.data, coords=[self.lat, self.lon], dims=["latitude", "longitude"]
         )
@@ -1077,4 +1190,7 @@ class MocMosaic(object):
                 "elevation": 0,
             },
         )
-        return ds
+        self._dataset = ds
+
+    def get_data(self) -> Dataset:
+        return self._dataset
