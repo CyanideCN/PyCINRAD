@@ -1023,8 +1023,6 @@ class MocMosaic(object):
             self._parse_single()
         elif radartype == "mosaic":
             self._parse_mosaic()
-        else:
-            raise ValueError("Not a MOC radar mosaic v3.0 product file")
         self.f.close()
 
     def _check_ftype(self):
@@ -1032,7 +1030,7 @@ class MocMosaic(object):
         radartype = None
         moc = b"".join(np.frombuffer(self.f.read(4), "4c")[0])
         if not moc.startswith(b"MOC"):
-            return "error"
+            raise ValueError("Not a MOC radar mosaic v3.0 product file")
         self.f.seek(12)
         rdaID = b"".join(np.frombuffer(self.f.read(8), "8c")[0])  # RDACode
         if rdaID.startswith(b"Z"):
@@ -1106,21 +1104,13 @@ class MocMosaic(object):
                 if nx != 0 and ny != 0:
                     self.nx = nx
                     self.ny = ny
-        layer_len = len(out_data)
-        if layer_len == 1:
-            r = np.reshape(out_data, (self.ny, self.nx))
-            coords = [self.lat, self.lon]
-            dims = ["latitude", "longitude"]
-        elif layer_len > 1:
-            r = np.reshape(out_data, (layer_len, self.ny, self.nx))
-            coords = [heights, self.lat, self.lon]
-            dims = ["height", "latitude", "longitude"]
-        ret = np.flipud(r)
+        r = np.reshape(out_data, (len(out_data), self.ny, self.nx))
+        ret = np.flipud(r) # Data store reverse in y axis
         data = (np.ma.masked_less(ret, 0)) / self.scale
         da = DataArray(
             data,
-            coords=coords,
-            dims=dims,
+            coords=[heights, self.lat, self.lon],
+            dims=["height", "latitude", "longitude"],
         )
         ds = Dataset(
             {self.dtype: da},
