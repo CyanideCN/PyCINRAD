@@ -5,6 +5,8 @@ from collections import OrderedDict, defaultdict
 from typing import Optional, Union, Any
 import datetime
 from io import BytesIO
+import bz2
+import gzip
 
 import numpy as np
 from xarray import Dataset, DataArray
@@ -17,7 +19,7 @@ from cinrad.io._dtype import *
 from cinrad.error import RadarDecodeError
 
 
-__all__ = ["PUP", "SWAN", "StandardPUP", "StormTrackInfo", "HailIndex"]
+__all__ = ["PUP", "SWAN", "StandardPUP", "StormTrackInfo", "HailIndex", "MocMosaic"]
 
 
 def xy2polar(x: Boardcast_T, y: Boardcast_T) -> tuple:
@@ -1001,4 +1003,178 @@ class StandardPUP(RadarBase):
         self._dataset = ds
 
     def get_data(self):
+        return self._dataset
+
+
+class MocMosaic(object):
+    """
+    解析中国气象局探测中心-天气雷达拼图系统V3.0-产品
+    """
+
+    def __init__(self, file):
+        self.f = prepare_file(file)
+        radartype = self._check_ftype()
+        self.f.seek(0)
+        if radartype == "single":
+            self._parse_single()
+        elif radartype == "mosaic":
+            self._parse_mosaic()
+        self.f.close()
+
+    def _check_ftype(self):
+        r"""Detect file type from bytes"""
+        radartype = None
+        moc = b"".join(np.frombuffer(self.f.read(4), "4c")[0])
+        if not moc.startswith(b"MOC"):
+            raise ValueError("Not a MOC radar mosaic v3.0 product file")
+        self.f.seek(12)
+        rdaID = b"".join(np.frombuffer(self.f.read(8), "8c")[0])  # RDACode
+        if rdaID.startswith(b"Z"):
+            radartype = "single"
+        else:
+            radartype = "mosaic"
+        return radartype
+
+    def _parse_single(self):
+        r"""Parse single radar data"""
+        header = np.frombuffer(self.f.read(758), mocm_si_dtype)
+        self.header = header  # for future use
+        block_num = header["block_num"][0]
+        compress = header["compress"][0]
+        self.vcp = header["vcp"][0]
+        self.code = b"".join(header["site_code"][0]).decode()
+        self.name = (
+            b"".join(header["site_name"]).decode("utf-8", "ignore").replace("\x00", "")
+        )
+        self.stationlat = header["Latitude"][0] / 10000
+        self.stationlon = header["Longitude"][0] / 10000
+        self.data_time = datetime.datetime(
+            header["year"][0],
+            header["month"][0],
+            header["day"][0],
+            header["hour"][0],
+            header["minute"][0],
+        )
+        out_data = list()
+        databody = self.f.read()
+        if compress == 0:
+            databody = databody
+        elif compress == 1:
+            databody = bz2.decompress(databody)
+        elif compress == 2:
+            databody = gzip.decompress(databody)
+        else:
+            raise ValueError("Unknown compress type")
+        # 常规情况下，只有一层数据
+        # 但是有些数据会有第二层，里面包含了一些文件头信息，没有具体的数据块。
+        # 但是CAPPI这种则会有多层数据的情况
+        p_i = 0
+        heights = list()
+        for idx in range(block_num):
+            block_header = np.frombuffer(databody[p_i : p_i + 132], mocm_si_block)
+            p_i += 132
+            nx = block_header["nx"][0]
+            ny = block_header["ny"][0]
+            height = block_header["height"][0]
+            out = np.frombuffer(databody[p_i : p_i + nx * ny * 2], "i2").astype(int)
+            if len(out) != 0:
+                p_i += nx * ny * 2
+                out_data.append(out)
+                heights.append(int(height))
+            if idx == 0:
+                edge_s, edge_w, edge_n, edge_e = (
+                    block_header["edge_s"][0] / 1000,
+                    block_header["edge_w"][0] / 1000,
+                    block_header["edge_n"][0] / 1000,
+                    block_header["edge_e"][0] / 1000,
+                )
+                self.lon = np.linspace(edge_w, edge_e, nx)
+                self.lat = np.linspace(edge_s, edge_n, ny)
+                self.range = block_header["range"][0]
+                self.scale = block_header["scale"][0]
+                dx, dy = (block_header["dx"][0] / 1000, block_header["dy"][0] / 1000)
+                self.reso = min(dx, dy)
+                self.dtype = b"".join(block_header["varname"][0]).decode()
+                if nx != 0 and ny != 0:
+                    self.nx = nx
+                    self.ny = ny
+        r = np.reshape(out_data, (len(out_data), self.ny, self.nx))
+        ret = np.flipud(r)  # Data store reverse in y axis
+        data = (np.ma.masked_less(ret, 0)) / self.scale
+        da = DataArray(
+            data,
+            coords=[heights, self.lat, self.lon],
+            dims=["height", "latitude", "longitude"],
+        )
+        ds = Dataset(
+            {self.dtype: da},
+            attrs={
+                "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": self.code,
+                "site_name": self.name,
+                "site_longitude": self.stationlon,
+                "site_latitude": self.stationlat,
+                "tangential_reso": self.reso,
+                "range": self.range,
+                "elevation": 0,
+                "task": "VCP{}".format(self.vcp),
+            },
+        )
+        self._dataset = ds
+
+    def _parse_mosaic(self):
+        r"""Parse mosaic data"""
+        header = np.frombuffer(self.f.read(256), mocm_dtype)
+        self.header = header  # for future use
+        nx = header["nx"][0]
+        ny = header["ny"][0]
+        compress = header["compress"][0]
+        scale = header["scale"][0]
+        self.code = self.name = "MOC"
+        self.dtype = b"".join(header["varname"][0]).decode()
+        self.data_time = datetime.datetime(
+            header["year"][0],
+            header["month"][0],
+            header["day"][0],
+            header["hour"][0],
+            header["minute"][0],
+        )
+        self.time_zone = "bjt" if header["time_zone"][0] == 28800 else "utc"
+        edge_s, edge_w, edge_n, edge_e = (
+            header["edge_s"][0] / 1000,
+            header["edge_w"][0] / 1000,
+            header["edge_n"][0] / 1000,
+            header["edge_e"][0] / 1000,
+        )
+        self.lon = np.linspace(edge_w, edge_e, nx)
+        self.lat = np.linspace(edge_s, edge_n, ny)
+        databody = self.f.read(nx * ny * 2)
+        if compress == 0:
+            databody = databody
+        elif compress == 1:
+            databody = bz2.decompress(databody)
+        elif compress == 2:
+            databody = gzip.decompress(databody)
+        else:
+            raise ValueError("Unknown compress type")
+        out = np.frombuffer(databody, "i2").astype(int).reshape(ny, nx)
+        out = np.flipud(out)
+        self.data = (np.ma.masked_less(out, 0)) / scale
+        da = DataArray(
+            self.data, coords=[self.lat, self.lon], dims=["latitude", "longitude"]
+        )
+        ds = Dataset(
+            {self.dtype: da},
+            attrs={
+                "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "site_code": "MOC",
+                "site_name": "MOC",
+                "tangential_reso": np.nan,
+                "range": np.nan,
+                "elevation": 0,
+            },
+        )
+        self._dataset = ds
+
+    def get_data(self) -> Dataset:
         return self._dataset

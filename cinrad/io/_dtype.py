@@ -11,7 +11,7 @@ __all__ = [
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
     'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
     'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
-    'L3_vwp_header','L3_vwp','L3_swp','L3_uam'
+    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -151,3 +151,106 @@ CD_DATA = np.dtype(
         ("rec", _CD_record, 998),
     ]
 )
+
+MOCM_HEADER = [
+    ("label", "4c"),
+    ("version", "4c"),
+    ("file_bytes", "i4"),
+    ("mosaic_id", "u2"),
+    ("coordinate", "u2"),
+    ("varname", "8c"),
+    ("description", "64c"),
+    ("block_pos", "i4"),
+    ("block_len", "i4"),
+    ("time_zone", "i4"),
+    ("year", "u2"),
+    ("month", "u2"),
+    ("day", "u2"),
+    ("hour", "u2"),
+    ("minute", "u2"),
+    ("second", "u2"),
+    ("obs_seconds", "i4"),
+    ("obs_dates", "u2"),
+    ("gen_dates", "u2"),
+    ("gen_seconds", "i4"),
+    ("edge_s", "i4"),
+    ("edge_w", "i4"),
+    ("edge_n", "i4"),
+    ("edge_e", "i4"),
+    ("cx", "i4"),
+    ("cy", "i4"),
+    ("nx", "i4"),
+    ("ny", "i4"),
+    ("dx", "i4"),
+    ("dy", "i4"),
+    ("height", "u2"),
+    ("compress", "u2"),
+    ("num_of_radars", "i4"),
+    ("un_zip_bytes", "i4"),
+    ("scale", "u2"),
+    ("unused", "u2"),
+    ("rgn_id", "8c"),
+    ("units", "8c"),
+    ("res", "60c"),
+]
+
+mocm_dtype = np.dtype(MOCM_HEADER)
+
+MOCM_SI_HEADER = [
+    ("label", "4c"),
+    ("version", "4c"),
+    ("file_bytes", "i4"),
+    ("site_code", "8c"),
+    ("site_name", "20c"),
+    ("province_name", "20c"),
+    ("radar_type", "12c"),
+    ("Latitude", "i4"),
+    ("Longitude", "i4"),
+    ("antenna_height", "i4"),
+    ("time_zone", "i4"),
+    ("year", "u2"),
+    ("month", "u2"),
+    ("day", "u2"),
+    ("hour", "u2"),
+    ("minute", "u2"),
+    ("second", "u2"),
+    ("obs_seconds", "i4"),
+    ("obs_dates", "u2"),
+    ("gen_dates", "u2"),
+    ("gen_seconds", "i4"),
+    ("block_num", "u2"),
+    ("compress", "u2"),
+    ("pid", "64u2"),
+    ("block_pos", "64i4"),
+    ("block_len", "64i4"),
+    ("vcp", "u2"),
+]
+
+mocm_si_dtype = np.dtype(MOCM_SI_HEADER)
+
+MOCM_SI_BLOCK = [
+    ("pid", "u2"),
+    ("coordinate", "u2"),
+    ("varname", "8c"),
+    ("description", "52c"),
+    ("edge_s", "i4"),
+    ("edge_w", "i4"),
+    ("edge_n", "i4"),
+    ("edge_e", "i4"),
+    ("cy", "i4"),
+    ("cx", "i4"),
+    ("ny", "i4"),
+    ("nx", "i4"),
+    ("dy", "i4"),
+    ("dx", "i4"),
+    ("ry", "u2"),
+    ("rx", "u2"),
+    ("range", "u2"),
+    ("height", "u2"),
+    ("block_size", "i4"),
+    ("gc_counts", "i4"),
+    ("scale", "u2"),
+    ("res", "10c"),
+]
+
+mocm_si_block = np.dtype(MOCM_SI_BLOCK)
