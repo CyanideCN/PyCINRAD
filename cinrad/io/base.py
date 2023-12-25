@@ -38,14 +38,6 @@ def prepare_file(file: Any) -> Any:
     return open(file, "rb")
 
 
-def bz2Decompress(data: bytes) -> bytes:
-    return bz2.decompress(data)
-
-
-def gzipDecompress(data: bytes) -> bytes:
-    return gzip.decompress(data)
-
-
 class RadarBase(abc.ABC):
     r"""
     Base class for readers in `cinrad.io`.

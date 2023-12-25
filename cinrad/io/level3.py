@@ -5,6 +5,8 @@ from collections import OrderedDict, defaultdict
 from typing import Optional, Union, Any
 import datetime
 from io import BytesIO
+import bz2
+import gzip
 
 import numpy as np
 from xarray import Dataset, DataArray
@@ -12,13 +14,7 @@ from xarray import Dataset, DataArray
 from cinrad.projection import get_coordinate, height
 from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
-from cinrad.io.base import (
-    RadarBase,
-    prepare_file,
-    _get_radar_info,
-    bz2Decompress,
-    gzipDecompress,
-)
+from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
 from cinrad.io._dtype import *
 from cinrad.error import RadarDecodeError
 
@@ -1048,7 +1044,7 @@ class MocMosaic(object):
         self.vcp = header["vcp"][0]
         self.code = b"".join(header["site_code"][0]).decode()
         self.name = (
-            b''.join(header["site_name"]).decode("utf-8", "ignore").replace("\x00", "")
+            b"".join(header["site_name"]).decode("utf-8", "ignore").replace("\x00", "")
         )
         self.stationlat = header["Latitude"][0] / 10000
         self.stationlon = header["Longitude"][0] / 10000
@@ -1064,9 +1060,9 @@ class MocMosaic(object):
         if compress == 0:
             databody = databody
         elif compress == 1:
-            databody = bz2Decompress(databody)
+            databody = bz2.decompress(databody)
         elif compress == 2:
-            databody = gzipDecompress(databody)
+            databody = gzip.decompress(databody)
         else:
             raise ValueError("Unknown compress type")
         # 常规情况下，只有一层数据
@@ -1075,9 +1071,7 @@ class MocMosaic(object):
         p_i = 0
         heights = list()
         for idx in range(block_num):
-            block_header = np.frombuffer(
-                databody[p_i : p_i + 132], mocm_si_block
-            )
+            block_header = np.frombuffer(databody[p_i : p_i + 132], mocm_si_block)
             p_i += 132
             nx = block_header["nx"][0]
             ny = block_header["ny"][0]
@@ -1105,7 +1099,7 @@ class MocMosaic(object):
                     self.nx = nx
                     self.ny = ny
         r = np.reshape(out_data, (len(out_data), self.ny, self.nx))
-        ret = np.flipud(r) # Data store reverse in y axis
+        ret = np.flipud(r)  # Data store reverse in y axis
         data = (np.ma.masked_less(ret, 0)) / self.scale
         da = DataArray(
             data,
@@ -1158,14 +1152,14 @@ class MocMosaic(object):
         if compress == 0:
             databody = databody
         elif compress == 1:
-            databody = bz2Decompress(databody)
+            databody = bz2.decompress(databody)
         elif compress == 2:
-            databody = gzipDecompress(databody)
+            databody = gzip.decompress(databody)
         else:
             raise ValueError("Unknown compress type")
         out = np.frombuffer(databody, "i2").astype(int).reshape(ny, nx)
         out = np.flipud(out)
-        self.data =(np.ma.masked_less(out, 0)) / scale
+        self.data = (np.ma.masked_less(out, 0)) / scale
         da = DataArray(
             self.data, coords=[self.lat, self.lon], dims=["latitude", "longitude"]
         )
