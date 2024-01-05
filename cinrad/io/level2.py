@@ -578,7 +578,7 @@ class StandardData(RadarBase):
             task["task_name"][0].decode("ascii", errors="ignore").split("\x00")[0]
         )
         self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(
-            seconds=int(task["scan_start_time"])
+            seconds=int(task["scan_start_time"][0])
         )
         cut_num = task["cut_number"][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)

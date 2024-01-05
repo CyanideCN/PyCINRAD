@@ -45,7 +45,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
     time["units"] = "seconds since 1970-01-01 00:00"
     time["standard_name"] = "time"
     time["long_name"] = "time in seconds since volume start"
-    time["data"] = f._time_radial
+    time["data"] = np.array(f._time_radial)
 
     _range = filemetadata("range")
     reso = f.scan_config[0].dop_reso
