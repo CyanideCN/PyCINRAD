@@ -22,6 +22,20 @@ __all__ = ["CinradReader", "StandardData", "PhasedArrayData"]
 ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
 
+utc8_tz = datetime.timezone(utc_offset)
+
+
+def epoch_seconds_to_utc(epoch_seconds: float) -> datetime.datetime:
+    r"""Convert epoch seconds to UTC datetime"""
+    return datetime.datetime.utcfromtimestamp(epoch_seconds).replace(tzinfo=datetime.timezone.utc)
+
+
+def localdatetime_to_utc(ldt: datetime.datetime, tz: datetime.timezone = utc8_tz) -> datetime.datetime:
+    r"""Convert local datetime to UTC datetime"""
+    if ldt.tzinfo is None:
+        ldt = ldt.replace(tzinfo=tz)  # suppose the default timezone is UTC+8
+    return ldt.astimezone(datetime.timezone.utc)
+
 
 def vcp(el_num: int) -> str:
     r"""Determine volume coverage pattern by number of scans."""
@@ -152,10 +166,11 @@ class CinradReader(RadarBase):
             radar_dtype = S_SPECIAL_dtype
             _header_size = 132
         data = np.frombuffer(f.read(), dtype=radar_dtype)
-        start = datetime.datetime(1969, 12, 31)
         deltday = datetime.timedelta(days=int(data["day"][0]))
         deltsec = datetime.timedelta(milliseconds=int(data["time"][0]))
-        self.scantime = start + deltday + deltsec
+        _ONE_DAY = datetime.timedelta(days=1)  # MARK: start from 1969-12-31, we don't know why
+        epoch_seconds = (deltday + deltsec - _ONE_DAY).total_seconds()
+        self.scantime = epoch_seconds_to_utc(epoch_seconds)
         self.Rreso = data["gate_length_r"][0] / 1000
         self.Vreso = data["gate_length_v"][0] / 1000
         boundary = np.where(data["radial_num"] == 1)[0]
@@ -217,7 +232,7 @@ class CinradReader(RadarBase):
         if scan_mode < 100:
             raise NotImplementedError("Only VPPI scan mode is supported")
         stop_angle = scan_mode - 100
-        self.scantime = (
+        self.scantime = localdatetime_to_utc(
             datetime.datetime(
                 header["ucEYear1"][0] * 100 + header["ucEYear2"][0],
                 header["ucEMonth"][0],
@@ -226,7 +241,6 @@ class CinradReader(RadarBase):
                 header["ucEMinute"][0],
                 header["ucESecond"][0],
             )
-            - utc_offset
         )
         f.seek(218)
         param = np.frombuffer(f.read(660), CC_param)
@@ -271,7 +285,7 @@ class CinradReader(RadarBase):
         else:
             raise ValueError("Invalid scan type {}".format(scan_type))
         self.task_name = vcp(el_num)
-        self.scantime = (
+        self.scantime = localdatetime_to_utc(
             datetime.datetime(
                 header["obs"]["syear"][0],
                 header["obs"]["smonth"][0],
@@ -280,7 +294,6 @@ class CinradReader(RadarBase):
                 header["obs"]["sminute"][0],
                 header["obs"]["ssecond"][0],
             )
-            - utc_offset
         )
         self.nyquist_v = header["obs"]["layerparam"]["MaxV"][0][:el_num] / 100
         self.Rreso = self.Vreso = header["obs"]["layerparam"]["binWidth"][0][0] / 10000
@@ -311,7 +324,7 @@ class CinradReader(RadarBase):
             "name": header["sStation"][0].decode("gbk"),
         }
         obs_param = np.frombuffer(f.read(CC2_obs.itemsize), CC2_obs)
-        self.scantime = (
+        self.scantime = localdatetime_to_utc(
             datetime.datetime(
                 obs_param["usSYear"][0],
                 obs_param["ucSMonth"][0],
@@ -320,7 +333,6 @@ class CinradReader(RadarBase):
                 obs_param["ucSMinute"][0],
                 obs_param["ucSSecond"][0],
             )
-            - utc_offset
         )
         layer_info = obs_param["LayerInfo"]
         scan_type = obs_param["ucType"][0]
@@ -577,9 +589,10 @@ class StandardData(RadarBase):
         self.task_name = (
             task["task_name"][0].decode("ascii", errors="ignore").split("\x00")[0]
         )
-        self.scantime = datetime.datetime(1970, 1, 1) + datetime.timedelta(
+        epoch_seconds = datetime.timedelta(
             seconds=int(task["scan_start_time"][0])
-        )
+        ).total_seconds()
+        self.scantime = epoch_seconds_to_utc(epoch_seconds)
         cut_num = task["cut_number"][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         self.scan_config = list()
@@ -887,7 +900,7 @@ class PhasedArrayData(RadarBase):
         self.stationlon = data["header"]["longitude"][0] * 360 / 65535
         self.stationlat = data["header"]["latitude"][0] * 360 / 65535
         self.radarheight = data["header"]["height"][0] * 1000 / 65535
-        self.scantime = datetime.datetime.utcfromtimestamp(
+        self.scantime = epoch_seconds_to_utc(
             data["data"]["radial_time"][0]
         )
         self.reso = np.round(data["data"]["gate_length"][0] * 1000 / 65535) / 1000
