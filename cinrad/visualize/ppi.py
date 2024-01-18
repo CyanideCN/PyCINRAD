@@ -298,6 +298,7 @@ class PPI(object):
         else:
             path_string = fpath
         save(path_string, self.settings["style"])
+        return path_string
 
     def plot_range_rings(
         self,
