@@ -306,7 +306,7 @@ def add_shp(
 
 def change_cbar_text(cbar: ColorbarBase, tick: List[Number_T], text: List[str]):
     cbar.set_ticks(tick)
-    cbar.set_ticklabels(text)
+    cbar.set_ticklabels(text, **plot_kw)
 
 
 def highlight_area(
