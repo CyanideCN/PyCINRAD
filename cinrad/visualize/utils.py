@@ -171,6 +171,10 @@ class ShpReader(shapereader.BasicReader):
             pass
         self._fields = self._reader.fields
 
+from cartopy import __version__
+
+if __version__ >= "0.23.0":
+    ShpReader = shapereader.BasicReader
 
 def setup_plot(dpi: Number_T, figsize: tuple = FIG_SIZE, style: str = "black") -> Any:
     if style == "transparent":
