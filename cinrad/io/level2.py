@@ -27,10 +27,14 @@ utc8_tz = datetime.timezone(utc_offset)
 
 def epoch_seconds_to_utc(epoch_seconds: float) -> datetime.datetime:
     r"""Convert epoch seconds to UTC datetime"""
-    return datetime.datetime.utcfromtimestamp(epoch_seconds).replace(tzinfo=datetime.timezone.utc)
+    return datetime.datetime.utcfromtimestamp(epoch_seconds).replace(
+        tzinfo=datetime.timezone.utc
+    )
 
 
-def localdatetime_to_utc(ldt: datetime.datetime, tz: datetime.timezone = utc8_tz) -> datetime.datetime:
+def localdatetime_to_utc(
+    ldt: datetime.datetime, tz: datetime.timezone = utc8_tz
+) -> datetime.datetime:
     r"""Convert local datetime to UTC datetime"""
     if ldt.tzinfo is None:
         ldt = ldt.replace(tzinfo=tz)  # suppose the default timezone is UTC+8
@@ -168,7 +172,9 @@ class CinradReader(RadarBase):
         data = np.frombuffer(f.read(), dtype=radar_dtype)
         deltday = datetime.timedelta(days=int(data["day"][0]))
         deltsec = datetime.timedelta(milliseconds=int(data["time"][0]))
-        _ONE_DAY = datetime.timedelta(days=1)  # MARK: start from 1969-12-31, we don't know why
+        _ONE_DAY = datetime.timedelta(
+            days=1
+        )  # MARK: start from 1969-12-31, we don't know why
         epoch_seconds = (deltday + deltsec - _ONE_DAY).total_seconds()
         self.scantime = epoch_seconds_to_utc(epoch_seconds)
         self.Rreso = data["gate_length_r"][0] / 1000
@@ -900,9 +906,7 @@ class PhasedArrayData(RadarBase):
         self.stationlon = data["header"]["longitude"][0] * 360 / 65535
         self.stationlat = data["header"]["latitude"][0] * 360 / 65535
         self.radarheight = data["header"]["height"][0] * 1000 / 65535
-        self.scantime = epoch_seconds_to_utc(
-            data["data"]["radial_time"][0]
-        )
+        self.scantime = epoch_seconds_to_utc(data["data"]["radial_time"][0])
         self.reso = np.round(data["data"]["gate_length"][0] * 1000 / 65535) / 1000
         self.first_gate_dist = (
             np.round(data["data"]["first_gate_dist"][0] * 1000 / 65535) / 1000

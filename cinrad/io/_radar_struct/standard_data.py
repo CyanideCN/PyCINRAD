@@ -365,13 +365,13 @@ l3_vwp_header = [
 l3_vwp_header_dtype = np.dtype(l3_vwp_header)
 
 l3_vwp_table = [
-    ("start_time","i4"),
-    ("height","i4"),
-    ("fitvalid","i4"),
-    ("wind_direction","f4"),
-    ("wind_speed","f4"),
-    ("rms_std","f4"),
-    ("res","8c"),
+    ("start_time", "i4"),
+    ("height", "i4"),
+    ("fitvalid", "i4"),
+    ("wind_direction", "f4"),
+    ("wind_speed", "f4"),
+    ("rms_std", "f4"),
+    ("res", "8c"),
 ]
 
 l3_vwp_table_dtype = np.dtype(l3_vwp_table)
