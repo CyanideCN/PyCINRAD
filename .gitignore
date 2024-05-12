@@ -13,3 +13,4 @@
 docs/build
 .coverage
 htmlcov
+appveyor.yml
