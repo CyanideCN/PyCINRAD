@@ -118,7 +118,7 @@ prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Re
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
             "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.",
-            "cHCL":"CINRAD HCL","HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery"}
+            "cHCL":"Hydrometeor Class","HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
         "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "cHCL":"", "HCL":""}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
