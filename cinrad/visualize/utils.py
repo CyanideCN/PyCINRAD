@@ -82,6 +82,8 @@ vil_cbar = _get_uniform_cmap(vil_cmap)
 rf_cmap = cmx.ListedColormap("#660066", "#FFFFFF")
 ohp_cmap = _cmap("OHP")["cmap"]
 ohp_cbar = _get_uniform_cmap(ohp_cmap)
+hcl_cmap = _cmap("HCL")["cmap"]
+hcl_cbar = _get_uniform_cmap(hcl_cmap.reversed())
 
 norm1 = cmx.Normalize(0, 75)  # reflectivity / vertially integrated liquid
 norm2 = cmx.Normalize(-35, 28)  # velocity
@@ -95,29 +97,30 @@ norm9 = cmx.Normalize(-0.8, 21)  # specific differential phase
 norm10 = cmx.Normalize(0.1, 6)  # vertically integrated liquid density
 norm11 = cmx.Normalize(0, 204)  # One-hour precipitation
 norm12 = cmx.Normalize(1, 11)
+norm13 = cmx.Normalize(0, 10)  # standard rose HCl
 
 # fmt: off
 norm_plot = {"REF":norm1, "VEL":norm2, "CR":norm1, "ET":norm5, "VIL":norm1, "RF":norm3,
              "ZDR":norm6, "PHI":norm7, "RHO":norm8, "TREF":norm1, "KDP":norm9, "VILD":norm10,
-             "OHP":norm11, "HCL":norm12} # Normalize object used to plot
+             "OHP":norm11, "cHCL":norm12, "HCL":norm13} # Normalize object used to plot
 norm_cbar = {"REF":norm1, "VEL":norm4, "CR":norm1, "ET":norm4, "VIL":norm4,
              "ZDR":norm4, "PHI":norm4, "RHO":norm4, "TREF":norm1, "KDP":norm4,
-             "VILD":norm4, "OHP":norm4, "HCL":norm4} # Normalize object used for colorbar
+             "VILD":norm4, "OHP":norm4, "cHCL":norm4, "HCL":norm4} # Normalize object used for colorbar
 cmap_plot = {"REF":r_cmap, "VEL":v_cmap, "CR":r_cmap, "ET":et_cmap, "VIL":vil_cmap, "RF":rf_cmap,
              "ZDR":zdr_cmap, "PHI":kdp_cmap, "RHO":cc_cmap, "TREF":r_cmap, "KDP":kdp_cmap,
-             "VILD":vil_cmap, "OHP":ohp_cmap, "HCL":mcm.tab10}
+             "VILD":vil_cmap, "OHP":ohp_cmap, "cHCL":mcm.tab10, "HCL":hcl_cmap}
 cmap_cbar = {"REF":r_cmap, "VEL":v_cbar, "CR":r_cmap, "ET":et_cbar, "VIL":vil_cbar,
              "ZDR":zdr_cbar, "PHI":kdp_cbar, "RHO":cc_cbar, "TREF":r_cmap, "KDP":kdp_cbar,
-             "VILD":vil_cbar, "OHP":ohp_cbar, "HCL":mcm.tab10}
+             "VILD":vil_cbar, "OHP":ohp_cbar, "cHCL":mcm.tab10, "HCL":hcl_cbar}
 sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PHI":kdp_cmap_smooth, "RHO":cc_cmap_smooth,
-            "KDP":kdp_cmap_smooth, "HCL":mcm.tab10}
+            "KDP":kdp_cmap_smooth, "cHCL":mcm.tab10, "HCL":hcl_cbar}
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
             "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.",
-            "HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery"}
+            "cHCL":"Hydrometeor Class","HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
-        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "HCL":""}
+        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "cHCL":"", "HCL":""}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
                                 "-1", "-5", "-10", "-15", "-20", "-27", "-35"],
              "CR":None, "ET":["", "21", "20", "18", "17", "15", "14", "12",
@@ -135,8 +138,10 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
                      "0.9", "0.7", "0.5", "0.3", "0.1"],
              "OHP":["", "203.2", "152.4", "101.6", "76.2", "63.5", "50.8", "44.45", "38.1", "31.75",
                     "25.4", "19.05", "12.7", "6.35", "2.54", "0"],
-             "HCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice", "Low-Dens Graupel",
-                    "High-Dens Graupel", "Hail", "Big Drops", ""]}
+             "cHCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice", 
+                     "Low-Dens Graupel", "High-Dens Graupel", "Hail", "Big Drops", ""],
+             "HCL":["Rain", "Heavy Rain", "Hail", "Big Drops", "Clear-Air Echo", "Ground Clutter", 
+                    "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""]}
 # fmt: on
 
 # Add entry for VELSZ
@@ -312,7 +317,7 @@ def add_shp(
 
 def change_cbar_text(cbar: ColorbarBase, tick: List[Number_T], text: List[str]):
     cbar.set_ticks(tick)
-    cbar.set_ticklabels(text)
+    cbar.set_ticklabels(text, **plot_kw)
 
 
 def highlight_area(
