@@ -498,6 +498,6 @@ def hydro_class(
     result = result.reshape(z_data.shape).astype(float)
     result[np.isnan(z_data)] = np.nan
     hcl = z.copy()
-    hcl["HCL"] = (["azimuth", "distance"], result)
+    hcl["cHCL"] = (["azimuth", "distance"], result)
     del hcl["REF"]
     return hcl
