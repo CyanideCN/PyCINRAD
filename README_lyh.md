@@ -7,15 +7,15 @@ Markdown的文件通常以.md或.markdown为扩展名。
 可以创建一个TXT文本文档，然后将其后缀改为.md即可开始编辑此Markdown文档。
 ***
 # **二.git与github**
-## [视频教程](https://www.bilibili.com/video/BV1cT42197fc/?spm_id_from=333.337.search-card.all.click)和[文本教程]()
-1. git安装与配置
+## [视频教程](https://www.bilibili.com/video/BV1cT42197fc/?spm_id_from=333.337.search-card.all.click)和[文本教程](https://www.liaoxuefeng.com/wiki/896043488029600)
+* git安装与配置
 
     `git config --global user.name "Your Name"`
     `git config --global user.email "email@example.com"`
     `git config --list`
    
     `git init`工作区有一个隐藏目录.git，Git的版本库。最重要的就是称为stage（或者叫index）的暂存区，还有Git为我们自动创建的第一个分支
-              master，以及指向master的一个指针叫HEAD。
+  master，以及指向master的一个指针叫HEAD。
     `git add.`把项目中所有修改文件添加进去，实际上就是把文件修改添加到暂存区；
     `git commit`提交更改，实际上就是把暂存区的所有内容提交到当前分支。
     `git status`查看当前工作目录的状态
@@ -23,15 +23,18 @@ Markdown的文件通常以.md或.markdown为扩展名。
 
     `git log`穿梭前，可以查看提交历史，以便确定要回退到哪个版本。
     `git reflog`要重返未来查看命令历史，以便确定要回到未来的哪个版本。
-
-2. 一种是文件自修改后还没有被放到暂存区，现在，撤销修改就回到和版本库一模一样的状态；`git checkout -- readme.txt (其实是从版本库重新检出一份文件)`
+* 一种是文件自修改后还没有被放到暂存区，现在，撤销修改就回到和版本库一模一样的状态；`git checkout -- readme.txt (其实是从版本库重新检出一份文件)`
    一种是readme.txt修改后已经添加到暂存区后，执行以下两条命令: `git reset HEAD readme.txt `
    `git checkout -- readme.txt`
-3. 忽略文件
+* 忽略文件
+![应忽略文件](https://image.itbaima.cn/markdown/2024/04/01/vdfIcRaSolpG1Eq.png)
+![匹配规则](https://pic2.zhimg.com/v2-1a2af8b21202cb888ecc9cf604d93345_r.jpg)
+![实例](https://pic4.zhimg.com/v2-707ae0ac5677ea22efe9a6a4728ca6ef_r.jpg)
    1. 不需提交到本地仓库的文件可以忽略
    2. 工作目录中下使用编辑器创建的.gitignore文件
    3. 把不需要提交的文件添加到.gitignore，就不再提交git仓库
-4. 分支
+* 分支
+
 
 ***
 # **三.PyCINRAD-1.8.0**
