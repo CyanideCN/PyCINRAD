@@ -196,6 +196,7 @@ class SWAN(object):
     Args:
         file (str, IO): Path points to the file or a file object.
     """
+
     dtype_conv = {0: "B", 1: "b", 2: "u2", 3: "i2", 4: "u2"}
     size_conv = {0: 1, 1: 1, 2: 2, 3: 2, 4: 2}
 
@@ -484,12 +485,14 @@ class StandardPUP(RadarBase):
         if self.name == "None":
             self.name = self.code
         del self.geo
-        if self.ptype in [1, 13, 14, 25, 26, 27, 28, 51, 52]:  # PPI radial format
+        if self.ptype in [1, 13, 14, 24, 25, 26, 27, 28, 51, 52]:  # PPI radial format
             self._parse_radial_fmt()
-        elif self.ptype in [6, 8, 9, 10, 18, 23]:
+        elif self.ptype in [4, 6, 8, 9, 10, 18, 23]:
             self._parse_raster_fmt()
         elif self.ptype == 3:
             self._parse_cappi_fmt()
+        elif self.ptype == 20:
+            self._parse_wer_fmt()
         elif self.ptype == 32:
             self._parse_vwp_fmt()
         elif self.ptype == 36:
@@ -504,6 +507,10 @@ class StandardPUP(RadarBase):
             self._parse_tvs_fmt()
         elif self.ptype == 44:
             self._parse_uam_fmt()
+        else:
+            raise RadarDecodeError(
+                "Unsupported product type {}:{}".format(self.ptype, self.pname)
+            )
         self.f.close()
 
     def _parse_header(self):
@@ -634,6 +641,31 @@ class StandardPUP(RadarBase):
             },
         )
         self._dataset = ds
+
+    def _parse_wer_fmt(self):
+        L3_WER_Header = np.dtype(
+            [
+                ("elevation", "f4"),
+                ("scan_time", "i4"),
+                ("center_height", "i4"),
+                ("res", "20c"),
+            ]
+        )
+        wer = Dataset()
+        while True:
+            buf = self.f.read(32)
+            if not buf:
+                break
+            wer_header = np.frombuffer(buf, L3_WER_Header)
+            elev = wer_header["elevation"][0]
+            self._parse_raster_fmt()
+            if len(wer) == 0:
+                wer = self._dataset.copy()
+                wer = wer.rename({self.pname: "{}_{:.1f}".format(self.pname, elev)})
+                wer.attrs["center_height"] = wer_header["center_height"][0]
+            else:
+                wer["{}_{:.1f}".format(self.pname, elev)] = self._dataset[self.pname]
+        self._dataset = wer
 
     def _parse_cappi_fmt(self):
         azi = list()
