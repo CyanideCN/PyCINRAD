@@ -7,7 +7,7 @@ from cinrad.io.level3 import *
 from typing import Union
 
 RadarBase_T = Union[
-    StandardData, CinradReader, StandardPUP, MocMosaic, SWAN, PhasedArrayData, PUP
+    RadarBase, StandardData, CinradReader, StandardPUP, MocMosaic, SWAN, PhasedArrayData, PUP
 ]
 
 
@@ -26,18 +26,28 @@ def read_auto(
     **kwargs
 ) -> RadarBase_T:
     """Read radar data, auto detected type of file .
+
     Args:
         filename: file name of radar data.
+        **kwargs: keyword arguments.
+        eg: `SWAN(, product="CR")``CinradReader(, radar_type="CC")`
 
     Radar types:
 
         1. StandardData, standard format based data.
+
         2. StandardPUP, standard PUP format data.
+
         3. MocMosaic, mosaic format data v3.0.
+
         4. SWAN, SWAN format data.
+
         5. CinradReader, cinrad format based data.
+
         6. PhasedArrayData, standard format phased array radar data(XAD-2023).
+
         7: PUP, NEXRAD Level 3 (NIDS) product files.
+
     """
     with prepare_file(filename) as file:
         flag = file.read(125)
