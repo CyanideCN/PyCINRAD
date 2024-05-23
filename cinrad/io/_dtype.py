@@ -11,7 +11,8 @@ __all__ = [
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
     'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
     'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
-    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block'
+    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block',
+    'L3_wer_header'
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -44,6 +45,7 @@ from cinrad.io._radar_struct.standard_data import (
     l3_vwp_table_dtype as L3_vwp,
     l3_swp as L3_swp,
     l3_uam_dtype as L3_uam,
+    l3_wer_header_dtype as L3_wer_header,
 )
 from cinrad.io._radar_struct.CD import (
     radarsite_dtype as CD_site,
@@ -254,3 +256,4 @@ MOCM_SI_BLOCK = [
 ]
 
 mocm_si_block = np.dtype(MOCM_SI_BLOCK)
+

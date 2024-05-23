@@ -643,20 +643,12 @@ class StandardPUP(RadarBase):
         self._dataset = ds
 
     def _parse_wer_fmt(self):
-        L3_WER_Header = np.dtype(
-            [
-                ("elevation", "f4"),
-                ("scan_time", "i4"),
-                ("center_height", "i4"),
-                ("res", "20c"),
-            ]
-        )
         wer = Dataset()
         while True:
             buf = self.f.read(32)
             if not buf:
                 break
-            wer_header = np.frombuffer(buf, L3_WER_Header)
+            wer_header = np.frombuffer(buf, L3_wer_header)
             elev = wer_header["elevation"][0]
             self._parse_raster_fmt()
             if len(wer) == 0:
