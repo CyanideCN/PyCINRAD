@@ -444,12 +444,12 @@ class GridMapper(object):
     def _merge_xy(self, x: np.ndarray, y: np.ndarray) -> Dataset:
         xy_data = merge(self.fields)
         lat_interp = xy_data[self.dtype].interpolate_na(
-            "latitude", method="nearest", limit=2, max_gap=1
+            "latitude", method="nearest", limit=len(self.fields)
         )
         lon_interp = lat_interp.interpolate_na(
-            "longitude", method="linear", limit=2, max_gap=1
+            "longitude", method="nearest", limit=len(self.fields)
         )
-        grid = lon_interp.interp(longitude=x[0], latitude=y[:, 0], method="linear")
+        grid = lon_interp.interp(longitude=x[0], latitude=y[:, 0], method="nearest")
         return grid
 
     def __call__(self, step: Number_T) -> Dataset:
