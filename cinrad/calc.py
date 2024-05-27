@@ -107,19 +107,20 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         resolution=resolution,
     )
     r_data.append(r)
-    for i in r_list[1:]:
-        r, x, y = grid_2d(
-            i["REF"].values,
-            i["longitude"].values,
-            i["latitude"].values,
-            x_out=x,
-            y_out=y,
-            resolution=resolution,
-        )
-        r_data.append(r)
+    if len(r_list) > 1:
+        for i in r_list[1:]:
+            r, x, y = grid_2d(
+                i["REF"].values,
+                i["longitude"].values,
+                i["latitude"].values,
+                x_out=x,
+                y_out=y,
+                resolution=resolution,
+            )
+            r_data.append(r)
     cr = np.nanmax(r_data, axis=0)
     ret = Dataset({"CR": DataArray(cr, coords=[y, x], dims=["latitude", "longitude"])})
-    ret.attrs = i.attrs
+    ret.attrs = r_list[0].attrs
     ret.attrs["elevation"] = 0
     return ret
 
@@ -360,7 +361,7 @@ class GridMapper(object):
     This class can merge scans from different radars to a single cartesian grid.
     support BR or CR or any list(xarray.Dataset).
     merge_xy method inspiration comes from OLDLee_GIFT@bilibili.
-    
+
     Args:
         fields (list(xarray.Dataset)): Lists of scans to be merged.
 
@@ -402,7 +403,9 @@ class GridMapper(object):
         self.lat_ravel = np.hstack([i["latitude"].values.ravel() for i in fields])
         self.is_polar = "distance" in fields[0].coords
         if self.is_polar:
-            self.data_ravel = np.ma.hstack([i[self.dtype].values.ravel() for i in fields])
+            self.data_ravel = np.ma.hstack(
+                [i[self.dtype].values.ravel() for i in fields]
+            )
             self.dist_ravel = np.hstack(
                 [
                     np.broadcast_to(i["distance"], i["longitude"].shape).ravel()
@@ -444,12 +447,12 @@ class GridMapper(object):
     def _merge_xy(self, x: np.ndarray, y: np.ndarray) -> Dataset:
         xy_data = merge(self.fields)
         lat_interp = xy_data[self.dtype].interpolate_na(
-            "latitude", method="nearest", limit=len(self.fields)
+            "latitude", method="linear", limit=len(self.fields)
         )
         lon_interp = lat_interp.interpolate_na(
             "longitude", method="nearest", limit=len(self.fields)
         )
-        grid = lon_interp.interp(longitude=x[0], latitude=y[:, 0], method="nearest")
+        grid = lon_interp.interp(longitude=x[0], latitude=y[:, 0], method="linear")
         return grid
 
     def __call__(self, step: Number_T) -> Dataset:
