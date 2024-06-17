@@ -107,20 +107,19 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         resolution=resolution,
     )
     r_data.append(r)
-    if len(r_list) > 1:
-        for i in r_list[1:]:
-            r, x, y = grid_2d(
-                i["REF"].values,
-                i["longitude"].values,
-                i["latitude"].values,
-                x_out=x,
-                y_out=y,
-                resolution=resolution,
-            )
-            r_data.append(r)
+    for i in r_list[1:]:
+        r, x, y = grid_2d(
+            i["REF"].values,
+            i["longitude"].values,
+            i["latitude"].values,
+            x_out=x,
+            y_out=y,
+            resolution=resolution,
+        )
+        r_data.append(r)
     cr = np.nanmax(r_data, axis=0)
     ret = Dataset({"CR": DataArray(cr, coords=[y, x], dims=["latitude", "longitude"])})
-    ret.attrs = r_list[0].attrs
+    ret.attrs = i.attrs
     ret.attrs["elevation"] = 0
     return ret
 
@@ -237,6 +236,30 @@ def quick_vild(r_list: Volume_T) -> Dataset:
     lon, lat = get_coordinate(distance, azimuth, 0, i.site_longitude, i.site_latitude)
     ret["longitude"] = (["azimuth", "distance"], lon)
     ret["latitude"] = (["azimuth", "distance"], lat)
+    return ret
+
+
+def polar_to_xy(field: Dataset, resolution: tuple = (1000, 1000)) -> Dataset:
+    r"""
+    Interpolate single volume data in polar coordinates into geographic coordinates
+
+    将单仰角数据从极坐标插值转换为经纬度坐标
+    
+    Args:
+        field (xarray.Dataset): Original radial.
+
+    Returns:
+        xarray.Dataset: Interpolated data in grid
+    """
+    dtype = get_dtype(field)
+    r, x, y = grid_2d(
+        field[dtype].values,
+        field["longitude"].values,
+        field["latitude"].values,
+        resolution=resolution,
+    )
+    ret = Dataset({dtype: DataArray(r, coords=[y, x], dims=["latitude", "longitude"])})
+    ret.attrs = field.attrs
     return ret
 
 
