@@ -11,7 +11,7 @@ __all__ = [
     'S_SPECIAL_dtype', 'CC2_header', 'CC2_obs', 'CC2_data', 'CC2_other', 'PA_radial',
     'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
     'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
-    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block'
+    'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block',
     'L3_wer_header'
 ]
 # fmt: on
