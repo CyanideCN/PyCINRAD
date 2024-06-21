@@ -51,14 +51,11 @@ setup(
         "vanadis",
         "cinrad_data>=0.1"
     ],
-    data_files=[
-        (
-            data_pth,
-            glob.glob(join(data_pth, "*.*")),
-        ),
-        (join(data_pth, "colormap"), glob.glob(join(data_pth, "colormap", "*.cmap"))),
-        (join("cinrad", "correct"), [join("cinrad", "correct", "unwrap_2d_ljmu.c")]),
-    ],
+    package_data={
+        data_pth: glob.glob(join(data_pth, "*.*")),
+        join(data_pth, "colormap"): glob.glob(join(data_pth, "colormap", "*.cmap")),
+        join("cinrad", "correct"): [join("cinrad", "correct", "unwrap_2d_ljmu.c")],
+    },
     scripts=[],
     ext_modules=ext_modules,
     include_dirs=include_dirs,
