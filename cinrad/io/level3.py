@@ -712,6 +712,7 @@ class StandardPUP(RadarBase):
         height = list()
         wd = list()
         ws = list()
+        rms = list()
         while True:
             buf = self.f.read(32)
             if not buf:
@@ -721,6 +722,7 @@ class StandardPUP(RadarBase):
             height.append(vwp["height"][0])
             wd.append(vwp["wind_direction"][0])
             ws.append(vwp["wind_speed"][0])
+            rms.append(vwp["rms_std"][0])
         height = list(set(height))
         timestamp = list(set(timestamp))
         height.sort()
@@ -728,6 +730,7 @@ class StandardPUP(RadarBase):
         shape = (len(timestamp), len(height))
         wd =np.round(np.array(wd).astype(float).reshape(shape),0)
         ws = np.round(np.array(ws).astype(float).reshape(shape),2)
+        rms = np.round(np.array(rms).astype(float).reshape(shape),2)
         wd_da = DataArray(
             wd,
             coords=[
@@ -748,6 +751,7 @@ class StandardPUP(RadarBase):
             },
         )
         ds["ws"] = (["times", "height"], ws)
+        ds["rms"] = (["times", "height"], rms)
         self._dataset = ds
 
     def _parse_swp_fmt(self):
