@@ -708,7 +708,7 @@ class StandardPUP(RadarBase):
 
     def _parse_vwp_fmt(self):
         self.vwp_header = np.frombuffer(self.f.read(32), L3_vwp_header)
-        times = list()
+        timestamp = list()
         height = list()
         wd = list()
         ws = list()
@@ -717,24 +717,21 @@ class StandardPUP(RadarBase):
             if not buf:
                 break
             vwp = np.frombuffer(buf, L3_vwp)
-            tt = datetime.datetime.fromtimestamp(
-                vwp["start_time"][0], datetime.timezone.utc
-            ).strftime("%H:%M")
-            times.append(tt)
+            timestamp.append(vwp["start_time"][0])
             height.append(vwp["height"][0])
             wd.append(vwp["wind_direction"][0])
             ws.append(vwp["wind_speed"][0])
         height = list(set(height))
-        times = list(set(times))
+        timestamp = list(set(timestamp))
         height.sort()
-        times.sort()
-        shape = (len(times), len(height))
-        wd = np.array(wd).astype(float).reshape(shape)
-        ws = np.array(ws).astype(float).reshape(shape)
+        timestamp.sort()
+        shape = (len(timestamp), len(height))
+        wd =np.round(np.array(wd).astype(float).reshape(shape),0)
+        ws = np.round(np.array(ws).astype(float).reshape(shape),2)
         wd_da = DataArray(
             wd,
             coords=[
-                times,
+                timestamp,
                 height,
             ],
             dims=["times", "height"],
