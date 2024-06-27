@@ -400,7 +400,7 @@ l3_uam = [
 
 l3_uam_dtype = np.dtype(l3_uam)
 
-l3_wer_header =[
+l3_wer_header = [
     ("elevation", "f4"),
     ("scan_time", "i4"),
     ("center_height", "i4"),

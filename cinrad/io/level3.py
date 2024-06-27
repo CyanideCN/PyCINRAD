@@ -728,9 +728,9 @@ class StandardPUP(RadarBase):
         height.sort()
         timestamp.sort()
         shape = (len(timestamp), len(height))
-        wd =np.round(np.array(wd).astype(float).reshape(shape),0)
-        ws = np.round(np.array(ws).astype(float).reshape(shape),2)
-        rms = np.round(np.array(rms).astype(float).reshape(shape),2)
+        wd = np.round(np.array(wd).astype(float).reshape(shape), 0)
+        ws = np.round(np.array(ws).astype(float).reshape(shape), 2)
+        rms = np.round(np.array(rms).astype(float).reshape(shape), 2)
         wd_da = DataArray(
             wd,
             coords=[
@@ -740,7 +740,7 @@ class StandardPUP(RadarBase):
             dims=["times", "height"],
         )
         ds = Dataset(
-            {"wd": wd_da},
+            {"wind_direction": wd_da},
             attrs={
                 "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": self.code,
@@ -750,7 +750,7 @@ class StandardPUP(RadarBase):
                 "task": self.task_name,
             },
         )
-        ds["ws"] = (["times", "height"], ws)
+        ds["wind_speed"] = (["times", "height"], ws)
         ds["rms"] = (["times", "height"], rms)
         self._dataset = ds
 
