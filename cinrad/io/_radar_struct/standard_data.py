@@ -154,6 +154,135 @@ product_header = [
 
 product_header_dtype = np.dtype(product_header)
 
+pa_site_config = [
+    ("site_code", "S8"),
+    ("site_name", "S32"),
+    ("Latitude", "f4"),
+    ("Longitude", "f4"),
+    ("antenna_height", "i4"),
+    ("ground_height", "i4"),
+    ("frequency", "f4"),
+    ("antenna_type", "i4"),
+    ("tr_number", "i4"),
+    ("RDA_version", "i4"),
+    ("radar_type", "i2"),
+    ("res2", "54c"),
+]
+
+pa_site_config_dtype = np.dtype(pa_site_config)
+
+pa_task_config = [
+    ("task_name", "S32"),
+    ("task_dsc", "S128"),
+    ("polar_type", "i4"),
+    ("scan_type", "i4"),
+    ("san_beam_number", "i4"),
+    ("cut_number", "i4"),
+    ("ray_order", "i4"),
+    ("scan_start_time", "i8"),
+    ("res3", "68c"),
+]
+
+pa_task_config_dtype = np.dtype(pa_task_config)
+
+pa_beam = [
+    ('beam_index', 'i4'),  
+    ('beam_type', 'i4'),  
+    ('sub_pulse_number', 'i4'),  
+    ('tx_beam_direction', 'f4'),  
+    ('tx_beam_width_h', 'f4'),  
+    ('tx_beam_width_v', 'f4'),  
+    ('tx_beam_gain', 'f4'),  
+    ('reserved_00', '100c'),  
+    ('sub_pulse_strategy', 'i4'),  
+    ('sub_pulse_modulation', 'i4'),  
+    ('sub_pulse_frequency', 'f4'),  
+    ('sub_pulse_band_width', 'f4'),
+    ('sub_pulse_width', 'i4'),  
+    ('reserved_01', '492c'),
+]
+
+pa_beam_dtype = np.dtype(pa_beam)
+
+pa_cut_config = [
+    ('cut_index', 'i2'),  
+    ('tx_beam_index', 'i2'),  
+    ('elev', 'f4'),  
+    ('tx_beam_gain', 'f4'),  
+    ('rx_beam_width_h', 'f4'),  
+    ('rx_beam_width_v', 'f4'),  
+    ('rx_beam_gain', 'f4'),  
+    ('process_mode', 'i4'),  
+    ('wave_form', 'i4'),  
+    ('n1_prf_1', 'f4'),  
+    ('n1_prf_2', 'f4'),  
+    ('n2_prf_1', 'f4'),  
+    ('n2_prf_2', 'f4'),  
+    ('unfold_mode', 'i4'),  
+    ('azimuth', 'f4'),  
+    ('start_angle', 'f4'),  
+    ('end_angle', 'f4'),  
+    ('angle_resolution', 'f4'),  
+    ('scan_speed', 'f4'),  
+    ('log_reso', 'f4'),  
+    ('dop_reso', 'f4'),  
+    ('maximum_range', 'i4'),  
+    ('maximum_range2', 'i4'),  
+    ('start_range', 'i4'),  
+    ('sample_1', 'i4'),  
+    ('sample_2', 'i4'),  
+    ('phase_mode', 'i4'),  
+    ('atmospheric_loss', 'f4'),  
+    ('nyquist_spd', 'f4'),  
+    ('moments_mask', 'i8'),  
+    ('moments_size_mask', 'i8'),  
+    ('misc_filter_mask', 'i4'),  
+    ('sqi_threshold', 'f4'),  
+    ('sig_threshold', 'f4'),  
+    ('csr_threshold', 'f4'),  
+    ('log_threshold', 'f4'),  
+    ('cpa_threshold', 'f4'),  
+    ('pmi_threshold', 'f4'),  
+    ('dplog_threshold', 'f4'),  
+    ('thresholds_reserved', '4c'),  
+    ('dbt_mask', 'i4'),  
+    ('dbz_mask', 'i4'),  
+    ('velocity', 'i4'),  
+    ('spectrum_width_mask', 'i4'),  
+    ('zdr_mask', 'i4'),  
+    ('mask_reserved', '12c'),  
+    ('scan_sync', '4c'),  
+    ('direction', 'i4'),  
+    ('ground_clutter_classifier_type', 'i2'),  
+    ('ground_clutter_filter_type', 'i2'),  
+    ('ground_clutter_filter_notch_width', 'i2'),  
+    ('ground_clutter_filter_window', 'i2'),  
+    ('reserved', '44c')
+]
+
+pa_cut_config_dtype = np.dtype(pa_cut_config)
+
+pa_radial_header = [
+    ("radial_state", "i4"),
+    ("spot_blank", "i4"),
+    ("seq_number", "i4"),
+    ("radial_number", "i4"),
+    ("elevation_number", "i4"),
+    ("azimuth", "f4"),
+    ("elevation", "f4"),
+    ("seconds", "i8"),
+    ("microseconds", "i4"),
+    ("data_length", "i4"),
+    ("moment_number", "i4"),
+    ("scan_beam_index", "i2"),
+    ("hori_est_noise", "i2"),
+    ("vert_est_noise", "i2"),
+    ("zip_type", "i4"), # acctualy it's ref flag,ziptype is reserved
+    ("res6", "70c"),
+]
+
+pa_radial_header_dtype = np.dtype(pa_radial_header)
+
 l3_radial_header = [
     ("dtype", "i4"),
     ("scale", "i4"),
