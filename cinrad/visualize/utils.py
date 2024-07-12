@@ -17,7 +17,9 @@ import matplotlib.cm as mcm
 from cartopy.io import shapereader
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
+from cartopy.feature import Feature
 import shapefile
+import shapely.geometry as sgeom
 from vanadis.colormap import Colormap
 from cinrad_data import get_font_path, get_shp_list, get_shp_file
 
@@ -138,9 +140,9 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
                      "0.9", "0.7", "0.5", "0.3", "0.1"],
              "OHP":["", "203.2", "152.4", "101.6", "76.2", "63.5", "50.8", "44.45", "38.1", "31.75",
                     "25.4", "19.05", "12.7", "6.35", "2.54", "0"],
-             "cHCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice", 
+             "cHCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice",
                      "Low-Dens Graupel", "High-Dens Graupel", "Hail", "Big Drops", ""],
-             "HCL":["Rain", "Heavy Rain", "Hail", "Big Drops", "Clear-Air Echo", "Ground Clutter", 
+             "HCL":["Rain", "Heavy Rain", "Hail", "Big Drops", "Clear-Air Echo", "Ground Clutter",
                     "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""]}
 # fmt: on
 
@@ -272,6 +274,19 @@ def get_shp() -> list:
     return shps
 
 
+class _ShapelyFeature(Feature):
+    r"""Copied from cartopy.feature.ShapelyFeature"""
+
+    def __init__(self, geometries, crs, **kwargs):
+        super().__init__(crs, **kwargs)
+        if isinstance(geometries, sgeom.base.BaseGeometry):
+            geometries = [geometries]
+        self._geoms = tuple(geometries)
+
+    def geometries(self):
+        return iter(self._geoms)
+
+
 def add_shp(
     ax: Any,
     proj: ccrs.Projection,
@@ -287,29 +302,35 @@ def add_shp(
         line_colors = ["grey", "lightgrey", "white"]
     elif style == "white":
         line_colors = ["lightgrey", "grey", "black"]
-    ax.add_geometries(
-        shps[0],
-        shp_crs,
-        edgecolor=line_colors[0],
-        facecolor="None",
-        zorder=3,
-        linewidth=0.5,
+    ax.add_feature(
+        _ShapelyFeature(
+            shps[0],
+            shp_crs,
+            edgecolor=line_colors[0],
+            facecolor="None",
+            zorder=3,
+            linewidth=0.5,
+        )
     )
-    ax.add_geometries(
-        shps[1],
-        shp_crs,
-        edgecolor=line_colors[1],
-        facecolor="None",
-        zorder=3,
-        linewidth=0.7,
+    ax.add_feature(
+        _ShapelyFeature(
+            shps[1],
+            shp_crs,
+            edgecolor=line_colors[1],
+            facecolor="None",
+            zorder=3,
+            linewidth=0.7,
+        )
     )
-    ax.add_geometries(
-        shps[2],
-        shp_crs,
-        edgecolor=line_colors[2],
-        facecolor="None",
-        zorder=3,
-        linewidth=1,
+    ax.add_feature(
+        _ShapelyFeature(
+            shps[2],
+            shp_crs,
+            edgecolor=line_colors[2],
+            facecolor="None",
+            zorder=3,
+            linewidth=1,
+        )
     )
     if coastline:
         ax.coastlines(resolution="10m", color=line_colors[2], zorder=3, linewidth=1)
