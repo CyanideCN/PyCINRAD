@@ -51,6 +51,11 @@ setup(
         "vanadis",
         "cinrad_data>=0.1"
     ],
+    package_dir={"cinrad": "cinrad"},
+    package_data={"cinrad": [
+        "data/*.*",
+        "data/*/*.*"
+    ]},
     scripts=[],
     ext_modules=ext_modules,
     include_dirs=include_dirs,
