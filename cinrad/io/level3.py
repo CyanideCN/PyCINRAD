@@ -196,6 +196,7 @@ class SWAN(object):
     Args:
         file (str, IO): Path points to the file or a file object.
     """
+
     dtype_conv = {0: "B", 1: "b", 2: "u2", 3: "i2", 4: "u2"}
     size_conv = {0: 1, 1: 1, 2: 2, 3: 2, 4: 2}
 
@@ -484,12 +485,14 @@ class StandardPUP(RadarBase):
         if self.name == "None":
             self.name = self.code
         del self.geo
-        if self.ptype in [1, 13, 14, 25, 26, 27, 28, 51, 52]:  # PPI radial format
+        if self.ptype in [1, 13, 14, 24, 25, 26, 27, 28, 51, 52]:  # PPI radial format
             self._parse_radial_fmt()
-        elif self.ptype in [6, 8, 9, 10, 18, 23]:
+        elif self.ptype in [4, 6, 8, 9, 10, 18, 23]:
             self._parse_raster_fmt()
         elif self.ptype == 3:
             self._parse_cappi_fmt()
+        elif self.ptype == 20:
+            self._parse_wer_fmt()
         elif self.ptype == 32:
             self._parse_vwp_fmt()
         elif self.ptype == 36:
@@ -504,6 +507,10 @@ class StandardPUP(RadarBase):
             self._parse_tvs_fmt()
         elif self.ptype == 44:
             self._parse_uam_fmt()
+        else:
+            raise RadarDecodeError(
+                "Unsupported product type {}:{}".format(self.ptype, self.pname)
+            )
         self.f.close()
 
     def _parse_header(self):
@@ -523,7 +530,9 @@ class StandardPUP(RadarBase):
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
         self.ptype = ph["product_type"][0]
         self.pname = self.ptype_corr[self.ptype]
-        self.scantime = datetime.datetime.utcfromtimestamp(ph["scan_start_time"][0])
+        self.scantime = datetime.datetime.fromtimestamp(
+            ph["scan_start_time"][0], datetime.timezone.utc
+        )
         if self.ptype == 1:
             self.pname = self.dtype_corr[ph["dtype_1"][0]]
         self.params = ProductParamsParser.parse(self.ptype, self.f.read(64))
@@ -698,18 +707,40 @@ class StandardPUP(RadarBase):
         self._dataset = ds
 
     def _parse_vwp_fmt(self):
-        vwp_header = np.frombuffer(self.f.read(32), L3_vwp_header)
-        vwp_count = vwp_header["number_of_vols"][0]
-        vwps = np.frombuffer(self.f.read(32 * vwp_count), L3_vwp)
-        height = DataArray(vwps["height"])
-        wind_direction = DataArray(vwps["wind_direction"])
-        wind_speed = DataArray(vwps["wind_speed"])
+        self.vwp_header = np.frombuffer(self.f.read(32), L3_vwp_header)
+        timestamp = list()
+        height = list()
+        wd = list()
+        ws = list()
+        rms = list()
+        while True:
+            buf = self.f.read(32)
+            if not buf:
+                break
+            vwp = np.frombuffer(buf, L3_vwp)
+            timestamp.append(vwp["start_time"][0])
+            height.append(vwp["height"][0])
+            wd.append(vwp["wind_direction"][0])
+            ws.append(vwp["wind_speed"][0])
+            rms.append(vwp["rms_std"][0])
+        height = list(set(height))
+        timestamp = list(set(timestamp))
+        height.sort()
+        timestamp.sort()
+        shape = (len(timestamp), len(height))
+        wd = np.round(np.array(wd).astype(float).reshape(shape), 0)
+        ws = np.round(np.array(ws).astype(float).reshape(shape), 2)
+        rms = np.round(np.array(rms).astype(float).reshape(shape), 2)
+        wd_da = DataArray(
+            wd,
+            coords=[
+                timestamp,
+                height,
+            ],
+            dims=["times", "height"],
+        )
         ds = Dataset(
-            {
-                "wind_direction": wind_direction,
-                "wind_speed": wind_speed,
-                "height": height,
-            },
+            {"wind_direction": wd_da},
             attrs={
                 "scan_time": self.scantime.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": self.code,
@@ -719,6 +750,8 @@ class StandardPUP(RadarBase):
                 "task": self.task_name,
             },
         )
+        ds["wind_speed"] = (["times", "height"], ws)
+        ds["rms"] = (["times", "height"], rms)
         self._dataset = ds
 
     def _parse_swp_fmt(self):
@@ -1001,6 +1034,23 @@ class StandardPUP(RadarBase):
         ds["longitude"] = DataArray(lon[:, 0])
         ds["latitude"] = DataArray(lat[:, 0])
         self._dataset = ds
+
+    def _parse_wer_fmt(self):
+        wer = Dataset()
+        while True:
+            buf = self.f.read(32)
+            if not buf:
+                break
+            wer_header = np.frombuffer(buf, L3_wer_header)
+            elev = wer_header["elevation"][0]
+            self._parse_raster_fmt()
+            if len(wer) == 0:
+                wer = self._dataset.copy()
+                wer = wer.rename({self.pname: "{}_{:.1f}".format(self.pname, elev)})
+                wer.attrs["center_height"] = wer_header["center_height"][0]
+            else:
+                wer["{}_{:.1f}".format(self.pname, elev)] = self._dataset[self.pname]
+        self._dataset = wer
 
     def get_data(self):
         return self._dataset
