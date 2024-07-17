@@ -85,7 +85,7 @@ class Section(object):
         plt.xticks(np.array([0, 0.2, 0.4, 0.6, 0.8, 1]) * cor_max, ticks)
         plt.ylabel("Height (km)", **plot_kw)  ## 修改于2019-01-22 By WU Fulang
         sm = ScalarMappable(norm=norm, cmap=cmap)
-        plt.colorbar(sm)
+        plt.colorbar(sm, ax=plt.gca())
 
     def __call__(self, fpath: str):
         if os.path.isdir(fpath):
