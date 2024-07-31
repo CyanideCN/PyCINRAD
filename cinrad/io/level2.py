@@ -20,7 +20,7 @@ from cinrad._typing import Number_T
 __all__ = ["CinradReader", "StandardData", "PhasedArrayData"]
 
 ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
-PaScanConfig = namedtuple("ScanConfig", PA_SDD_cut.fields.keys())
+ScanConfigPA = namedtuple("ScanConfigPA", PA_SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
 
 utc8_tz = datetime.timezone(utc_offset)
@@ -582,12 +582,17 @@ class StandardData(RadarBase):
         site_config_dtype = SDD_site
         task_dtype = SDD_task
         cut_config_dtype = SDD_cut
-        self.is_pa = False
         if header["generic_type"] == 16:
             site_config_dtype = PA_SDD_site
             task_dtype = PA_SDD_task
             cut_config_dtype = PA_SDD_cut
-            self.is_pa = True
+            header_length = 128
+            radial_header_dtype = PA_SDD_rad_header
+            self._is_phased_array = True
+        else:
+            header_length = 64
+            radial_header_dtype = SDD_rad_header
+            self._is_phased_array = False
         site_config = np.frombuffer(self.f.read(128), site_config_dtype)
         self.code = (
             site_config["site_code"][0]
@@ -609,25 +614,25 @@ class StandardData(RadarBase):
             seconds=int(task["scan_start_time"][0])
         ).total_seconds()
         self.scantime = epoch_seconds_to_utc(epoch_seconds)
-        if self.is_pa:
+        if self._is_phased_array:
             san_beam_number = task["san_beam_number"][0]
             self.pa_beam = np.frombuffer(self.f.read(san_beam_number * 640),PA_SDD_beam)
         cut_num = task["cut_number"][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), cut_config_dtype)
         self.scan_config = list()
-        list_scan_config = PaScanConfig if self.is_pa else ScanConfig
+        scan_config_cls = ScanConfigPA if self._is_phased_array else ScanConfig
         for i in scan_config:
-            _config = list_scan_config(*i)
+            _config = scan_config_cls(*i)
             if _config.dop_reso > 32768:  # fine detection scan
                 true_reso = np.round_((_config.dop_reso - 32768) / 100, 1)
                 _config_element = list(_config)
-                if self.is_pa:
+                if self._is_phased_array:
                     _config_element[21] = true_reso
                     _config_element[22] = true_reso
                 else:
                     _config_element[11] = true_reso
                     _config_element[12] = true_reso
-                _config = list_scan_config(*_config_element)
+                _config = scan_config_cls(*_config_element)
             self.scan_config.append(_config)
         # TODO: improve repr
         data = dict()
@@ -647,12 +652,6 @@ class StandardData(RadarBase):
         radial_count = 0
         while 1:
             try:
-                if self.is_pa:
-                    header_length = 128
-                    radial_header_dtype = PA_SDD_rad_header
-                else:
-                    header_length = 64
-                    radial_header_dtype = SDD_rad_header
                 header_bytes = self.f.read(header_length)
                 if not header_bytes:
                     # Fix for single-tilt file
