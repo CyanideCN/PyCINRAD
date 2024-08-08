@@ -244,7 +244,7 @@ def polar_to_xy(field: Dataset, resolution: tuple = (1000, 1000)) -> Dataset:
     Interpolate single volume data in polar coordinates into geographic coordinates
 
     将单仰角数据从极坐标插值转换为经纬度坐标
-    
+
     Args:
         field (xarray.Dataset): Original radial.
 
@@ -468,8 +468,22 @@ class GridMapper(object):
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
     def _merge_xy(self, x: np.ndarray, y: np.ndarray) -> Dataset:
-        xy_data = merge(self.fields)
-        lat_interp = xy_data[self.dtype].interpolate_na(
+        # interpolate datas to full grid
+        r_data = list()
+        for field in self.fields:
+            field_grid = field.interp(longitude=x[0], latitude=y[:, 0], method="linear")
+            r_data.append(field_grid[self.dtype].values)
+        # select max value in each grid
+        r_data_max = np.nanmax(r_data, axis=0)
+        ret = Dataset(
+            {
+                self.dtype: DataArray(
+                    r_data_max, coords=[y[:, 0], x[0]], dims=["latitude", "longitude"]
+                )
+            }
+        )
+        # interpolate Nan values
+        lat_interp = ret[self.dtype].interpolate_na(
             "latitude", method="linear", limit=len(self.fields)
         )
         lon_interp = lat_interp.interpolate_na(
