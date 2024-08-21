@@ -12,7 +12,7 @@ __all__ = [
     'L3_raster','L3_hail','L3_meso','L3_feature','L3_tvs','L3_sti_header','L3_sti_motion',
     'L3_sti_position','L3_sti_attribute','L3_sti_component','L3_sti_adaptation',
     'L3_vwp_header','L3_vwp','L3_swp','L3_uam','mocm_dtype','mocm_si_dtype','mocm_si_block',
-    'L3_wer_header'
+    'L3_wer_header','PA_SDD_site', 'PA_SDD_task', 'PA_SDD_beam', 'PA_SDD_cut', 'PA_SDD_rad_header',
 ]
 # fmt: on
 from cinrad.io._radar_struct.CC import (
@@ -28,6 +28,11 @@ from cinrad.io._radar_struct.standard_data import (
     radial_header_dtype as SDD_rad_header,
     moment_header_dtype as SDD_mom_header,
     product_header_dtype as SDD_pheader,
+    pa_site_config_dtype as PA_SDD_site,
+    pa_task_config_dtype as PA_SDD_task,
+    pa_beam_dtype as PA_SDD_beam,
+    pa_cut_config_dtype as PA_SDD_cut,
+    pa_radial_header_dtype as PA_SDD_rad_header,
     l3_radial_header_dtype as L3_radial,
     l3_radial_block_dtype as L3_rblock,
     l3_raster_header_dtype as L3_raster,

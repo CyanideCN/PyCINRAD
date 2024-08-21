@@ -39,9 +39,11 @@ def read_auto(filename: str) -> RadarBase:
         elif flag[8:12] == b"\x02\x00\x00\x00":
             return StandardPUP(filename)
         elif flag[8:12] == b"\x10\x00\x00\x00":
-            return PhasedArrayData(filename)
+            return StandardData(filename)
         else:
             raise Exception("Unknown standard radar type")
+    elif flag[0:2] == b"\x01\x00":
+        return PhasedArrayData(filename)
     elif flag[0:3] == b"MOC":
         return MocMosaic(filename)
     if flag[50:54] == b"SWAN":

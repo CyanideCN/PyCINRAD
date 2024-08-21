@@ -20,6 +20,7 @@ from cinrad._typing import Number_T
 __all__ = ["CinradReader", "StandardData", "PhasedArrayData"]
 
 ScanConfig = namedtuple("ScanConfig", SDD_cut.fields.keys())
+ScanConfigPA = namedtuple("ScanConfigPA", PA_SDD_cut.fields.keys())
 utc_offset = datetime.timedelta(hours=8)
 
 utc8_tz = datetime.timezone(utc_offset)
@@ -578,7 +579,21 @@ class StandardData(RadarBase):
         header = np.frombuffer(self.f.read(32), SDD_header)
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
-        site_config = np.frombuffer(self.f.read(128), SDD_site)
+        site_config_dtype = SDD_site
+        task_dtype = SDD_task
+        cut_config_dtype = SDD_cut
+        if header["generic_type"] == 16:
+            site_config_dtype = PA_SDD_site
+            task_dtype = PA_SDD_task
+            cut_config_dtype = PA_SDD_cut
+            header_length = 128
+            radial_header_dtype = PA_SDD_rad_header
+            self._is_phased_array = True
+        else:
+            header_length = 64
+            radial_header_dtype = SDD_rad_header
+            self._is_phased_array = False
+        site_config = np.frombuffer(self.f.read(128), site_config_dtype)
         self.code = (
             site_config["site_code"][0]
             .decode("ascii", errors="ignore")
@@ -591,7 +606,7 @@ class StandardData(RadarBase):
         geo["lon"] = site_config["Longitude"][0]
         geo["height"] = site_config["ground_height"][0]
         geo["name"] = site_config["site_name"][0].decode("ascii", errors="ignore")
-        task = np.frombuffer(self.f.read(256), SDD_task)
+        task = np.frombuffer(self.f.read(256), task_dtype)
         self.task_name = (
             task["task_name"][0].decode("ascii", errors="ignore").split("\x00")[0]
         )
@@ -599,17 +614,25 @@ class StandardData(RadarBase):
             seconds=int(task["scan_start_time"][0])
         ).total_seconds()
         self.scantime = epoch_seconds_to_utc(epoch_seconds)
+        if self._is_phased_array:
+            san_beam_number = task["san_beam_number"][0]
+            self.pa_beam = np.frombuffer(self.f.read(san_beam_number * 640),PA_SDD_beam)
         cut_num = task["cut_number"][0]
-        scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
+        scan_config = np.frombuffer(self.f.read(256 * cut_num), cut_config_dtype)
         self.scan_config = list()
+        scan_config_cls = ScanConfigPA if self._is_phased_array else ScanConfig
         for i in scan_config:
-            _config = ScanConfig(*i)
+            _config = scan_config_cls(*i)
             if _config.dop_reso > 32768:  # fine detection scan
                 true_reso = np.round_((_config.dop_reso - 32768) / 100, 1)
                 _config_element = list(_config)
-                _config_element[11] = true_reso
-                _config_element[12] = true_reso
-                _config = ScanConfig(*_config_element)
+                if self._is_phased_array:
+                    _config_element[21] = true_reso
+                    _config_element[22] = true_reso
+                else:
+                    _config_element[11] = true_reso
+                    _config_element[12] = true_reso
+                _config = scan_config_cls(*_config_element)
             self.scan_config.append(_config)
         # TODO: improve repr
         data = dict()
@@ -629,11 +652,11 @@ class StandardData(RadarBase):
         radial_count = 0
         while 1:
             try:
-                header_bytes = self.f.read(64)
+                header_bytes = self.f.read(header_length)
                 if not header_bytes:
                     # Fix for single-tilt file
                     break
-                radial_header = np.frombuffer(header_bytes, SDD_rad_header)
+                radial_header = np.frombuffer(header_bytes, radial_header_dtype)
                 if radial_header["zip_type"][0] == 1:  # LZO compression
                     raise NotImplementedError("LZO compressed file is not supported")
                 self._time_radial.append(
