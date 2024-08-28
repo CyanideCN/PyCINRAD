@@ -554,6 +554,7 @@ class StandardData(RadarBase):
     Args:
         file (str, IO): Path points to the file or a file object.
     """
+
     # fmt: off
     dtype_corr = {1:'TREF', 2:'REF', 3:'VEL', 4:'SW', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',
                   9:'RHO', 10:'PHI', 11:'KDP', 12:'CP', 14:'HCL', 15:'CF', 16:'SNRH',
@@ -616,7 +617,9 @@ class StandardData(RadarBase):
         self.scantime = epoch_seconds_to_utc(epoch_seconds)
         if self._is_phased_array:
             san_beam_number = task["san_beam_number"][0]
-            self.pa_beam = np.frombuffer(self.f.read(san_beam_number * 640),PA_SDD_beam)
+            self.pa_beam = np.frombuffer(
+                self.f.read(san_beam_number * 640), PA_SDD_beam
+            )
         cut_num = task["cut_number"][0]
         scan_config = np.frombuffer(self.f.read(256 * cut_num), cut_config_dtype)
         self.scan_config = list()
@@ -930,9 +933,12 @@ class PhasedArrayData(RadarBase):
         self.stationlat = data["header"]["latitude"][0].astype(int) * 360 / 65535
         self.radarheight = data["header"]["height"][0].astype(int) * 1000 / 65535
         self.scantime = epoch_seconds_to_utc(data["data"]["radial_time"][0].astype(int))
-        self.reso = np.round(data["data"]["gate_length"][0].astype(int) * 1000 / 65535) / 1000
+        self.reso = (
+            np.round(data["data"]["gate_length"][0].astype(int) * 1000 / 65535) / 1000
+        )
         self.first_gate_dist = (
-            np.round(data["data"]["first_gate_dist"][0].astype(int) * 1000 / 65535) / 1000
+            np.round(data["data"]["first_gate_dist"][0].astype(int) * 1000 / 65535)
+            / 1000
         )
         el_num = data["data"]["el_num"][0].astype(int)
         az_num = data["data"]["az_num"][0].astype(int)
