@@ -926,16 +926,16 @@ class PhasedArrayData(RadarBase):
         except IndexError:
             self.code = self.name = "None"
         self._d = data = np.frombuffer(f.read(), dtype=PA_radial)
-        self.stationlon = data["header"]["longitude"][0] * 360 / 65535
-        self.stationlat = data["header"]["latitude"][0] * 360 / 65535
-        self.radarheight = data["header"]["height"][0] * 1000 / 65535
-        self.scantime = epoch_seconds_to_utc(data["data"]["radial_time"][0])
-        self.reso = np.round(data["data"]["gate_length"][0] * 1000 / 65535) / 1000
+        self.stationlon = data["header"]["longitude"][0].astype(int) * 360 / 65535
+        self.stationlat = data["header"]["latitude"][0].astype(int) * 360 / 65535
+        self.radarheight = data["header"]["height"][0].astype(int) * 1000 / 65535
+        self.scantime = epoch_seconds_to_utc(data["data"]["radial_time"][0].astype(int))
+        self.reso = np.round(data["data"]["gate_length"][0].astype(int) * 1000 / 65535) / 1000
         self.first_gate_dist = (
-            np.round(data["data"]["first_gate_dist"][0] * 1000 / 65535) / 1000
+            np.round(data["data"]["first_gate_dist"][0].astype(int) * 1000 / 65535) / 1000
         )
-        el_num = data["data"]["el_num"][0]
-        az_num = data["data"]["az_num"][0]
+        el_num = data["data"]["el_num"][0].astype(int)
+        az_num = data["data"]["az_num"][0].astype(int)
         radial_num = 2000
         el = data["data"]["elevation"].astype(int) * 360 / 65535
         self.el = el.reshape(az_num, el_num).max(axis=0)
