@@ -362,13 +362,13 @@ class VCS(object):
         if start_polar and end_polar:
             stlat = self.rl[0].site_latitude
             stlon = self.rl[0].site_longitude
-            stp = np.round_(
+            stp = np.round(
                 get_coordinate(
                     start_polar[0], start_polar[1] * deg2rad, 0, stlon, stlat
                 ),
                 2,
             )
-            enp = np.round_(
+            enp = np.round(
                 get_coordinate(end_polar[0], end_polar[1] * deg2rad, 0, stlon, stlat), 2
             )
         elif start_cart and end_cart:
@@ -441,10 +441,10 @@ class GridMapper(object):
         self.fields = fields
 
     def _process_grid(self, x_step: Number_T, y_step: Number_T) -> Tuple[np.ndarray]:
-        x_lower = np.round_(self.lon_ravel.min(), 2)
-        x_upper = np.round_(self.lon_ravel.max(), 2)
-        y_lower = np.round_(self.lat_ravel.min(), 2)
-        y_upper = np.round_(self.lat_ravel.max(), 2)
+        x_lower = np.round(self.lon_ravel.min(), 2)
+        x_upper = np.round(self.lon_ravel.max(), 2)
+        y_lower = np.round(self.lat_ravel.min(), 2)
+        y_upper = np.round(self.lat_ravel.max(), 2)
         x_grid = np.arange(x_lower, x_upper + x_step, x_step)
         y_grid = np.arange(y_lower, y_upper + y_step, y_step)
         return np.meshgrid(x_grid, y_grid)
