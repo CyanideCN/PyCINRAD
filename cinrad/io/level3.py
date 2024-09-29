@@ -208,17 +208,13 @@ class SWAN(object):
             header["y_grid_num"][0],
             header["z_grid_num"][0],
         )
+        self.heights = header["height"][0][:zdim]
         dtype = header["m_data_type"][0]
         data_size = int(xdim) * int(ydim) * int(zdim) * self.size_conv[dtype]
         bittype = self.dtype_conv[dtype]
         data_body = np.frombuffer(f.read(data_size), bittype).astype(int)
         # Convert data to i4 to avoid overflow in later calculation
-        if zdim == 1:
-            # 2D data
-            out = data_body.reshape(ydim, xdim)
-        else:
-            # 3D data
-            out = data_body.reshape(zdim, ydim, xdim)
+        out = data_body.reshape(zdim, ydim, xdim)
         self.data_time = datetime.datetime(
             header["year"][0],
             header["month"][0],
@@ -227,15 +223,14 @@ class SWAN(object):
             header["minute"][0],
         )
         # TODO: Recognize correct product name
-        product_name = (
+        self.product_name = (
             (b"".join(header["data_name"]).decode("gbk", "ignore").replace("\x00", ""))
             if not product
             else product
         )
-        self.product_name = product_name
-        for pname in ["CR", "3DREF"]:
-            if product_name.startswith(pname):
-                self.product_name = pname
+        for pname in ["CR", "3DREF", "反射率"]:
+            if pname in self.product_name:
+                self.product_name = "CR"
         start_lon = header["start_lon"][0]
         start_lat = header["start_lat"][0]
         center_lon = header["center_lon"][0]
@@ -246,13 +241,13 @@ class SWAN(object):
         # y_reso = header['y_reso'][0]
         self.lon = np.linspace(start_lon, end_lon, xdim)  # For shape compatibility
         self.lat = np.linspace(start_lat, end_lat, ydim)
-        if self.product_name in ["CR", "3DREF"]:
+        if self.product_name == "CR":
             self.data = (np.ma.masked_equal(out, 0) - 66) / 2
         else:
             # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.masked_equal(out, 0)
 
-    def get_data(self, level: int = 0) -> Dataset:
+    def get_data(self) -> Dataset:
         r"""
         Get radar data with extra information
 
@@ -262,16 +257,13 @@ class SWAN(object):
         Returns:
             xarray.Dataset: Data.
         """
-        dtype = self.product_name
-        if self.data.ndim == 2:
-            ret = self.data
-        else:
-            ret = self.data[level]
-            if self.product_name == "3DREF":
-                dtype = "CR"
-        da = DataArray(ret, coords=[self.lat, self.lon], dims=["latitude", "longitude"])
+        da = DataArray(
+            self.data,
+            coords=[self.heights, self.lat, self.lon],
+            dims=["height", "latitude", "longitude"],
+        )
         ds = Dataset(
-            {dtype: da},
+            {self.product_name: da},
             attrs={
                 "scan_time": self.data_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "site_code": "SWAN",
@@ -281,6 +273,8 @@ class SWAN(object):
                 "elevation": 0,
             },
         )
+        if len(self.heights) == 1:
+            ds = ds.squeeze("height")
         return ds
 
 
@@ -1065,6 +1059,14 @@ class MocMosaic(object):
     解析中国气象局探测中心-天气雷达拼图系统V3.0-产品
     """
 
+    dtype_conv = [
+        ("QREF", "REF"),
+        ("CREF", "CR"),
+        ("CRF", "CR"),
+        ("CAP", "REF"),
+        ("UCR", "CR"),
+    ]
+
     def __init__(self, file):
         self.f = prepare_file(file)
         radartype = self._check_ftype()
@@ -1155,6 +1157,10 @@ class MocMosaic(object):
         r = np.reshape(out_data, (len(out_data), self.ny, self.nx))
         ret = np.flipud(r)  # Data store reverse in y axis
         data = (np.ma.masked_less(ret, 0)) / self.scale
+        for oname, cname in self.dtype_conv:
+            if self.dtype == oname:
+                self.dtype = cname
+                break
         da = DataArray(
             data,
             coords=[heights, self.lat, self.lon],
@@ -1174,6 +1180,8 @@ class MocMosaic(object):
                 "task": "VCP{}".format(self.vcp),
             },
         )
+        if len(heights) == 1:
+            ds = ds.squeeze("height")
         self._dataset = ds
 
     def _parse_mosaic(self):
@@ -1214,6 +1222,10 @@ class MocMosaic(object):
         out = np.frombuffer(databody, "i2").astype(int).reshape(ny, nx)
         out = np.flipud(out)
         self.data = (np.ma.masked_less(out, 0)) / scale
+        for oname, cname in self.dtype_conv:
+            if self.dtype == oname:
+                self.dtype = cname
+                break
         da = DataArray(
             self.data, coords=[self.lat, self.lon], dims=["latitude", "longitude"]
         )
