@@ -518,13 +518,17 @@ class StandardPUP(RadarBase):
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = site_config["site_code"][0].decode().replace("\x00", "")
+        self.code = (
+            site_config["site_code"][0].decode("ascii", "ignore").replace("\x00", "")
+        )
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"]
         geo["lon"] = site_config["Longitude"]
         geo["height"] = site_config["ground_height"]
         task = np.frombuffer(self.f.read(256), SDD_task)
-        self.task_name = task["task_name"][0].decode().replace("\x00", "")
+        self.task_name = (
+            task["task_name"][0].decode("ascii", "ignore").replace("\x00", "")
+        )
         cut_num = task["cut_number"][0]
         self.scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
@@ -572,7 +576,7 @@ class StandardPUP(RadarBase):
         az[az > 360] -= 360
         azi = az * deg2rad
         # self.azi = np.deg2rad(azi)
-        dist = np.arange(start_range + reso, end_range + reso, reso)
+        dist = np.arange(start_range // reso + 1, end_range // reso + 1, 1) * reso
         lon, lat = get_coordinate(
             dist, azi, self.params["elevation"], self.stationlon, self.stationlat
         )
@@ -1198,7 +1202,7 @@ class MocMosaic(object):
         )
         self.lon = np.linspace(edge_w, edge_e, nx)
         self.lat = np.linspace(edge_s, edge_n, ny)
-        databody = self.f.read(nx * ny * 2)
+        databody = self.f.read()
         if compress == 0:
             databody = databody
         elif compress == 1:
