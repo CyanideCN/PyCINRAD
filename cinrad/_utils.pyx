@@ -4,10 +4,11 @@ import numpy as np
 cimport cython
 from libc.math cimport sin
 
-cdef double deg2rad, vil_const
+cdef double M_PI, deg2rad, vil_const
 cdef int rm = 8500
 
-deg2rad = 3.141592653589793 / 180
+M_PI = 3.141592653589793
+deg2rad =  M_PI / 180
 vil_const = 3.44e-6
 
 cdef np.ndarray height(np.ndarray distance, double elevation, double radarheight):
@@ -114,3 +115,41 @@ def echo_top(double[:, :, ::1] ref, double[:, ::1] distance, double[::1] elev,
                     w2 = 1 - w1
                     et[i][j] = w1 * h2 + w2 * h1
     return np.asarray(et)
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
+def calculate_distance(const double lon1_rad, const double lon2_rad, const double lat1_rad, const double lat2_rad):
+    cdef double R = 6371000.0
+    cdef double dlat = lat2_rad - lat1_rad
+    cdef double dlon = lon2_rad - lon1_rad
+    cdef double a = (sin(dlat / 2) * sin(dlat / 2) +  
+                    cos(lat1_rad) * cos(lat2_rad) *
+                    sin(dlon / 2) * sin(dlon / 2))
+    cdef double c = 2 * atan2(sqrt(a), sqrt(1 - a)) 
+    cdef double distance = R * c
+    return distance
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
+def calculate_azimuth(const double lon1_rad, const double lon2_rad, const double lat1_rad, const double lat2_rad):
+    cdef double dlon = lon2_rad - lon1_rad
+    cdef double dx = cos(lat2_rad) * sin(dlon)
+    cdef double dy = (cos(lat1_rad) * sin(lat2_rad) -
+                     sin(lat1_rad) * cos(lat2_rad) * cos(dlon))
+    cdef double azimuth = atan2(dx, dy) 
+    azimuth = (azimuth if azimuth >= 0 else azimuth + 2 * M_PI) 
+    return azimuth
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
+def geo_to_polar(double lon, double lat, double center_lon, double center_lat):
+    cdef double lon_rad = lon*deg2rad
+    cdef double lat_rad = lat*deg2rad
+    cdef double center_lon_rad = center_lon*deg2rad
+    cdef double center_lat_rad = center_lat*deg2rad
+    cdef double azimuth = calculate_azimuth(center_lon_rad, lon_rad, center_lat_rad, lat_rad)
+    cdef double distance = calculate_distance(center_lon_rad, lon_rad, center_lat_rad, lat_rad) / 1e3
+    return azimuth, distance
