@@ -2,7 +2,7 @@
 cimport numpy as np
 import numpy as np
 cimport cython
-from libc.math cimport sin
+from libc.math cimport sin, cos, atan2, sqrt
 
 cdef double M_PI, deg2rad, vil_const
 cdef int rm = 8500

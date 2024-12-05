@@ -4,6 +4,7 @@
 from typing import Union, Any
 
 import numpy as np
+import math
 
 from cinrad.constants import deg2rad, vil_const
 from cinrad.projection import height
