@@ -7,7 +7,7 @@ from typing import *
 from functools import wraps
 
 import numpy as np
-from xarray import DataArray, Dataset
+from xarray import DataArray, Dataset, merge
 
 try:
     from pykdtree.kdtree import KDTree
@@ -239,6 +239,30 @@ def quick_vild(r_list: Volume_T) -> Dataset:
     return ret
 
 
+def polar_to_xy(field: Dataset, resolution: tuple = (1000, 1000)) -> Dataset:
+    r"""
+    Interpolate single volume data in polar coordinates into geographic coordinates
+
+    将单仰角数据从极坐标插值转换为经纬度坐标
+
+    Args:
+        field (xarray.Dataset): Original radial.
+
+    Returns:
+        xarray.Dataset: Interpolated data in grid
+    """
+    dtype = get_dtype(field)
+    r, x, y = grid_2d(
+        field[dtype].values,
+        field["longitude"].values,
+        field["latitude"].values,
+        resolution=resolution,
+    )
+    ret = Dataset({dtype: DataArray(r, coords=[y, x], dims=["latitude", "longitude"])})
+    ret.attrs = field.attrs
+    return ret
+
+
 class VCS(object):
     r"""
     Class performing vertical cross-section calculation
@@ -358,6 +382,8 @@ class VCS(object):
 class GridMapper(object):
     r"""
     This class can merge scans from different radars to a single cartesian grid.
+    support BR or CR or any list(xarray.Dataset).
+    merge_xy method inspiration comes from OLDLee_GIFT@bilibili.
 
     Args:
         fields (list(xarray.Dataset)): Lists of scans to be merged.
@@ -398,16 +424,21 @@ class GridMapper(object):
         self.scan_time = mean_dtime
         self.lon_ravel = np.hstack([i["longitude"].values.ravel() for i in fields])
         self.lat_ravel = np.hstack([i["latitude"].values.ravel() for i in fields])
-        self.data_ravel = np.ma.hstack([i[self.dtype].values.ravel() for i in fields])
-        self.dist_ravel = np.hstack(
-            [
-                np.broadcast_to(i["distance"], i["longitude"].shape).ravel()
-                for i in fields
-            ]
-        )
-        self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
+        self.is_polar = "distance" in fields[0].coords
+        if self.is_polar:
+            self.data_ravel = np.ma.hstack(
+                [i[self.dtype].values.ravel() for i in fields]
+            )
+            self.dist_ravel = np.hstack(
+                [
+                    np.broadcast_to(i["distance"], i["longitude"].shape).ravel()
+                    for i in fields
+                ]
+            )
+            self.tree = KDTree(np.dstack((self.lon_ravel, self.lat_ravel))[0])
         self.md = max_dist
         self.attr = fields[0].attrs.copy()
+        self.fields = fields
 
     def _process_grid(self, x_step: Number_T, y_step: Number_T) -> Tuple[np.ndarray]:
         x_lower = np.round(self.lon_ravel.min(), 2)
@@ -436,6 +467,31 @@ class GridMapper(object):
         wgt = weight.reshape(xdim, ydim, _MAX_RETURN)
         return np.ma.average(inp, weights=1 / wgt, axis=2)
 
+    def _merge_xy(self, x: np.ndarray, y: np.ndarray) -> Dataset:
+        # interpolate datas to full grid
+        r_data = list()
+        for field in self.fields:
+            field_grid = field.interp(longitude=x[0], latitude=y[:, 0], method="linear")
+            r_data.append(field_grid[self.dtype].values)
+        # select max value in each grid
+        r_data_max = np.nanmax(r_data, axis=0)
+        ret = Dataset(
+            {
+                self.dtype: DataArray(
+                    r_data_max, coords=[y[:, 0], x[0]], dims=["latitude", "longitude"]
+                )
+            }
+        )
+        # interpolate Nan values
+        lat_interp = ret[self.dtype].interpolate_na(
+            "latitude", method="linear", limit=len(self.fields)
+        )
+        lon_interp = lat_interp.interpolate_na(
+            "longitude", method="nearest", limit=len(self.fields)
+        )
+        grid = lon_interp.interp(longitude=x[0], latitude=y[:, 0], method="linear")
+        return grid
+
     def __call__(self, step: Number_T) -> Dataset:
         r"""
         Args:
@@ -445,7 +501,11 @@ class GridMapper(object):
             xarray.Dataset: Merged grid data.
         """
         x, y = self._process_grid(step, step)
-        grid = self._map_points(x, y)
+        if self.is_polar:
+            grid = self._map_points(x, y)
+
+        else:
+            grid = self._merge_xy(x, y)
         grid = np.ma.masked_outside(grid, 0.1, 100)
         ret = Dataset(
             {
