@@ -10,7 +10,6 @@ try:
 except ImportError:
     from scipy.spatial import KDTree
 
-from cinrad.constants import deg2rad
 from cinrad._typing import Number_T
 
 
@@ -61,7 +60,7 @@ def resample(
     """
     # Target grid
     Rrange = np.arange(d_reso, distance.max() + d_reso, d_reso)
-    Trange = np.linspace(0, 360, a_reso + 1) * deg2rad
+    Trange = np.linspace(0, np.pi * 2, a_reso + 1)
     dist, theta = np.meshgrid(Rrange, Trange)
     # Original grid
     d, t = np.meshgrid(distance, azimuth)

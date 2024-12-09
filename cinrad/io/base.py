@@ -10,7 +10,7 @@ import gzip
 
 import numpy as np
 
-from cinrad.constants import MODULE_DIR
+from cinrad.utils import MODULE_DIR
 from cinrad._typing import Number_T
 
 with open(os.path.join(MODULE_DIR, "data", "radar_station.json"), "r") as buf:

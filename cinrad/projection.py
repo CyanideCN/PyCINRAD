@@ -4,8 +4,9 @@ from typing import Union
 
 import numpy as np
 
-from cinrad.constants import deg2rad, rm
 from cinrad._typing import Boardcast_T, Number_T
+
+RM = 8500
 
 
 def height(
@@ -27,9 +28,10 @@ def height(
     -------
     height
     """
+
     return (
-        distance * np.sin(elevation * deg2rad)
-        + distance**2 / (2 * rm)
+        distance * np.sin(np.deg2rad(elevation))
+        + distance**2 / (2 * RM)
         + radarheight / 1000
     )
 
@@ -67,13 +69,13 @@ def get_coordinate(
     """
     elev = elevation if h_offset else 0
     if isinstance(azimuth, np.ndarray):
-        deltav = np.cos(azimuth[:, np.newaxis]) * distance * np.cos(elev * deg2rad)
-        deltah = np.sin(azimuth[:, np.newaxis]) * distance * np.cos(elev * deg2rad)
+        deltav = np.cos(azimuth[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
+        deltah = np.sin(azimuth[:, np.newaxis]) * distance * np.cos(np.deg2rad(elev))
     else:
-        deltav = np.cos(azimuth) * distance * np.cos(elev * deg2rad)
-        deltah = np.sin(azimuth) * distance * np.cos(elev * deg2rad)
+        deltav = np.cos(azimuth) * distance * np.cos(np.deg2rad(elev))
+        deltah = np.sin(azimuth) * distance * np.cos(np.deg2rad(elev))
     deltalat = deltav / 111
     actuallat = deltalat + centerlat
-    deltalon = deltah / (111 * np.cos(actuallat * deg2rad))
+    deltalon = deltah / (111 * np.cos(np.deg2rad(actuallat)))
     actuallon = deltalon + centerlon
     return actuallon, actuallat

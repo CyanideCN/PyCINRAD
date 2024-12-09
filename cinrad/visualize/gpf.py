@@ -7,7 +7,7 @@ import ast
 import matplotlib.colors as mclr
 import numpy as np
 
-from cinrad.constants import MODULE_DIR
+from cinrad.utils import MODULE_DIR
 
 _cmapdir_ = os.path.join(MODULE_DIR, "data", "colormap")
 

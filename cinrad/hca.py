@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 
-from cinrad.constants import MODULE_DIR
+from cinrad.utils import MODULE_DIR
 from cinrad._typing import Boardcast_T
 
 PARAMS = np.load(os.path.join(MODULE_DIR, "data", "hca_params.npy"))

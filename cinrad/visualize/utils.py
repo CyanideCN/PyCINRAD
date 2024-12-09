@@ -24,7 +24,7 @@ from vanadis.colormap import Colormap
 from cinrad_data import get_font_path, get_shp_list, get_shp_file
 
 from cinrad.visualize.gpf import _cmap
-from cinrad.constants import MODULE_DIR
+from cinrad.utils import MODULE_DIR
 from cinrad._typing import Array_T, Number_T
 from cinrad.error import RadarPlotError
 from cinrad.visualize.layout import (

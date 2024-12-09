@@ -12,7 +12,6 @@ import numpy as np
 from xarray import Dataset, DataArray
 
 from cinrad.projection import get_coordinate, height
-from cinrad.constants import deg2rad
 from cinrad._typing import Boardcast_T
 from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
 from cinrad.io._dtype import *
@@ -89,7 +88,7 @@ class PUP(RadarBase):
             az = np.linspace(0, 360, data.shape[0])
             az += start_az
             az[az > 360] -= 360
-            self.az = az * deg2rad
+            self.az = np.deg2rad(az)
             self.reso = self.max_range / data.shape[1]
             self.rng = np.arange(self.reso, self.max_range + self.reso, self.reso)
         else:
@@ -324,7 +323,7 @@ class StormTrackInfo(object):
         curpos = self.info[storm_id]["current storm position"]
         dist, az = xy2polar(*curpos)
         lonlat = get_coordinate(
-            dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False
+            dist, np.deg2rad(az), 0, self.handler.lon, self.handler.lat, h_offset=False
         )
         return lonlat
 
@@ -348,7 +347,7 @@ class StormTrackInfo(object):
         for dis, azi in zip(pol_pos[0], pol_pos[1]):
             pos_tup = get_coordinate(
                 dis,
-                azi * deg2rad,
+                np.deg2rad(azi),
                 0,
                 self.handler.lon,
                 self.handler.lat,
@@ -394,7 +393,7 @@ class HailIndex(object):
         xy = out.get("current storm position")
         dist, az = xy2polar(*xy)
         lonlat = get_coordinate(
-            dist, az * deg2rad, 0, self.handler.lon, self.handler.lat, h_offset=False
+            dist, np.deg2rad(az), 0, self.handler.lon, self.handler.lat, h_offset=False
         )
         out["position"] = tuple(lonlat)
         return out
@@ -568,7 +567,7 @@ class StandardPUP(RadarBase):
         az = np.linspace(0, 360, raw.shape[0])
         az += azi[0]
         az[az > 360] -= 360
-        azi = az * deg2rad
+        azi = np.deg2rad(az)
         # self.azi = np.deg2rad(azi)
         dist = np.arange(start_range // reso + 1, end_range // reso + 1, 1) * reso
         lon, lat = get_coordinate(
@@ -618,7 +617,7 @@ class StandardPUP(RadarBase):
         max_range = int(nx / 2 * reso)
         y = np.linspace(max_range, max_range * -1, ny) / 111 + self.stationlat
         x = (
-            np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(y * deg2rad))
+            np.linspace(max_range * -1, max_range, nx) / (111 * np.cos(np.deg2rad(y)))
             + self.stationlon
         )
         lon, lat = np.meshgrid(x, y)
@@ -676,7 +675,7 @@ class StandardPUP(RadarBase):
                 az = np.linspace(0, 360, raw.shape[0])
                 az += azi0[0]
                 az[az > 360] -= 360
-                azi = az * deg2rad
+                azi = np.deg2rad(az)
                 dist = np.arange(start_range + reso, end_range + reso, reso)
         raw = np.vstack(data).astype(int)
         raw = np.ma.masked_less(raw, 5)
@@ -760,7 +759,7 @@ class StandardPUP(RadarBase):
         swp_percent = DataArray(swp["swp"])
         lon, lat = get_coordinate(
             swp_range / 1000,
-            swp_azimuth * deg2rad,
+            np.deg2rad(swp_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,
@@ -794,7 +793,7 @@ class StandardPUP(RadarBase):
         hail_severe_possibility = DataArray(hail_table["hail_severe_possibility"])
         lon, lat = get_coordinate(
             hail_range / 1000,
-            hail_azimuth * deg2rad,
+            np.deg2rad(hail_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,
@@ -832,7 +831,7 @@ class StandardPUP(RadarBase):
         meso_range = np.array(meso_table["meso_range"])[:, np.newaxis]
         lon, lat = get_coordinate(
             meso_range / 1000,
-            meso_azimuth * deg2rad,
+            np.deg2rad(meso_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,
@@ -871,7 +870,7 @@ class StandardPUP(RadarBase):
         tvs_range = np.array(tvs_table["tvs_range"])[:, np.newaxis]
         lon, lat = get_coordinate(
             tvs_range / 1000,
-            tvs_azimuth * deg2rad,
+            np.deg2rad(tvs_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,
@@ -910,7 +909,7 @@ class StandardPUP(RadarBase):
         curr_direction = sti_current["direction"]
         curr_lon, curr_lat = get_coordinate(
             curr_range / 1000,
-            curr_azimuth * deg2rad,
+            np.deg2rad(curr_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,
@@ -929,7 +928,7 @@ class StandardPUP(RadarBase):
             fore_range = np.array(forecast_positon["range"])[:, np.newaxis]
             fore_lon, fore_lat = get_coordinate(
                 fore_range / 1000,
-                fore_azimuth * deg2rad,
+                np.deg2rad(fore_azimuth),
                 self.params["elevation"],
                 self.stationlon,
                 self.stationlat,
@@ -948,7 +947,7 @@ class StandardPUP(RadarBase):
             his_range = np.array(history_positon["range"])[:, np.newaxis]
             his_lon, his_lat = get_coordinate(
                 his_range / 1000,
-                his_azimuth * deg2rad,
+                np.deg2rad(his_azimuth),
                 self.params["elevation"],
                 self.stationlon,
                 self.stationlat,
@@ -1009,7 +1008,7 @@ class StandardPUP(RadarBase):
         uam_deg = DataArray(uam_table["deg"])
         lon, lat = get_coordinate(
             uam_range / 1000,
-            uam_azimuth * deg2rad,
+            np.deg2rad(uam_azimuth),
             self.params["elevation"],
             self.stationlon,
             self.stationlat,

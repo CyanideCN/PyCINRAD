@@ -14,7 +14,7 @@ from cartopy.mpl.geoaxes import GeoAxes
 from xarray import Dataset
 
 from cinrad.visualize.utils import *
-from cinrad.constants import MODULE_DIR
+from cinrad.utils import MODULE_DIR
 from cinrad.projection import get_coordinate
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T

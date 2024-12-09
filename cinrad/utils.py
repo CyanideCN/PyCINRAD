@@ -1,16 +1,25 @@
 # -*- coding: utf-8 -*-
 # Author: Puyuan Du
 
+import os
+import sys
 from typing import Union, Any
 
 import numpy as np
 
-from cinrad.constants import deg2rad, vil_const
 from cinrad.projection import height
 from cinrad._typing import Array_T, Number_T
 
+MODULE_DIR = os.path.dirname(__file__)
+if getattr(sys, "frozen", False):
+    MODULE_DIR = sys.executable
+
+VIL_CONST = 3.44e-6
+
+
 def r2z(r: np.ndarray) -> np.ndarray:
     return 10 ** (r / 10)
+
 
 def vert_integrated_liquid_py(
     ref: np.ndarray,
@@ -41,13 +50,14 @@ def vert_integrated_liquid_py(
     """
     if density:
         raise NotImplementedError("VIL density calculation is not implemented")
-    v_beam_width = beam_width * deg2rad
-    elev = np.array(elev) * deg2rad
+    v_beam_width = np.deg2rad(beam_width)
+    elev = np.deg2rad(elev)
     xshape, yshape = ref[0].shape
     distance *= 1000
     hi_arr = distance * np.sin(v_beam_width / 2)
     vil = _vil_iter(xshape, yshape, ref, distance, elev, hi_arr, threshold)
     return vil
+
 
 def _vil_iter(
     xshape: int,
@@ -77,11 +87,12 @@ def _vil_iter(
             for l in range(pos_e):
                 ht = dist * (np.sin(elev[l + 1]) - np.sin(elev[l]))
                 factor = ((vert_z[l] + vert_z[l + 1]) / 2) ** (4 / 7)
-                m1 += vil_const * factor * ht
-            mb = vil_const * vert_z[pos_s] ** (4 / 7) * hi
-            mt = vil_const * vert_z[pos_e] ** (4 / 7) * hi
+                m1 += VIL_CONST * factor * ht
+            mb = VIL_CONST * vert_z[pos_s] ** (4 / 7) * hi
+            mt = VIL_CONST * vert_z[pos_e] ** (4 / 7) * hi
             VIL[i][j] = m1 + mb + mt
     return VIL
+
 
 def echo_top_py(
     ref: np.ndarray,
@@ -145,6 +156,7 @@ def echo_top_py(
                     w2 = 1 - w1
                     et[i][j] = w1 * h2 + w2 * h1
     return et
+
 
 try:
     from cinrad._utils import *

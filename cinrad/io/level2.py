@@ -10,7 +10,6 @@ from typing import Union, Optional, List, Any, Generator
 import numpy as np
 import xarray as xr
 
-from cinrad.constants import deg2rad, con
 from cinrad.projection import get_coordinate, height
 from cinrad.error import RadarDecodeError
 from cinrad.io.base import RadarBase, prepare_file
@@ -162,6 +161,7 @@ class CinradReader(RadarBase):
         f.close()
 
     def _SAB_reader(self, f: Any, dtype: str = "SAB"):
+        ANGLE_CONVERSION = (180 / 4096) * 0.125
         _header_size = 128
         if dtype == "SAB":
             radar_dtype = SAB_dtype
@@ -181,8 +181,8 @@ class CinradReader(RadarBase):
         self.Rreso = data["gate_length_r"][0] / 1000
         self.Vreso = data["gate_length_v"][0] / 1000
         boundary = np.where(data["radial_num"] == 1)[0]
-        self.el = data["elevation"][boundary] * con
-        self.azimuth = data["azimuth"] * con * deg2rad
+        self.el = data["elevation"][boundary] * ANGLE_CONVERSION
+        self.azimuth = np.deg2rad(data["azimuth"] * ANGLE_CONVERSION)
         dv = data["v_reso"][0]
         self.nyquist_v = data["nyquist_vel"][boundary] / 100
         self.task_name = "VCP{}".format(data["vcp_mode"][0])
@@ -360,7 +360,7 @@ class CinradReader(RadarBase):
             other_info = np.frombuffer(f.read(CC2_other.itemsize), CC2_other)
             self.task_name = other_info["sScanName"][0].decode()
             data_block = np.frombuffer(f.read(), CC2_data)
-            raw_azimuth = data_block["usAzimuth"] / 100 * deg2rad
+            raw_azimuth = np.deg2rad(data_block["usAzimuth"] / 100)
             raw_dbz = np.ma.masked_equal(data_block["ucCorZ"].astype(int), 0)
             dbz = (raw_dbz - 64) / 2
             zdr = np.ma.masked_equal(data_block["siZDR"].astype(int), -32768) * 0.01
@@ -402,20 +402,20 @@ class CinradReader(RadarBase):
                 return self.data[scans]["azimuth"]
         elif self.radartype == "CC":
             if scans is None:
-                return (
-                    np.array(np.linspace(0, 360, 512).tolist() * self.get_nscans())
-                    * deg2rad
+                return np.array(
+                    np.linspace(0, np.pi * 2, 512).tolist() * self.get_nscans()
                 )
+
             else:
-                return np.array(np.linspace(0, 360, 512).tolist()) * deg2rad
+                return np.linspace(0, np.pi * 2, 512)
         elif self.radartype in ["SC", "CD"]:
             if scans is None:
-                return (
-                    np.array(np.linspace(0, 360, 360).tolist() * self.get_nscans())
-                    * deg2rad
+                return np.array(
+                    np.linspace(0, np.pi * 2, 360).tolist() * self.get_nscans()
                 )
+
             else:
-                return np.array(np.linspace(0, 360, 360).tolist()) * deg2rad
+                return np.linspace(0, np.pi * 2, 360)
 
     def get_elevation_angles(
         self, scans: Optional[int] = None
@@ -871,7 +871,7 @@ class StandardData(RadarBase):
             start_lon = self.stationlon
             start_lat = self.stationlat
             end_lon, end_lat = get_coordinate(
-                self.drange, azimuth * deg2rad, 0, self.stationlon, self.stationlat
+                self.drange, np.deg2rad(azimuth), 0, self.stationlon, self.stationlat
             )
             ds = xr.Dataset(
                 {dtype: da},
@@ -897,7 +897,7 @@ class StandardData(RadarBase):
 
     def projection(self, reso: float) -> tuple:
         r = self.get_range(self.drange, reso)
-        theta = np.array(self.aux[self.tilt]["azimuth"]) * deg2rad
+        theta = np.deg2rad(self.aux[self.tilt]["azimuth"])
         lonx, latx = get_coordinate(
             r, theta, self.elev, self.stationlon, self.stationlat
         )

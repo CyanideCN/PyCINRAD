@@ -7,7 +7,7 @@ from typing import *
 from functools import wraps
 
 import numpy as np
-from xarray import DataArray, Dataset, merge
+from xarray import DataArray, Dataset
 
 try:
     from pykdtree.kdtree import KDTree
@@ -17,7 +17,6 @@ except ImportError:
 from cinrad.utils import *
 from cinrad.grid import grid_2d, resample
 from cinrad.projection import height, get_coordinate
-from cinrad.constants import deg2rad
 from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
 from cinrad.common import get_dtype
@@ -364,12 +363,13 @@ class VCS(object):
             stlon = self.rl[0].site_longitude
             stp = np.round(
                 get_coordinate(
-                    start_polar[0], start_polar[1] * deg2rad, 0, stlon, stlat
+                    start_polar[0], np.deg2rad(start_polar[1]), 0, stlon, stlat
                 ),
                 2,
             )
             enp = np.round(
-                get_coordinate(end_polar[0], end_polar[1] * deg2rad, 0, stlon, stlat), 2
+                get_coordinate(end_polar[0], np.deg2rad(end_polar[1]), 0, stlon, stlat),
+                2,
             )
         elif start_cart and end_cart:
             stp = start_cart
