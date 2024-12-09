@@ -277,13 +277,7 @@ class PPI(object):
                 )
             else:
                 sec = ""
-            if self.settings["style"] == "transparent":
-                extent = self.geoax.get_extent(crs=self.data_crs)
-                ex = [str(x)[0:6] for x in extent]
-                gis = "_GIS_" + "_".join(ex)
-            else:
-                gis = ""
-            path_string = "{}{}_{}_{:.1f}_{}_{}{}{}.png".format(
+            path_string = "{}{}_{}_{:.1f}_{}_{}{}.png".format(
                 fpath,
                 self.data.site_code,
                 datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S").strftime(
@@ -293,7 +287,6 @@ class PPI(object):
                 self.data.range,
                 self.dtype.upper(),
                 sec,
-                gis,
             )
         else:
             path_string = fpath
