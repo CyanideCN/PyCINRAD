@@ -569,7 +569,8 @@ class StandardPUP(RadarBase):
         az[az > 360] -= 360
         azi = np.deg2rad(az)
         # self.azi = np.deg2rad(azi)
-        dist = np.arange(start_range // reso + 1, end_range // reso + 1, 1) * reso
+        dist = np.arange(start_range // reso + 1, end_range // reso + 2, 1) * reso
+        dist = dist[: nbins]
         lon, lat = get_coordinate(
             dist, azi, self.params["elevation"], self.stationlon, self.stationlat
         )
@@ -676,7 +677,8 @@ class StandardPUP(RadarBase):
                 az += azi0[0]
                 az[az > 360] -= 360
                 azi = np.deg2rad(az)
-                dist = np.arange(start_range + reso, end_range + reso, reso)
+                dist = np.arange(start_range // reso + 1, end_range // reso + 2, 1) * reso
+                dist = dist[: nbins]
         raw = np.vstack(data).astype(int)
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
@@ -701,6 +703,8 @@ class StandardPUP(RadarBase):
         )
         ds["longitude"] = (["azimuth", "distance"], lon)
         ds["latitude"] = (["azimuth", "distance"], lat)
+        if len(height) == 1:
+            ds = ds.squeeze("height")
         self._dataset = ds
 
     def _parse_vwp_fmt(self):
