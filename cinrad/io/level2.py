@@ -1104,7 +1104,7 @@ class PhasedArrayData(RadarBase):
 
     def projection(self, reso: float) -> tuple:
         r = self.get_range(self.drange, reso)
-        theta = np.array(self.aux[self.tilt]["azimuth"]) * deg2rad
+        theta = np.deg2rad(self.aux[self.tilt]["azimuth"])
         lonx, latx = get_coordinate(
             r, theta, self.elev, self.stationlon, self.stationlat
         )
