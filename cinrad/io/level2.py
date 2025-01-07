@@ -764,6 +764,12 @@ class StandardData(RadarBase):
         """
         # The scan number is set to zero in RHI mode.
         self.tilt = tilt if self.scan_type == "PPI" else 0
+        if tilt not in self.data:
+            raise RadarDecodeError("Tilt {} does not exist.".format(tilt))
+        if dtype not in self.data[tilt]:
+            raise RadarDecodeError(
+                "Product {} does not exist in tilt {}".format(dtype, tilt)
+            )
         if self.scan_type == "RHI":
             max_range = self.scan_config[0].max_range1 / 1000
             if drange > max_range:
@@ -774,10 +780,7 @@ class StandardData(RadarBase):
             reso = self.scan_config[tilt].dop_reso / 1000
         else:
             reso = self.scan_config[tilt].log_reso / 1000
-        try:
-            raw = np.array(self.data[tilt][dtype])
-        except KeyError:
-            raise RadarDecodeError("Invalid product name")
+        raw = np.array(self.data[tilt][dtype])
         ngates = int(drange // reso)
         if raw.size == 0:
             warnings.warn("Empty data", RuntimeWarning)
@@ -820,11 +823,11 @@ class StandardData(RadarBase):
         Returns:
             xarray.Dataset: Data.
         """
+        ret = self.get_raw(tilt, drange, dtype)
         if dtype in ["VEL", "SW", "VELSZ"]:
             reso = self.scan_config[tilt].dop_reso / 1000
         else:
             reso = self.scan_config[tilt].log_reso / 1000
-        ret = self.get_raw(tilt, drange, dtype)
         shape = ret[0].shape[1] if isinstance(ret, tuple) else ret.shape[1]
         if self.scan_type == "PPI":
             x, y, z, d, a = self.projection(reso)
