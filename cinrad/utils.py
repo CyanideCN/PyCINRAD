@@ -11,8 +11,6 @@ from cinrad.projection import height
 from cinrad._typing import Array_T, Number_T
 
 MODULE_DIR = os.path.dirname(__file__)
-if getattr(sys, "frozen", False):
-    MODULE_DIR = sys.executable
 
 VIL_CONST = 3.44e-6
 

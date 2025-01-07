@@ -564,11 +564,11 @@ class StandardPUP(RadarBase):
         if self.ptype in [25, 26, 27, 28]:
             # Mask 0 value in precipitation products
             data = np.ma.masked_equal(data, 0)
-        az = np.linspace(0, 360, raw.shape[0])
-        az += azi[0]
-        az[az > 360] -= 360
-        azi = np.deg2rad(az)
-        # self.azi = np.deg2rad(azi)
+        # az = np.linspace(0, 360, raw.shape[0])
+        # az += azi[0]
+        # az[az > 360] -= 360
+        # azi = np.deg2rad(az)
+        self.azi = np.deg2rad(azi)
         dist = np.arange(start_range // reso + 1, end_range // reso + 1, 1) * reso
         lon, lat = get_coordinate(
             dist, azi, self.params["elevation"], self.stationlon, self.stationlat
