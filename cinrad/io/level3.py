@@ -568,9 +568,8 @@ class StandardPUP(RadarBase):
         # az += azi[0]
         # az[az > 360] -= 360
         # azi = np.deg2rad(az)
-        self.azi = np.deg2rad(azi)
-        dist = np.arange(start_range // reso + 1, end_range // reso + 2, 1) * reso
-        dist = dist[:nbins]
+        azi = np.deg2rad(azi)
+        dist = self.safe_range(start_range, end_range, reso)
         lon, lat = get_coordinate(
             dist, azi, self.params["elevation"], self.stationlon, self.stationlat
         )
@@ -673,14 +672,12 @@ class StandardPUP(RadarBase):
                 azi0.append(start_a)
             if len(azi) == 0:
                 raw = np.vstack(data).astype(int)
-                az = np.linspace(0, 360, raw.shape[0])
-                az += azi0[0]
-                az[az > 360] -= 360
-                azi = np.deg2rad(az)
-                dist = (
-                    np.arange(start_range // reso + 1, end_range // reso + 2, 1) * reso
-                )
-                dist = dist[:nbins]
+                # az = np.linspace(0, 360, raw.shape[0])
+                # az += azi0[0]
+                # az[az > 360] -= 360
+                # azi = np.deg2rad(az)
+                azi = np.deg2rad(azi0)
+                dist = self.safe_range(start_range, end_range, reso)
         raw = np.vstack(data).astype(int)
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
