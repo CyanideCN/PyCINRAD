@@ -6,13 +6,15 @@
 
 Decode CINRAD (China New Generation Weather Radar) data and visualize. 
 
+To check out live examples and docs, visit [pycinrad.cn](https://pycinrad.cn/).
+
 [中文说明](https://github.com/CyanideCN/PyCINRAD/blob/master/README_zh.md)
 
 **`example` folder contains detailed examples!**
 
 ## Installation
 
-PyCINRAD supports Python version 3.5 and higher.
+PyCINRAD supports Python version 3.9 and higher.
 
 ```
 pip install cinrad
@@ -33,7 +35,7 @@ Decode CINRAD radar data.
 ```python
 from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #Old version data
-f = StandardData(your_radar_file) #New standard data
+f = StandardData(your_radar_file) #New standard data (or phased array data)
 f.get_data(tilt, drange, dtype) #Get data
 f.get_raw(tilt, drange, dtype)
 ```
@@ -107,19 +109,19 @@ Convert data structure defined in this module into `pyart.core.Radar` is very si
 
 #### Decode PUP data and SWAN data
 
-`cinrad.io.PUP` provides functions to decode PUP data. The extracted data can be further used to create PPI.
+`cinrad.io.StandardPUP` provides functions to decode Standard PUP(rose) data. The extracted data can be further used to create PPI.
 
 `cinrad.io.SWAN` provides similar interface to decode SWAN data.
 
 ```python
-from cinrad.io import PUP
-f = PUP(your_radar_file)
+from cinrad.io import StandardPUP
+f = StandardPUP(your_radar_file)
 data = f.get_data()
 ```
 
 #### Decode phased array radar data
 
-`cinrad.io.PhasedArrayData` provides similar interface to decode level 2 data from phased array radar.
+`cinrad.io.PhasedArrayData` provides similar interface to decode level 2 data from phased array radar with old format.
 
 ```python
 from cinrad.io import PhasedArrayData
@@ -161,7 +163,7 @@ fig('D:\\')
 
 #### Radar mosaic
 
-`cinrad.calc.GridMapper` can merge different radar scans into a cartesian grid.
+`cinrad.calc.GridMapper` can merge different radar scans into a cartesian grid, also supports CR.
 
 #### Hydrometeor classification
 
@@ -211,7 +213,7 @@ The summary of args that can be passed into `PPI` are listed as follows.
 |`dpi`|dpi of figure|
 |`extent`|area to plot e.g. `extent=[90, 91, 29, 30]`|
 |`section`|cross-section data to ppi plot|
-|`style`|control the background color `black` or `white`|
+|`style`|background color:`black`/`white`/`transparent`|
 |`add_city_names`|annotate name of city on the plot|
 
 Beside args, class `PPI` has some other auxiliary plotting functions.

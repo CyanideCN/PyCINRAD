@@ -6,6 +6,8 @@
 
 Decode CINRAD (China New Generation Weather Radar) data and visualize. 
 
+查看示例，请访问官网 [pycinrad.cn](https://pycinrad.cn/).
+
 读取CINRAD雷达数据，进行相关计算并可视化的模块。
 
 **使用交流群：480305660**
@@ -16,7 +18,7 @@ Decode CINRAD (China New Generation Weather Radar) data and visualize.
 
 ### 安装方法
 
-支持Python 3.5 及以上
+支持Python 3.9 及以上
 
 ```
 pip install cinrad
@@ -24,6 +26,8 @@ pip install cinrad
 
 或在此页面下载并执行
 ```
+git clone https://github.com/CyanideCN/PyCINRAD.git    
+cd PyCINRAD  
 python setup.py install
 ```
 
@@ -38,7 +42,7 @@ python setup.py install
 ```python
 from cinrad.io import CinradReader, StandardData
 f = CinradReader(your_radar_file) #老版本数据
-f = StandardData(your_radar_file) #新版本标准数据
+f = StandardData(your_radar_file) #新版本标准（相控阵）基数据
 f.get_data(tilt, drange, dtype) #获取数据
 f.get_raw(tilt, drange, dtype)
 ```
@@ -110,18 +114,18 @@ Attributes:
 
 #### 读取PUP数据和SWAN数据
 
-`cinrad.io.PUP`提供读取PUP数据的功能，目前只支持径向类型数据以及组合反射率。新格式的PUP产品（ROSE产品）可以用`cinrad.io.level3.StandardPUP`来读取，目前只支持径向类型的部分产品。
+`cinrad.io.PUP`提供读取PUP数据的功能，目前只支持径向类型数据以及组合反射率。新格式的PUP产品（ROSE产品）可以用`cinrad.io.level3.StandardPUP`来读取，目前支持大部分产品。
 `cinrad.io.SWAN`提供相似的接口来解码SWAN数据。
 
 ```python
-from cinrad.io import PUP
-f = PUP(your_radar_file)
+from cinrad.io import StandardPUP
+f = StandardPUP(your_radar_file)
 data = f.get_data()
 ```
 
-#### 读取相控阵雷达数据
+#### 读取旧格式相控阵雷达数据
 
-`cinrad.io.PhasedArrayData`提供读取相控阵雷达基数据的功能，用法和其他接口非常类似。
+`cinrad.io.PhasedArrayData`提供读取旧格式的相控阵雷达基数据的功能，用法和其他接口非常类似。
 
 ```python
 from cinrad.io import PhasedArrayData
@@ -131,15 +135,14 @@ data = f.get_data(0, 40, 'REF')
 
 ### cinrad.utils
 
-提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用，
-而不仅仅是能计算此程序读取出来的CINRAD雷达数据。
+提供雷达衍生产品的计算（接受`numpy.ndarray`）。将这些功能独立出来的目的是使得计算程序更加通用。
 
 函数名：
 `composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
 
-计算ET和VIL时，考虑到速度问题，模块提供由cython转换而来的python扩展，可以大大提升速度。如果要使用此扩展，请安装cython以及C编译器，并重新安装此模块。
+计算ET和VIL时，考虑到速度问题，模块提供由cython转换而来的python扩展，可以大大提升速度。如果要使用此扩展，请安装cython以及C编译器，并重新安装此模块。（由pip直接安装的版本都是带有cython扩展的。）
 
-注：对于当反射率很强时，得到的VIL值可能会很大，这是因为该计算函数没有对强回波进行滤除，程序本身是没有问题的。
+注：对于当反射率很强时，得到的VIL值可能会很大，这是因为该计算函数没有对强回波进行滤除，算法本身并无问题，如有滤除需要可以先使用`np.clip`将回波最大值设置为55dBZ再进行计算。
 
 ### cinrad.calc
 
@@ -175,7 +178,7 @@ fig('D:\\')
 
 #### 雷达拼图
 
-`cinrad.calc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图。
+`cinrad.calc.GridMapper`可以将不同雷达的扫描数据合并成雷达格点拼图，支持基本反射率和组合反射率。
 
 #### 水凝物分类
 
@@ -229,7 +232,7 @@ fig('D:\\')
 |`dpi`|分辨率|
 |`extent`|绘图的经纬度范围 e.g. `extent=[90, 91, 29, 30]`|
 |`section`|在`ppi`图中绘制的剖面的数据，为`xarray.Dataset`类型|
-|`style`|背景颜色，可设置为黑色`black`或者白色`white`|
+|`style`|背景:黑色`black`或白色`white`或透明`transparent`|
 |`add_city_names`|标注城市名|
 
 同时`PPI`类中定义有其他绘图函数：
