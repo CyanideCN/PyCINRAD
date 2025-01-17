@@ -69,3 +69,13 @@ class RadarBase(abc.ABC):
         rng = np.arange(reso, drange + reso, reso)
         valid_entry = int(drange // reso)
         return rng[:valid_entry]
+    
+    @staticmethod
+    def get_range_safe(start: Number_T, stop: Number_T, step: Number_T) -> np.ndarray:
+        r"""
+        Level2中切片时使用了//, 所以只能使用上面的get_range, 否则dist长度不一致;
+        Level3中没有切片功能, 所以使用这个函数来确保不出现浮点数溢出的长度BUG.
+        """
+        int_start = int(start / step) + 1
+        int_stop = int(stop / step) + 1
+        return step * np.arange(int_start, int_stop)
