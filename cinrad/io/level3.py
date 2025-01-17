@@ -569,7 +569,7 @@ class StandardPUP(RadarBase):
         # az[az > 360] -= 360
         # azi = np.deg2rad(az)
         azi = np.deg2rad(azi)
-        dist = self.safe_range(start_range, end_range, reso)
+        dist = self.get_range_safe(start_range, end_range, reso)
         lon, lat = get_coordinate(
             dist, azi, self.params["elevation"], self.stationlon, self.stationlat
         )
@@ -677,7 +677,7 @@ class StandardPUP(RadarBase):
                 # az[az > 360] -= 360
                 # azi = np.deg2rad(az)
                 azi = np.deg2rad(azi0)
-                dist = self.safe_range(start_range, end_range, reso)
+                dist = self.get_range_safe(start_range, end_range, reso)
         raw = np.vstack(data).astype(int)
         raw = np.ma.masked_less(raw, 5)
         data = (raw - offset) / scale
