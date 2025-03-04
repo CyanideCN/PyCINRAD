@@ -27,20 +27,10 @@ from cinrad.visualize.gpf import _cmap
 from cinrad.utils import MODULE_DIR
 from cinrad._typing import Array_T, Number_T
 from cinrad.error import RadarPlotError
-from cinrad.visualize.layout import (
-    FIG_SIZE,
-    GEOAXES_POS,
-    INIT_TEXT_POS,
-    TEXT_SPACING,
-)
+from cinrad.visualize.layout import GEOAXES_POS
 
 __all__ = [
     "add_shp",
-    "save",
-    "setup_axes",
-    "setup_plot",
-    "text",
-    "change_cbar_text",
     "draw_highlight_area",
     "create_geoaxes",
     "norm_plot",
@@ -52,7 +42,7 @@ __all__ = [
     "unit",
     "cbar_text",
     "is_inline",
-    "plot_kw",
+    "default_font_kw",
 ]
 
 CMAP_DIR = os.path.join(MODULE_DIR, "data", "colormap")
@@ -152,7 +142,7 @@ for dic in zip([norm_plot, norm_cbar, cmap_plot, cmap_cbar, sec_plot, unit, cbar
     _d["VELSZ"] = _d["VEL"]
 
 font = FontProperties(fname=get_font_path())
-plot_kw = {"fontproperties": font, "fontsize": 12}
+default_font_kw = {"fontproperties": font, "fontsize": 12}
 
 
 def set_font(font_path: str):
@@ -183,88 +173,6 @@ from cartopy import __version__
 
 if __version__ >= "0.23.0":
     ShpReader = shapereader.BasicReader
-
-
-def setup_plot(dpi: Number_T, figsize: tuple = FIG_SIZE, style: str = "black") -> Any:
-    if style == "transparent":
-        figsize = (10, 10)
-    fig = plt.figure(figsize=figsize, dpi=dpi)
-    plt.axis("off")
-    if style == "black":
-        plt.style.use("dark_background")
-    return fig
-
-
-def setup_axes(fig: Any, cmap: Any, norm: Any, position: List[Number_T]) -> tuple:
-    ax = fig.add_axes(position)
-    cbar = ColorbarBase(
-        ax, cmap=cmap, norm=norm, orientation="vertical", drawedges=False
-    )
-    cbar.ax.tick_params(axis="both", which="both", length=0, labelsize=10)
-    cbar.outline.set_visible(False)
-    return cbar
-
-
-def text(
-    ax: Any,
-    drange: Number_T,
-    reso: float,
-    scantime: str,
-    name: str,
-    task: str,
-    elev: float,
-):
-    from cinrad.visualize.utils import plot_kw
-
-    ax.text(
-        0, INIT_TEXT_POS - TEXT_SPACING, "Range: {:.0f}km".format(drange), **plot_kw
-    )
-    if reso < 0.1:
-        # Change the unit from km to m for better formatting
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 2,
-            "Resolution: {:.0f}m".format(reso * 1000),
-            **plot_kw
-        )
-    else:
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 2,
-            "Resolution: {:.2f}km".format(reso),
-            **plot_kw
-        )
-    ax.text(
-        0,
-        INIT_TEXT_POS - TEXT_SPACING * 3,
-        "Date: {}".format(
-            datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%Y.%m.%d")
-        ),
-        **plot_kw
-    )
-    ax.text(
-        0,
-        INIT_TEXT_POS - TEXT_SPACING * 4,
-        "Time: {}".format(
-            datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
-        ),
-        **plot_kw
-    )
-    if name is None:
-        name = "Unknown"
-    ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **plot_kw)
-    ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **plot_kw)
-    ax.text(
-        0, INIT_TEXT_POS - TEXT_SPACING * 7, "Elev: {:.2f}deg".format(elev), **plot_kw
-    )
-
-
-def save(fpath: str, style: str = "black", **kwargs):
-    if style == "transparent":
-        plt.savefig(fpath, transparent=True, pad_inches=0, **kwargs)
-    else:
-        plt.savefig(fpath, pad_inches=0, **kwargs)
-    plt.close("all")
 
 
 @lru_cache(maxsize=2)
@@ -334,11 +242,6 @@ def add_shp(
     )
     if coastline:
         ax.coastlines(resolution="10m", color=line_colors[2], zorder=3, linewidth=1)
-
-
-def change_cbar_text(cbar: ColorbarBase, tick: List[Number_T], text: List[str]):
-    cbar.set_ticks(tick)
-    cbar.set_ticklabels(text, **plot_kw)
 
 
 def highlight_area(
