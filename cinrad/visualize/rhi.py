@@ -116,3 +116,4 @@ class Section(object):
         else:
             save_path = fpath
         plt.savefig(save_path, bbox_inches="tight")
+        return save_path

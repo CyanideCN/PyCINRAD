@@ -2,7 +2,6 @@
 # Author: Puyuan Du
 
 import os
-from pathlib import Path
 import warnings
 import json
 from typing import Union, Optional, Any, List
@@ -26,6 +25,17 @@ from cinrad.visualize.layout import *
 __all__ = ["PPI"]
 
 
+def update_dict(d1: dict, d2: dict):
+    r"""
+    Update the content of the first dict with entries in the second,
+    and return the copy.
+    """
+    d = d1.copy()
+    for k, v in d2.items():
+        d[k] = v
+    return d
+
+
 class PPI(object):
     r"""
     Create a figure plotting plan position indicator
@@ -38,23 +48,28 @@ class PPI(object):
 
         fig (matplotlib.figure.Figure): The figure to plot on. Optional.
 
-        norm (matplotlib.colors.Normalize): Customized norm data. Optional.
+        norm (matplotlib.colors.Normalize): Customized normalize object. Optional.
 
         cmap (matplotlib.colors.Colormap): Customized colormap. Optional.
 
-        nlabel (int): Number of labels on the colorbar. Optional.
+        nlabel (int): Number of labels on the colorbar, will only be used when label is
+         also passed. Optional.
 
-        dpi (int): DPI of the figure. Optional.
+        label (list[str]): Colorbar labels. Optional.
 
-        highlight (str, list(str)): Areas to be highlighted. Optional.
+        dpi (int): DPI of the figure. Default 350.
+
+        highlight (str, list[str]): Areas to be highlighted. Optional.
 
         coastline (bool): Plot coastline on the figure if set to True. Default False.
 
-        extent (list(float)): The extent of figure. Optional.
+        extent (list[float]): The extent of figure. Optional.
 
-        add_city_names (bool): Label city names on the figure if set to True. Default True.
+        add_city_names (bool): Label city names on the figure if set to True. Default False.
 
         plot_labels (bool): Text scan information on the side of the plot. Default True.
+
+        text_param (dict): Optional parameters passed to matplotlib text function.
     """
 
     # The CRS of data is believed to be PlateCarree.
@@ -67,7 +82,7 @@ class PPI(object):
         fig: Optional[Any] = None,
         norm: Optional[Any] = None,
         cmap: Optional[Any] = None,
-        nlabel: Optional[int] = None,
+        nlabel: int = 10,
         label: Optional[List[str]] = None,
         dpi: Number_T = 350,
         highlight: Optional[Union[str, List[str]]] = None,
@@ -77,6 +92,7 @@ class PPI(object):
         style: str = "black",
         add_city_names: bool = False,
         plot_labels: bool = True,
+        text_param: Optional[dict] = None,
         **kwargs
     ):
         self.data = data
@@ -112,6 +128,9 @@ class PPI(object):
             self.font_kw["color"] = "white"
         else:
             self.font_kw["color"] = "black"
+        if text_param:
+            # Override use input setting
+            self.font_kw = update_dict(self.font_kw, text_param)
         self._plot_ctx = dict()
         self.rf_flag = "RF" in data
         self._fig_init = False
@@ -121,19 +140,15 @@ class PPI(object):
             # call this action at initialization
             self._text_before_save()
 
-    def __call__(self, fpath: Optional[str] = None):
-        if not fpath:
-            # When the path is not specified, store the picture in home dir.
-            fpath = os.path.join(str(Path.home()), "PyCINRAD")
+    def __call__(self, fpath):
+        ext_name = fpath.split(".")
+        if len(ext_name) > 1:
+            all_fmt = self.fig.canvas.get_supported_filetypes()
+            if ext_name[-1] in all_fmt:
+                self.settings["path_customize"] = True
         else:
-            ext_name = fpath.split(".")
-            if len(ext_name) > 1:
-                all_fmt = self.fig.canvas.get_supported_filetypes()
-                if ext_name[-1] in all_fmt:
-                    self.settings["path_customize"] = True
-            else:
-                if not fpath.endswith(os.path.sep):
-                    fpath += os.path.sep
+            if not fpath.endswith(os.path.sep):
+                fpath += os.path.sep
         return self._save(fpath)
 
     def _norm(self):
@@ -143,10 +158,7 @@ class PPI(object):
                 clabel = self.settings["label"]
             else:
                 nlabel = self.settings["nlabel"]
-                if nlabel:
-                    clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
-                else:
-                    clabel = np.linspace(n.vmin, n.vmax, 10).astype(str)
+                clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
             return n, n, clabel
         else:
             n = norm_plot[self.dtype]
@@ -279,10 +291,7 @@ class PPI(object):
             name = "Unknown"
         ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **self.font_kw)
         ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 6,
-            "Task: {}".format(task),
-            **self.font_kw
+            0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **self.font_kw
         )
         ax.text(
             0,
@@ -338,7 +347,13 @@ class PPI(object):
         cbar = ColorbarBase(
             cax, cmap=ccmap, norm=cnorm, orientation="vertical", drawedges=False
         )
-        cbar.ax.tick_params(axis="both", which="both", length=0, labelsize=10, colors=self.font_kw["color"])
+        cbar.ax.tick_params(
+            axis="both",
+            which="both",
+            length=0,
+            labelsize=10,
+            colors=self.font_kw["color"],
+        )
         cbar.outline.set_visible(False)
         if not isinstance(clabel, type(None)):
             cbar.set_ticks(np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)))
