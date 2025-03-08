@@ -120,6 +120,7 @@ class PPI(object):
                 self.fig = plt.figure(figsize=FIG_SIZE_TRANSPARENT, dpi=dpi)
             else:
                 self.fig = plt.figure(figsize=FIG_SIZE, dpi=dpi)
+                self.fig.patch.set_facecolor(style)
             plt.axis("off")
         else:
             self.fig = fig
@@ -128,10 +129,8 @@ class PPI(object):
         self.cbar_pos = CBAR_POS.copy()
         self.font_kw = default_font_kw.copy()
         if style == "black":
-            plt.style.use("dark_background")
             self.font_kw["color"] = "white"
         else:
-            plt.style.use("default")
             self.font_kw["color"] = "black"
         if text_param:
             # Override use input setting
@@ -200,8 +199,6 @@ class PPI(object):
         self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=extent, style=self.settings["style"]
         )
-        if self.settings["style"] == "black":
-            self.geoax.patch.set_facecolor("black")
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
