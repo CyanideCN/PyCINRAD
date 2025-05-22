@@ -7,4 +7,4 @@ from . import correct
 
 from .io import read_level2
 
-__version__ = "1.9.1"
+__version__ = "1.9.2"
