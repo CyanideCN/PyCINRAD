@@ -42,32 +42,8 @@ f.get_raw(tilt, drange, dtype)
 
 The `get_raw` method returns radar records without other geographic information.
 
-The `get_data` method returns `xarray.Dataset` with radar records, geographic coordinates, and all extra attributes. So, all benefits of `xarray` can be enjoyed.
+The `get_data` method returns `xarray.Dataset` with radar records, geographic coordinates, and all extra attributes. So, all benefits of `xarray` can be enjoyed. Check xarray [documentation](https://docs.xarray.dev/en/latest/generated/xarray.Dataset.html) for more detailed explanation.
 
-```python
->>> print(data)
-<xarray.Dataset>
-Dimensions:    (azimuth: 366, distance: 920)
-Coordinates:
-  * azimuth    (azimuth) float32 0.14084807 0.15812683 ... 0.12601277 0.14381513
-  * distance   (distance) float64 0.25 0.5 0.75 1.0 ... 229.2 229.5 229.8 230.0
-Data variables:
-    ZDR        (azimuth, distance) float64 nan nan nan nan ... nan nan nan nan
-    longitude  (azimuth, distance) float64 120.2 120.2 120.2 ... 120.6 120.6
-    latitude   (azimuth, distance) float64 35.99 35.99 36.0 ... 38.04 38.04
-    height     (azimuth, distance) float64 0.1771 0.1792 0.1814 ... 5.218 5.227
-Attributes:
-    elevation:        0.48339844
-    range:            230
-    scan_time:        2020-05-17 11:00:28
-    site_code:        Z9532
-    site_name:        青岛
-    site_longitude:   120.23028
-    site_latitude:    35.98861
-    tangential_reso:  0.25
-    nyquist_vel:      8.37801
-    task:             VCP21D
-```
 For example, it's very convenient to save data as netcdf format.
 ```python
 >>> data.to_netcdf('1.nc')
@@ -76,27 +52,6 @@ For example, it's very convenient to save data as netcdf format.
 `xarray` also makes interpolation very convenient.
 ```python
 >>> data.interp(azimuth=np.deg2rad(300), distance=180)
-<xarray.Dataset>
-Dimensions:    ()
-Coordinates:
-    azimuth    float64 5.236
-    distance   int32 180
-Data variables:
-    ZDR        float64 0.3553
-    longitude  float64 118.5
-    latitude   float64 36.8
-    height     float64 3.6
-Attributes:
-    elevation:        0.48339844
-    range:            230
-    scan_time:        2020-05-17 11:00:28
-    site_code:        Z9532
-    site_name:        青岛
-    site_longitude:   120.23028
-    site_latitude:    35.98861
-    tangential_reso:  0.25
-    nyquist_vel:      8.37801
-    task:             VCP21D
 ```
 
 For single-tilt data (i.e. files that contain only one elevation angle), `cinrad.io.StandardData.merge` can merge these files to a file contains full volumetric scan.
@@ -273,5 +228,3 @@ If you use PyCINRAD in your paper, please cite PyCINRAD using the DOI below.
 The hydrometeor classfication algorithm comes from Dolan, B., S. A. Rutledge, S. Lim, V. Chandrasekar, and M. Thurai, 2013: A Robust C-Band Hydrometeor Identification Algorithm and Application to a Long-Term Polarimetric Radar Dataset. J. Appl. Meteor. Climatol., 52, 2162–2186, https://doi.org/10.1175/JAMC-D-12-0275.1.
 
 If you are interested in this program, you can join the developers of this program. Any contribution is appreciated!
-
-If you have questions or advise about this program, you can create an issue or email me at 274555447@qq.com.
