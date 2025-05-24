@@ -2,12 +2,13 @@
 # Author: Puyuan Du
 
 import os
-from pathlib import Path
 import warnings
 import json
 from typing import Union, Optional, Any, List
 from datetime import datetime
 
+import matplotlib.pyplot as plt
+from matplotlib.colorbar import ColorbarBase
 import numpy as np
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -19,9 +20,20 @@ from cinrad.projection import get_coordinate
 from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
 from cinrad.common import get_dtype, is_radial
-from cinrad.visualize.layout import TEXT_AXES_POS, TEXT_SPACING, INIT_TEXT_POS, CBAR_POS
+from cinrad.visualize.layout import *
 
 __all__ = ["PPI"]
+
+
+def update_dict(d1: dict, d2: dict):
+    r"""
+    Update the content of the first dict with entries in the second,
+    and return the copy.
+    """
+    d = d1.copy()
+    for k, v in d2.items():
+        d[k] = v
+    return d
 
 
 class PPI(object):
@@ -36,23 +48,28 @@ class PPI(object):
 
         fig (matplotlib.figure.Figure): The figure to plot on. Optional.
 
-        norm (matplotlib.colors.Normalize): Customized norm data. Optional.
+        norm (matplotlib.colors.Normalize): Customized normalize object. Optional.
 
         cmap (matplotlib.colors.Colormap): Customized colormap. Optional.
 
-        nlabel (int): Number of labels on the colorbar. Optional.
+        nlabel (int): Number of labels on the colorbar, will only be used when label is
+         also passed. Optional.
 
-        dpi (int): DPI of the figure. Optional.
+        label (list[str]): Colorbar labels. Optional.
 
-        highlight (str, list(str)): Areas to be highlighted. Optional.
+        dpi (int): DPI of the figure. Default 350.
+
+        highlight (str, list[str]): Areas to be highlighted. Optional.
 
         coastline (bool): Plot coastline on the figure if set to True. Default False.
 
-        extent (list(float)): The extent of figure. Optional.
+        extent (list[float]): The extent of figure. Optional.
 
-        add_city_names (bool): Label city names on the figure if set to True. Default True.
+        add_city_names (bool): Label city names on the figure if set to True. Default False.
 
         plot_labels (bool): Text scan information on the side of the plot. Default True.
+
+        text_param (dict): Optional parameters passed to matplotlib text function.
     """
 
     # The CRS of data is believed to be PlateCarree.
@@ -65,7 +82,7 @@ class PPI(object):
         fig: Optional[Any] = None,
         norm: Optional[Any] = None,
         cmap: Optional[Any] = None,
-        nlabel: Optional[int] = None,
+        nlabel: int = 10,
         label: Optional[List[str]] = None,
         dpi: Number_T = 350,
         highlight: Optional[Union[str, List[str]]] = None,
@@ -75,6 +92,7 @@ class PPI(object):
         style: str = "black",
         add_city_names: bool = False,
         plot_labels: bool = True,
+        text_param: Optional[dict] = None,
         **kwargs
     ):
         self.data = data
@@ -95,12 +113,24 @@ class PPI(object):
             "is_inline": is_inline(),
         }
         if fig is None:
-            self.fig = setup_plot(dpi, style=style)
+            if style == "transparent":
+                self.fig = plt.figure(figsize=FIG_SIZE_TRANSPARENT, dpi=dpi)
+            else:
+                self.fig = plt.figure(figsize=FIG_SIZE, dpi=dpi)
+            plt.axis("off")
         else:
             self.fig = fig
         # avoid in-place modification
         self.text_pos = TEXT_AXES_POS.copy()
         self.cbar_pos = CBAR_POS.copy()
+        self.font_kw = default_font_kw.copy()
+        if style == "black":
+            self.font_kw["color"] = "white"
+        else:
+            self.font_kw["color"] = "black"
+        if text_param:
+            # Override use input setting
+            self.font_kw = update_dict(self.font_kw, text_param)
         self._plot_ctx = dict()
         self.rf_flag = "RF" in data
         self._fig_init = False
@@ -110,19 +140,15 @@ class PPI(object):
             # call this action at initialization
             self._text_before_save()
 
-    def __call__(self, fpath: Optional[str] = None):
-        if not fpath:
-            # When the path is not specified, store the picture in home dir.
-            fpath = os.path.join(str(Path.home()), "PyCINRAD")
+    def __call__(self, fpath):
+        ext_name = fpath.split(".")
+        if len(ext_name) > 1:
+            all_fmt = self.fig.canvas.get_supported_filetypes()
+            if ext_name[-1] in all_fmt:
+                self.settings["path_customize"] = True
         else:
-            ext_name = fpath.split(".")
-            if len(ext_name) > 1:
-                all_fmt = self.fig.canvas.get_supported_filetypes()
-                if ext_name[-1] in all_fmt:
-                    self.settings["path_customize"] = True
-            else:
-                if not fpath.endswith(os.path.sep):
-                    fpath += os.path.sep
+            if not fpath.endswith(os.path.sep):
+                fpath += os.path.sep
         return self._save(fpath)
 
     def _norm(self):
@@ -132,10 +158,7 @@ class PPI(object):
                 clabel = self.settings["label"]
             else:
                 nlabel = self.settings["nlabel"]
-                if nlabel:
-                    clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
-                else:
-                    clabel = np.linspace(n.vmin, n.vmax, 10).astype(str)
+                clabel = np.linspace(n.vmin, n.vmax, nlabel).astype(str)
             return n, n, clabel
         else:
             n = norm_plot[self.dtype]
@@ -172,6 +195,8 @@ class PPI(object):
         self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=extent, style=self.settings["style"]
         )
+        if self.settings["style"] == "black":
+            self.geoax.patch.set_facecolor("black")
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -215,6 +240,66 @@ class PPI(object):
             self.plot_cross_section(self.settings["slice"])
         self._fig_init = True
 
+    def _text_product_info(
+        self,
+        ax: Any,
+        drange: Number_T,
+        reso: float,
+        scantime: str,
+        name: str,
+        task: str,
+        elev: float,
+    ):
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING,
+            "Range: {:.0f}km".format(drange),
+            **self.font_kw
+        )
+        if reso < 0.1:
+            # Change the unit from km to m for better formatting
+            ax.text(
+                0,
+                INIT_TEXT_POS - TEXT_SPACING * 2,
+                "Resolution: {:.0f}m".format(reso * 1000),
+                **self.font_kw
+            )
+        else:
+            ax.text(
+                0,
+                INIT_TEXT_POS - TEXT_SPACING * 2,
+                "Resolution: {:.2f}km".format(reso),
+                **self.font_kw
+            )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 3,
+            "Date: {}".format(
+                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%Y.%m.%d")
+            ),
+            **self.font_kw
+        )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 4,
+            "Time: {}".format(
+                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+            ),
+            **self.font_kw
+        )
+        if name is None:
+            name = "Unknown"
+        ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **self.font_kw)
+        ax.text(
+            0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **self.font_kw
+        )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 7,
+            "Elev: {:.2f}deg".format(elev),
+            **self.font_kw
+        )
+
     def _text(self):
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
@@ -226,7 +311,7 @@ class PPI(object):
         ax2.xaxis.set_visible(False)
         # Make VCP21 the default scanning strategy
         task = self.data.attrs.get("task", "VCP21")
-        text(
+        self._text_product_info(
             ax2,
             self.data.range,
             self.data.tangential_reso,
@@ -235,19 +320,19 @@ class PPI(object):
             task,
             self.data.elevation,
         )
-        ax2.text(0, INIT_TEXT_POS, prodname[self.dtype], **plot_kw)
+        ax2.text(0, INIT_TEXT_POS, prodname[self.dtype], **self.font_kw)
         ax2.text(
             0,
             INIT_TEXT_POS - TEXT_SPACING * 8,
             "Max: {:.1f}{}".format(np.nanmax(var), unit[self.dtype]),
-            **plot_kw
+            **self.font_kw
         )
         if self.dtype.startswith("VEL"):
             ax2.text(
                 0,
                 INIT_TEXT_POS - TEXT_SPACING * 9,
                 "Min: {:.1f}{}".format(np.nanmin(var), unit[self.dtype]),
-                **plot_kw
+                **self.font_kw
             )
 
     def _text_before_save(self):
@@ -258,11 +343,21 @@ class PPI(object):
         pcmap, ccmap = self._cmap()
         if self.settings["plot_labels"]:
             self._text()
-        cbar = setup_axes(self.fig, ccmap, cnorm, self.cbar_pos)
+        cax = self.fig.add_axes(self.cbar_pos)
+        cbar = ColorbarBase(
+            cax, cmap=ccmap, norm=cnorm, orientation="vertical", drawedges=False
+        )
+        cbar.ax.tick_params(
+            axis="both",
+            which="both",
+            length=0,
+            labelsize=10,
+            colors=self.font_kw["color"],
+        )
+        cbar.outline.set_visible(False)
         if not isinstance(clabel, type(None)):
-            change_cbar_text(
-                cbar, np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)), clabel
-            )
+            cbar.set_ticks(np.linspace(cnorm.vmin, cnorm.vmax, len(clabel)))
+            cbar.set_ticklabels(clabel, **self.font_kw)
 
     def _save(self, fpath: str):
         if not self.settings["is_inline"]:
@@ -290,7 +385,16 @@ class PPI(object):
             )
         else:
             path_string = fpath
-        save(path_string, self.settings["style"])
+        save_options = dict(pad_inches=0)
+        if self.settings["style"] == "transparent":
+            save_options["transparent"] = True
+        else:
+            if self.settings["style"] == "white":
+                save_options["facecolor"] = "white"
+            elif self.settings["style"] == "black":
+                save_options["facecolor"] = "black"
+        plt.savefig(path_string, **save_options)
+        # plt.close("all")
         return path_string
 
     def plot_range_rings(
@@ -479,7 +583,7 @@ class PPI(object):
                 stlon,
                 stlat,
                 nm,
-                **plot_kw,
+                **default_font_kw,
                 color="darkgrey",
                 transform=self.data_crs,
                 horizontalalignment="center",
