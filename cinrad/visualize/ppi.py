@@ -21,6 +21,8 @@ from cinrad.io.level3 import StormTrackInfo
 from cinrad._typing import Number_T
 from cinrad.common import get_dtype, is_radial
 from cinrad.visualize.layout import *
+from cartopy.io.shapereader import Reader
+
 
 __all__ = ["PPI"]
 
@@ -93,6 +95,7 @@ class PPI(object):
         add_city_names: bool = False,
         plot_labels: bool = True,
         text_param: Optional[dict] = None,
+        add_shps: bool = True,
         **kwargs
     ):
         self.data = data
@@ -111,12 +114,14 @@ class PPI(object):
             "add_city_names": add_city_names,
             "plot_labels": plot_labels,
             "is_inline": is_inline(),
+            "add_shps": add_shps,
         }
         if fig is None:
             if style == "transparent":
                 self.fig = plt.figure(figsize=FIG_SIZE_TRANSPARENT, dpi=dpi)
             else:
                 self.fig = plt.figure(figsize=FIG_SIZE, dpi=dpi)
+                self.fig.patch.set_facecolor(style)
             plt.axis("off")
         else:
             self.fig = fig
@@ -224,13 +229,14 @@ class PPI(object):
             )
         if not self.settings["extent"]:
             self._autoscale()
-        add_shp(
-            self.geoax,
-            proj,
-            coastline=self.settings["coastline"],
-            style=self.settings["style"],
-            extent=self.geoax.get_extent(self.data_crs),
-        )
+        if self.settings["add_shps"]:
+            add_shp(
+                self.geoax,
+                proj,
+                coastline=self.settings["coastline"],
+                style=self.settings["style"],
+                extent=self.geoax.get_extent(self.data_crs),
+            )
         if self.settings["highlight"]:
             draw_highlight_area(self.settings["highlight"])
         if self.settings["add_city_names"]:
@@ -301,6 +307,13 @@ class PPI(object):
         )
 
     def _text(self):
+        def _draw(ax: Any, y_index: int, text: str):
+            """
+            Draw text on the axes.
+            """
+            y = INIT_TEXT_POS - TEXT_SPACING * y_index
+            ax.text(0, y, text, **self.font_kw)
+
         # axes used for text which has the same x-position as
         # the colorbar axes (for matplotlib 3 compatibility)
         var = self._plot_ctx["var"]
@@ -311,29 +324,27 @@ class PPI(object):
         ax2.xaxis.set_visible(False)
         # Make VCP21 the default scanning strategy
         task = self.data.attrs.get("task", "VCP21")
-        self._text_product_info(
-            ax2,
-            self.data.range,
-            self.data.tangential_reso,
-            self.data.scan_time,
-            self.data.site_name,
-            task,
-            self.data.elevation,
-        )
-        ax2.text(0, INIT_TEXT_POS, prodname[self.dtype], **self.font_kw)
-        ax2.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 8,
+        if self.data.tangential_reso >= 0.1:
+            reso = "{:.2f}km".format(self.data.tangential_reso)
+        else:
+            reso = "{:.0f}m".format(self.data.tangential_reso * 1000)
+        s_time = datetime.strptime(self.data.scan_time, "%Y-%m-%d %H:%M:%S")
+        texts = [
+            prodname[self.dtype],
+            "Range: {:.0f}km".format(self.data.range),
+            "Resolution: {}".format(reso),
+            "Date: {}".format(s_time.strftime("%Y.%m.%d")),
+            "Time: {}".format(s_time.strftime("%H:%M")),
+            "RDA: " + (self.data.site_name or "Unknown"),
+            "Task: {}".format(task),
+            "Elev: {:.2f}deg".format(self.data.elevation),
             "Max: {:.1f}{}".format(np.nanmax(var), unit[self.dtype]),
-            **self.font_kw
-        )
+        ]
         if self.dtype.startswith("VEL"):
-            ax2.text(
-                0,
-                INIT_TEXT_POS - TEXT_SPACING * 9,
-                "Min: {:.1f}{}".format(np.nanmin(var), unit[self.dtype]),
-                **self.font_kw
-            )
+            min_vel = "Min: {:.1f}{}".format(np.nanmin(var), unit[self.dtype])
+            texts.append(min_vel)
+        for i, text in enumerate(texts):
+            _draw(ax2, i, text)
 
     def _text_before_save(self):
         # Finalize texting here
@@ -420,6 +431,52 @@ class PPI(object):
                 transform=self.data_crs,
                 **kwargs
             )
+
+    def plot_ring_rays(
+        self,
+        angle: Union[int, float, list],
+        range: int,
+        color: str = "white",
+        linewidth: Number_T = 0.5,
+        **kwargs
+    ):
+        r"""Plot ring rays on PPI plot."""
+        slon, slat = self.data.site_longitude, self.data.site_latitude
+        if isinstance(angle, (int, float)):
+            angle = [angle]
+        for a in angle:
+            theta = np.deg2rad(a)
+            x, y = get_coordinate(range, theta, 0, slon, slat, h_offset=False)
+            self.geoax.plot(
+                [slon, x],
+                [slat, y],
+                color=color,
+                linewidth=linewidth,
+                transform=self.data_crs,
+                **kwargs
+            )
+
+    def add_custom_shp(
+        self,
+        shp_path: str,
+        encoding: str = "gbk",
+        color: str = "white",
+        linewidth: Number_T = 0.5,
+        **kwargs
+    ):
+        """
+        Add custom shapefile to the plot.
+        """
+        reader = Reader(shp_path, encoding=encoding)
+        self.geoax.add_geometries(
+            geoms=list(reader.geometries()),
+            crs=ccrs.PlateCarree(),
+            edgecolor=color,
+            facecolor="None",
+            zorder=3,
+            linewidth=linewidth,
+            **kwargs
+        )
 
     def plot_cross_section(
         self,
