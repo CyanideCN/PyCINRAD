@@ -47,32 +47,8 @@ f.get_data(tilt, drange, dtype) #获取数据
 f.get_raw(tilt, drange, dtype)
 ```
 对于单层RHI数据，传入`get_data`的`tilt`参数将会被设置成0。
-`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。`get_data`返回的数据类型为`xarray.Dataset`，因此可以享受`xarray`模块的便利。
+`get_raw`方法只会以ndarray的形式返回雷达的数据，不会返回其他的地理信息，因此速度会更快，内存占用更少，在大批量分析数据的时候比较推荐使用此方法。`get_data`返回的数据类型为`xarray.Dataset`，因此可以享受`xarray`模块的便利。[xarray.Dataset的文档](https://docs.xarray.dev/en/latest/generated/xarray.Dataset.html)
 
-```python
->>> print(data)
-<xarray.Dataset>
-Dimensions:    (azimuth: 366, distance: 920)
-Coordinates:
-  * azimuth    (azimuth) float32 0.14084807 0.15812683 ... 0.12601277 0.14381513
-  * distance   (distance) float64 0.25 0.5 0.75 1.0 ... 229.2 229.5 229.8 230.0
-Data variables:
-    ZDR        (azimuth, distance) float64 nan nan nan nan ... nan nan nan nan
-    longitude  (azimuth, distance) float64 120.2 120.2 120.2 ... 120.6 120.6
-    latitude   (azimuth, distance) float64 35.99 35.99 36.0 ... 38.04 38.04
-    height     (azimuth, distance) float64 0.1771 0.1792 0.1814 ... 5.218 5.227
-Attributes:
-    elevation:        0.48339844
-    range:            230
-    scan_time:        2020-05-17 11:00:28
-    site_code:        Z9532
-    site_name:        青岛
-    site_longitude:   120.23028
-    site_latitude:    35.98861
-    tangential_reso:  0.25
-    nyquist_vel:      8.37801
-    task:             VCP21D
-```
 例如，可以很轻松的把数据保存成netcdf格式。
 ```python
 >>> data.to_netcdf('1.nc')
@@ -80,27 +56,6 @@ Attributes:
 `xarray`的插值也很简单，例如获取方位角300度，距离180km的数据。
 ```python
 >>> data.interp(azimuth=np.deg2rad(300), distance=180)
-<xarray.Dataset>
-Dimensions:    ()
-Coordinates:
-    azimuth    float64 5.236
-    distance   int32 180
-Data variables:
-    ZDR        float64 0.3553
-    longitude  float64 118.5
-    latitude   float64 36.8
-    height     float64 3.6
-Attributes:
-    elevation:        0.48339844
-    range:            230
-    scan_time:        2020-05-17 11:00:28
-    site_code:        Z9532
-    site_name:        青岛
-    site_longitude:   120.23028
-    site_latitude:    35.98861
-    tangential_reso:  0.25
-    nyquist_vel:      8.37801
-    task:             VCP21D
 ```
 
 `cinrad.io.StandardData.merge`可以合并单仰角的数据，返回一个完整的体扫文件。
@@ -273,5 +228,3 @@ fig = cinrad.visualize.PPI(data, section=section_data)
 水凝物分类算法来源：Dolan, B., S. A. Rutledge, S. Lim, V. Chandrasekar, and M. Thurai, 2013: A Robust C-Band Hydrometeor Identification Algorithm and Application to a Long-Term Polarimetric Radar Dataset. J. Appl. Meteor. Climatol., 52, 2162–2186, https://doi.org/10.1175/JAMC-D-12-0275.1.
 
 如果你对这个模块感兴趣，欢迎加入这个模块的开发者行列！
-
-同时，如在使用该模块时有任何问题和建议，可以提Issue，也可以发邮件给我 274555447@qq.com

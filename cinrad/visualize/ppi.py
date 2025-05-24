@@ -23,6 +23,7 @@ from cinrad.common import get_dtype, is_radial
 from cinrad.visualize.layout import *
 from cartopy.io.shapereader import Reader
 
+
 __all__ = ["PPI"]
 
 
@@ -199,6 +200,8 @@ class PPI(object):
         self.geoax: GeoAxes = create_geoaxes(
             self.fig, proj, extent=extent, style=self.settings["style"]
         )
+        if self.settings["style"] == "black":
+            self.geoax.patch.set_facecolor("black")
         self._plot_ctx["var"] = var
         pnorm, cnorm, clabel = self._norm()
         pcmap, ccmap = self._cmap()
@@ -242,6 +245,66 @@ class PPI(object):
         if self.settings["slice"]:
             self.plot_cross_section(self.settings["slice"])
         self._fig_init = True
+
+    def _text_product_info(
+        self,
+        ax: Any,
+        drange: Number_T,
+        reso: float,
+        scantime: str,
+        name: str,
+        task: str,
+        elev: float,
+    ):
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING,
+            "Range: {:.0f}km".format(drange),
+            **self.font_kw
+        )
+        if reso < 0.1:
+            # Change the unit from km to m for better formatting
+            ax.text(
+                0,
+                INIT_TEXT_POS - TEXT_SPACING * 2,
+                "Resolution: {:.0f}m".format(reso * 1000),
+                **self.font_kw
+            )
+        else:
+            ax.text(
+                0,
+                INIT_TEXT_POS - TEXT_SPACING * 2,
+                "Resolution: {:.2f}km".format(reso),
+                **self.font_kw
+            )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 3,
+            "Date: {}".format(
+                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%Y.%m.%d")
+            ),
+            **self.font_kw
+        )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 4,
+            "Time: {}".format(
+                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+            ),
+            **self.font_kw
+        )
+        if name is None:
+            name = "Unknown"
+        ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **self.font_kw)
+        ax.text(
+            0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **self.font_kw
+        )
+        ax.text(
+            0,
+            INIT_TEXT_POS - TEXT_SPACING * 7,
+            "Elev: {:.2f}deg".format(elev),
+            **self.font_kw
+        )
 
     def _text(self):
         def _draw(ax: Any, y_index: int, text: str):
