@@ -97,29 +97,38 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
     Returns:
         xarray.Dataset: composite reflectivity
     """
-    r_data = list()
-    # Get grid from the first tilt
-    r, x, y = grid_2d(
+    if not r_list:
+        # This case should ideally be caught by the @require decorator,
+        # but an explicit check is safer.
+        raise ValueError("Input r_list cannot be empty for quick_cr.")
+
+    # Grid the first tilt's data
+    r_first, x, y = grid_2d(
         r_list[0]["REF"].values,
         r_list[0]["longitude"].values,
         r_list[0]["latitude"].values,
         resolution=resolution,
     )
-    r_data.append(r)
-    for i in r_list[1:]:
-        r, x, y = grid_2d(
-            i["REF"].values,
-            i["longitude"].values,
-            i["latitude"].values,
-            x_out=x,
-            y_out=y,
+    cr = r_first  # Initialize cr with the first gridded data
+
+    # Loop through the rest of the tilts
+    for i_tilt_ds in r_list[1:]:
+        r_current, _, _ = grid_2d(
+            i_tilt_ds["REF"].values,
+            i_tilt_ds["longitude"].values,
+            i_tilt_ds["latitude"].values,
+            x_out=x,  # Use x from the first gridding
+            y_out=y,  # Use y from the first gridding
             resolution=resolution,
         )
-        r_data.append(r)
-    cr = np.nanmax(r_data, axis=0)
+        # Update cr using element-wise maximum, handles NaNs appropriately
+        cr = np.fmax(cr, r_current)
+
     ret = Dataset({"CR": DataArray(cr, coords=[y, x], dims=["latitude", "longitude"])})
-    ret.attrs = i.attrs
-    ret.attrs["elevation"] = 0
+    # Use attributes from the first element for consistency and to fix potential NameError
+    # from original code if r_list had only one element.
+    ret.attrs = r_list[0].attrs.copy()
+    ret.attrs["elevation"] = 0  # Explicitly set elevation as in original
     return ret
 
 

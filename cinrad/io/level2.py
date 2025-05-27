@@ -5,7 +5,7 @@ import warnings
 import datetime
 from pathlib import Path
 from collections import namedtuple, defaultdict
-from typing import Union, Optional, List, Any, Generator
+from typing import Union, Optional, List, Any, Generator, Tuple
 
 import numpy as np
 import xarray as xr
@@ -479,7 +479,7 @@ class CinradReader(RadarBase):
             ret = r.T
         return ret
 
-    def get_data(self, tilt: int, drange: Number_T, dtype: str) -> xr.Dataset:
+    def get_data(self, tilt: int, drange: Number_T, dtype: str, height_range: Optional[Tuple[float, float]] = None) -> xr.Dataset:
         r"""
         Get radar data with extra information
 
@@ -896,6 +896,14 @@ class StandardData(RadarBase):
             )
             ds["x_cor"] = (["tilt", "distance"], d)
             ds["y_cor"] = (["tilt", "distance"], h)
+            # Ensure ds.height exists for RHI scans for consistent filtering
+            ds["height"] = ds["y_cor"]
+        
+        if height_range is not None:
+            if "height" in ds:
+                ds = ds.where((ds.height >= height_range[0]) & (ds.height <= height_range[1]))
+            else:
+                warnings.warn("Height filtering skipped: 'height' variable not found in Dataset.")
         return ds
 
     def projection(self, reso: float) -> tuple:
@@ -918,9 +926,9 @@ class StandardData(RadarBase):
                 tilt.append(i)
         return tilt
 
-    def iter_tilt(self, drange: Number_T, dtype: str) -> Generator:
+    def iter_tilt(self, drange: Number_T, dtype: str, height_range: Optional[Tuple[float, float]] = None) -> Generator:
         for i in self.available_tilt(dtype):
-            yield self.get_data(i, drange, dtype)
+            yield self.get_data(i, drange, dtype, height_range=height_range)
 
 
 class PhasedArrayData(RadarBase):
