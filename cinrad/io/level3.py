@@ -227,7 +227,7 @@ class SWAN(object):
             if not product
             else product
         )
-        for pname in ["CR", "3DREF", "反射率"]:
+        for pname in ["CR", "REF", "反射率"]:
             if pname in self.product_name:
                 self.product_name = "CR"
         start_lon = header["start_lon"][0]
