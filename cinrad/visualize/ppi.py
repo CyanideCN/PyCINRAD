@@ -46,6 +46,8 @@ def opposite_color(c):
         return "white"
     elif c == "white":
         return "black"
+    else:
+        return "black"
 
 
 class PPI(object):
@@ -360,11 +362,13 @@ class PPI(object):
     def plot_range_rings(
         self,
         _range: Union[int, float, list],
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         r"""Plot range rings on PPI plot."""
+        if color is None:
+            color = self.font_kw["color"]
         slon, slat = self.data.site_longitude, self.data.site_latitude
         if isinstance(_range, (int, float)):
             _range = [_range]
@@ -385,11 +389,13 @@ class PPI(object):
         self,
         angle: Union[int, float, list],
         range: int,
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         r"""Plot ring rays on PPI plot."""
+        if color is None:
+            color = self.font_kw["color"]
         slon, slat = self.data.site_longitude, self.data.site_latitude
         if isinstance(angle, (int, float)):
             angle = [angle]
@@ -409,13 +415,15 @@ class PPI(object):
         self,
         shp_path: str,
         encoding: str = "gbk",
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         """
         Add custom shapefile to the plot.
         """
+        if color is None:
+            color = self.font_kw["color"]
         reader = Reader(shp_path, encoding=encoding)
         self.geoax.add_geometries(
             geoms=list(reader.geometries()),
@@ -531,7 +539,13 @@ class PPI(object):
                 # if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
-    def gridlines(self, draw_labels: bool = True, linewidth: Number_T = 0, **kwargs):
+    def gridlines(
+        self,
+        draw_labels: bool = True,
+        linewidth: Number_T = 0.5,
+        color: str = None,
+        **kwargs
+    ):
         r"""Draw grid lines on cartopy axes"""
         from cartopy import __version__
 
@@ -544,13 +558,16 @@ class PPI(object):
                     RuntimeWarning,
                 )
                 return
+        if color is None:
+            color = self.font_kw["color"]
         liner = self.geoax.gridlines(
             draw_labels=draw_labels,
             linewidth=linewidth,
             transform=self.data_crs,
             rotate_labels=False,
-            xlabel_style={"color": self.font_kw["color"]},
-            ylabel_style={"color": self.font_kw["color"]},
+            xlabel_style={"color": color},
+            ylabel_style={"color": color},
+            color=color,
             **kwargs
         )
         liner.top_labels = False
@@ -587,7 +604,6 @@ class PPI(object):
                 stlat,
                 nm,
                 **{**self.font_kw, "color": "darkgrey"},
-                color="darkgrey",
                 transform=self.data_crs,
                 horizontalalignment="center",
                 verticalalignment="center"
