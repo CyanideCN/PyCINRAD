@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 import warnings
 import datetime
@@ -101,6 +101,7 @@ class CinradReader(RadarBase):
         file: Any,
         radar_type: Optional[str] = None,
     ):
+        super().__init__()
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
         self.code, t_infer = infer_type(f, filename)
@@ -143,8 +144,6 @@ class CinradReader(RadarBase):
                     self._SAB_reader(f, dtype="special")
                 except:
                     raise err
-        self._update_radar_info()
-        # TODO: Override information
         if "longitude" in self.site_info:
             self.stationlon = self.site_info["longitude"]
         if "latitude" in self.site_info:
@@ -155,8 +154,9 @@ class CinradReader(RadarBase):
             self.name = self.site_info["name"]
         if "code" in self.site_info:
             self.code = self.site_info["code"]
+        if self.name == '' and self.code:
+            self.name = self.code
         if self.code == None and self.name:
-            # Use name as code when code is missing
             self.code = self.name
         f.close()
 
@@ -562,17 +562,13 @@ class StandardData(RadarBase):
                   34:'Wc', 35:'ZDRc'}
     # fmt: on
     def __init__(self, file: Any):
+        super().__init__()
         with prepare_file(file) as self.f:
             self._parse()
-        self._update_radar_info()
-        # In standard data, station information stored in file
-        # has higher priority, so we override some information.
         self.stationlat = self.geo["lat"]
         self.stationlon = self.geo["lon"]
         self.radarheight = self.geo["height"]
-        if self.name == "None":
-            # Last resort to find info
-            self.name = self.geo["name"]
+        self.name = self.geo["name"]
         self.angleindex_r = self.available_tilt("REF")  # API consistency
         del self.geo
 
@@ -925,6 +921,7 @@ class StandardData(RadarBase):
 
 class PhasedArrayData(RadarBase):
     def __init__(self, file):
+        super().__init__()
         f = prepare_file(file)
         filename = Path(file).name if isinstance(file, str) else ""
         try:

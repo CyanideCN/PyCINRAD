@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 import os
 import warnings

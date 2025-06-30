@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 FIG_SIZE = (10, 8)
 FIG_SIZE_TRANSPARENT = (10, 10)

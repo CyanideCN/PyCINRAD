@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 from collections import OrderedDict, defaultdict
-from typing import Optional, Union, Any
+from typing import Optional, Any
 import datetime
 from io import BytesIO
 import bz2
@@ -13,7 +13,7 @@ from xarray import Dataset, DataArray
 
 from cinrad.projection import get_coordinate, height
 from cinrad._typing import Boardcast_T
-from cinrad.io.base import RadarBase, prepare_file, _get_radar_info
+from cinrad.io.base import RadarBase, prepare_file
 from cinrad.io._dtype import *
 from cinrad.error import RadarDecodeError
 
@@ -44,6 +44,7 @@ class PUP(RadarBase):
     def __init__(self, file: Any):
         from metpy.io.nexrad import Level3File
 
+        super().__init__()
         f = Level3File(file)
         # Because metpy interface doesn't provide station codes,
         # it's necessary to reopen it and read the code.
@@ -52,7 +53,6 @@ class PUP(RadarBase):
             code = np.frombuffer(buf.read(2), ">i2")[0]
             cds = str(code).zfill(3)
             self.code = "Z9" + cds
-        self._update_radar_info()
         product_code = f.prod_desc.prod_code
         self.dtype = self._det_product_type(product_code)
         self.radial_flag = self._is_radial(product_code)
@@ -72,17 +72,7 @@ class PUP(RadarBase):
             elif self.dtype == "OHP":
                 # convert in to mm
                 self.data *= 25.4
-        station_info = _get_radar_info(self.code)
-        self.radar_type = station_info[3]
         self.max_range = int(f.max_range)
-        # Hard coding to adjust max range for different types of radar
-        if f.max_range >= 230:
-            if self.radar_type in ["SC", "CC"]:
-                self.max_range = 150
-            elif self.radar_type in ["CA", "CB"]:
-                self.max_range = 200
-            elif self.radar_type == "CD":
-                self.max_range = 125
         if self.radial_flag:
             start_az = data_block["start_az"][0]
             az = np.linspace(0, 360, data.shape[0])
@@ -469,9 +459,9 @@ class StandardPUP(RadarBase):
                   44:"UAM"}
     # fmt: on
     def __init__(self, file):
+        super().__init__()
         self.f = prepare_file(file)
         self._parse_header()
-        self._update_radar_info()
         self.stationlat = self.geo["lat"][0]
         self.stationlon = self.geo["lon"][0]
         self.radarheight = self.geo["height"][0]

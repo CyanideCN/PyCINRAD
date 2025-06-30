@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# Author: PyCINRAD Developers
 """Classes for decoding level 2 and level 3 radar data.
 """
 

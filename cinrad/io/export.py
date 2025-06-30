@@ -1,5 +1,5 @@
-# coding = utf-8
-# Author: Puyuan Du
+# -*- coding: utf-8 -*-
+# Author: PyCINRAD Developers
 
 from typing import Callable
 from functools import wraps

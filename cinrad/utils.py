@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 import os
-import sys
-from typing import Union, Any
+from typing import Union
 
 import numpy as np
 
