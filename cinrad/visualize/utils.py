@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 import os
-from datetime import datetime
 from typing import Union, Optional, Any, List
 from functools import lru_cache
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colorbar import ColorbarBase
 from matplotlib.lines import Line2D
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties

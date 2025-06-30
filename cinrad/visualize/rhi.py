@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 
 import os
 from datetime import datetime
@@ -11,6 +11,7 @@ from xarray import Dataset
 
 from cinrad.common import get_dtype
 from cinrad.visualize.utils import sec_plot, norm_plot, prodname, default_font_kw
+from cinrad.visualize.ppi import opposite_color, update_dict
 
 __all__ = ["Section"]
 
@@ -22,6 +23,8 @@ class Section(object):
         hlim: int = 15,
         interpolate: bool = True,
         figsize: tuple = (10, 5),
+        style: str = "black",
+        text_param: dict = None,
     ):
         # TODO: Use context manager to control style
         self.data = data
@@ -30,7 +33,13 @@ class Section(object):
             "hlim": hlim,
             "interp": interpolate,
             "figsize": figsize,
+            "style": style,
         }
+        self.font_kw = default_font_kw.copy()
+        self.font_kw["color"] = opposite_color(style)
+        if text_param:
+            # Override use input setting
+            self.font_kw = update_dict(self.font_kw, text_param)
         self.rhi_flag = "azimuth" in data.attrs
         self._plot()
 
@@ -40,11 +49,12 @@ class Section(object):
         xcor = self.data["x_cor"]
         ycor = self.data["y_cor"]
         rmax = np.nanmax(rhi.values)
-        plt.figure(figsize=self.settings["figsize"], dpi=300)
+        fig = plt.figure(figsize=self.settings["figsize"], dpi=300)
         ax = plt.gca()
-        ax.set_facecolor("black")
+        fig.patch.set_facecolor(self.settings["style"])
+        ax.set_facecolor(self.settings["style"])
         plt.grid(
-            True, linewidth=0.50, linestyle="-.", color="white"
+            True, linewidth=0.50, linestyle="-.", color=self.font_kw["color"]
         )  ## 修改于2019-01-22 By WU Fulang
         cmap = sec_plot[self.dtype]
         norm = norm_plot[self.dtype]
@@ -77,16 +87,22 @@ class Section(object):
             self.data.scan_time, "%Y-%m-%d %H:%M:%S"
         ).strftime("%Y.%m.%d %H:%M ")
         title += "Max: {:.1f}".format(rmax)
-        plt.title(title, **default_font_kw)
+        plt.title(title, **self.font_kw)
         lat_pos = np.linspace(self.data.start_lat, self.data.end_lat, 6)
         lon_pos = np.linspace(self.data.start_lon, self.data.end_lon, 6)
         tick_formatter = lambda x, y: "{:.2f}N\n{:.2f}E".format(x, y)
         ticks = list(map(tick_formatter, lat_pos, lon_pos))
         cor_max = xcor.values.max()
-        plt.xticks(np.array([0, 0.2, 0.4, 0.6, 0.8, 1]) * cor_max, ticks)
-        plt.ylabel("Height (km)", **default_font_kw)  ## 修改于2019-01-22 By WU Fulang
+        plt.xticks(
+            np.array([0, 0.2, 0.4, 0.6, 0.8, 1]) * cor_max, ticks, **self.font_kw
+        )
+        plt.ylabel("Height (km)", **self.font_kw)  ## 修改于2019-01-22 By WU Fulang
         sm = ScalarMappable(norm=norm, cmap=cmap)
-        plt.colorbar(sm, ax=plt.gca())
+        cb = plt.colorbar(sm, ax=ax)
+        for spine in ax.spines.values():
+            spine.set_color(self.font_kw["color"])
+        ax.tick_params(colors=self.font_kw["color"])
+        cb.ax.tick_params(colors=self.font_kw["color"])
 
     def __call__(self, fpath: str):
         if os.path.isdir(fpath):

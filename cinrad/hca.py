@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 # Rewrite from https://github.com/YvZheng/pycwr/blob/master/pycwr/retrieve/HID.py
 
 import os

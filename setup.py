@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from os.path import join, exists, sep
-import glob
 
 try:
     from Cython.Build import cythonize
@@ -37,12 +36,12 @@ setup(
     description="Decode CINRAD radar data and visualize",
     long_description="Decode CINRAD radar data and visualize",
     license="GPL Licence",
-    author="Puyuan Du",
+    author="PyCINRAD Developers",
     author_email="dpy274555447@gmail.com",
     packages=find_packages(),
     include_package_data=True,
     platforms="Windows",
-    python_requires=">=3.5",
+    python_requires=">=3.9",
     install_requires=[
         "metpy>=0.8",
         "cartopy>=0.15",

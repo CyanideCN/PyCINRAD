@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
+# Author: PyCINRAD Developers
 from typing import List, Union
 from numpy import ndarray
 from xarray import Dataset

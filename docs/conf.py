@@ -18,8 +18,8 @@ sys.path.append(os.path.abspath("../../"))
 # -- Project information -----------------------------------------------------
 
 project = "PyCINRAD"
-copyright = "2021, Puyuan Du"
-author = "Puyuan Du"
+copyright = "2025, PyCINRAD Developers"
+author = "PyCINRAD Developers"
 
 # The full version, including alpha/beta/rc tags
 release = "1.9.2"
