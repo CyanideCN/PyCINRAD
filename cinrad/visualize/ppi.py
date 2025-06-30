@@ -38,6 +38,18 @@ def update_dict(d1: dict, d2: dict):
     return d
 
 
+def opposite_color(c):
+    r"""
+    Return the opposite color in white & black.
+    """
+    if c == "black":
+        return "white"
+    elif c == "white":
+        return "black"
+    else:
+        return "black"
+
+
 class PPI(object):
     r"""
     Create a figure plotting plan position indicator
@@ -72,6 +84,8 @@ class PPI(object):
         plot_labels (bool): Text scan information on the side of the plot. Default True.
 
         text_param (dict): Optional parameters passed to matplotlib text function.
+
+        add_shps (bool): Add shape files to the figure. Default True.
     """
 
     # The CRS of data is believed to be PlateCarree.
@@ -129,10 +143,7 @@ class PPI(object):
         self.text_pos = TEXT_AXES_POS.copy()
         self.cbar_pos = CBAR_POS.copy()
         self.font_kw = default_font_kw.copy()
-        if style == "black":
-            self.font_kw["color"] = "white"
-        else:
-            self.font_kw["color"] = "black"
+        self.font_kw["color"] = opposite_color(style)
         if text_param:
             # Override use input setting
             self.font_kw = update_dict(self.font_kw, text_param)
@@ -188,9 +199,9 @@ class PPI(object):
             extent = [lon.min(), lon.max(), lat.min(), lat.max()]
         self.settings["extent"] = extent
         # When plot single radar, azimuthal equidistant projection is used.
-        # The data which has code like 'Z9XXX' is considered as single radar.
+        # The data which has code like 'ZXXXX' is considered as single radar.
         code = self.data.site_code
-        if is_radial(self.data) or (code.startswith("Z") and code[1:].isnumeric()):
+        if is_radial(self.data) or (code.startswith("Z") and len(code) == 5):
             proj = ccrs.AzimuthalEquidistant(
                 central_longitude=self.data.site_longitude,
                 central_latitude=self.data.site_latitude,
@@ -245,66 +256,6 @@ class PPI(object):
         if self.settings["slice"]:
             self.plot_cross_section(self.settings["slice"])
         self._fig_init = True
-
-    def _text_product_info(
-        self,
-        ax: Any,
-        drange: Number_T,
-        reso: float,
-        scantime: str,
-        name: str,
-        task: str,
-        elev: float,
-    ):
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING,
-            "Range: {:.0f}km".format(drange),
-            **self.font_kw
-        )
-        if reso < 0.1:
-            # Change the unit from km to m for better formatting
-            ax.text(
-                0,
-                INIT_TEXT_POS - TEXT_SPACING * 2,
-                "Resolution: {:.0f}m".format(reso * 1000),
-                **self.font_kw
-            )
-        else:
-            ax.text(
-                0,
-                INIT_TEXT_POS - TEXT_SPACING * 2,
-                "Resolution: {:.2f}km".format(reso),
-                **self.font_kw
-            )
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 3,
-            "Date: {}".format(
-                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%Y.%m.%d")
-            ),
-            **self.font_kw
-        )
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 4,
-            "Time: {}".format(
-                datetime.strptime(scantime, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
-            ),
-            **self.font_kw
-        )
-        if name is None:
-            name = "Unknown"
-        ax.text(0, INIT_TEXT_POS - TEXT_SPACING * 5, "RDA: " + name, **self.font_kw)
-        ax.text(
-            0, INIT_TEXT_POS - TEXT_SPACING * 6, "Task: {}".format(task), **self.font_kw
-        )
-        ax.text(
-            0,
-            INIT_TEXT_POS - TEXT_SPACING * 7,
-            "Elev: {:.2f}deg".format(elev),
-            **self.font_kw
-        )
 
     def _text(self):
         def _draw(ax: Any, y_index: int, text: str):
@@ -411,11 +362,13 @@ class PPI(object):
     def plot_range_rings(
         self,
         _range: Union[int, float, list],
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         r"""Plot range rings on PPI plot."""
+        if color is None:
+            color = self.font_kw["color"]
         slon, slat = self.data.site_longitude, self.data.site_latitude
         if isinstance(_range, (int, float)):
             _range = [_range]
@@ -436,11 +389,13 @@ class PPI(object):
         self,
         angle: Union[int, float, list],
         range: int,
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         r"""Plot ring rays on PPI plot."""
+        if color is None:
+            color = self.font_kw["color"]
         slon, slat = self.data.site_longitude, self.data.site_latitude
         if isinstance(angle, (int, float)):
             angle = [angle]
@@ -460,13 +415,15 @@ class PPI(object):
         self,
         shp_path: str,
         encoding: str = "gbk",
-        color: str = "white",
+        color: str = None,
         linewidth: Number_T = 0.5,
         **kwargs
     ):
         """
         Add custom shapefile to the plot.
         """
+        if color is None:
+            color = self.font_kw["color"]
         reader = Reader(shp_path, encoding=encoding)
         self.geoax.add_geometries(
             geoms=list(reader.geometries()),
@@ -482,21 +439,11 @@ class PPI(object):
         self,
         data: Dataset,
         ymax: Optional[int] = None,
-        linecolor: Optional[str] = None,
+        linecolor: Optional[str] = "white",
         interpolate: bool = True,
     ):
         # May add check to ensure the data is slice data
         r"""Plot cross section data below the PPI plot."""
-        if self.settings["is_inline"] and self._fig_init:
-            raise RuntimeError(
-                "Adding cross section dynamically is not supported in"
-                "inline backend, add section keyword when initializing PPI instead."
-            )
-        if not linecolor:
-            if self.settings["style"] == "black":
-                linecolor = "white"
-            elif self.settings["style"] == "white":
-                linecolor = "black"
         self.settings["slice"] = data
         # The axes to plot c-section is below the main axes
         # the height of it is a quarter of the height of main axes
@@ -506,6 +453,7 @@ class PPI(object):
         self.fig.set_size_inches(10, 10)
         self.geoax.set_position([0, 0.2, 0.8, 0.8])
         ax2 = self.fig.add_axes([0, 0.01, 0.8, 0.17])
+        ax2.patch.set_facecolor(self.settings["style"])
         # transform coordinates
         self.text_pos[1] = self.text_pos[1] * 0.8 + 0.2
         self.text_pos[3] = self.text_pos[3] * 0.8
@@ -532,7 +480,8 @@ class PPI(object):
             ax2.set_ylim(0, 15)
         ax2.set_title(
             "Start: {}N {}E".format(data.start_lat, data.start_lon)
-            + " End: {}N {}E".format(data.end_lat, data.end_lon)
+            + " End: {}N {}E".format(data.end_lat, data.end_lon),
+            **self.font_kw
         )
         self.geoax.plot(
             [data.start_lon, data.end_lon],
@@ -542,6 +491,9 @@ class PPI(object):
             transform=self.data_crs,
             zorder=5,
         )
+        for spine in ax2.spines.values():
+            spine.set_color(self.font_kw["color"])
+        ax2.tick_params(colors=self.font_kw["color"])
 
     def storm_track_info(self, filepath: str):
         r"""
@@ -587,7 +539,13 @@ class PPI(object):
                 # if (current[0] > extent[0]) and (current[0] < extent[1]) and (current[1] > extent[2]) and (current[1] < extent[3]):
                 #    self.geoax.text(current[0] - 0.03, current[1] - 0.03, st, color='white', zorder=4)
 
-    def gridlines(self, draw_labels: bool = True, linewidth: Number_T = 0, **kwargs):
+    def gridlines(
+        self,
+        draw_labels: bool = True,
+        linewidth: Number_T = 0.5,
+        color: str = None,
+        **kwargs
+    ):
         r"""Draw grid lines on cartopy axes"""
         from cartopy import __version__
 
@@ -600,11 +558,16 @@ class PPI(object):
                     RuntimeWarning,
                 )
                 return
+        if color is None:
+            color = self.font_kw["color"]
         liner = self.geoax.gridlines(
             draw_labels=draw_labels,
             linewidth=linewidth,
             transform=self.data_crs,
             rotate_labels=False,
+            xlabel_style={"color": color},
+            ylabel_style={"color": color},
+            color=color,
             **kwargs
         )
         liner.top_labels = False
@@ -640,8 +603,7 @@ class PPI(object):
                 stlon,
                 stlat,
                 nm,
-                **default_font_kw,
-                color="darkgrey",
+                **{**self.font_kw, "color": "darkgrey"},
                 transform=self.data_crs,
                 horizontalalignment="center",
                 verticalalignment="center"
