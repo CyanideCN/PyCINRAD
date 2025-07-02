@@ -46,9 +46,9 @@ def read_auto(filename: str) -> RadarBase:
             raise Exception("Unknown standard radar type")
     elif flag[0:2] == b"\x01\x00":
         return PhasedArrayData(filename)
-    elif flag[0:3] == b"MOC" or flag[0:3] == b"moc":
+    elif flag[0:3] == b"MOC":
         return MocMosaic(filename)
-    if flag[50:54] == b"SWAN" or flag[50:54] == b"swan":
+    if flag[50:54] == b"SWAN":
         return SWAN(filename)
     sc_flag = flag[100:106]
     cc_flag = flag[116:122]
