@@ -279,8 +279,8 @@ def create_geoaxes(
     from cartopy import __version__
 
     if style == "transparent":
-        ax = fig.add_axes([0, 0, 1, 1], projection=proj)
-        ax.set_aspect("equal")
+        ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.Mercator())
+        ax.set_aspect("auto")
     else:
         ax = fig.add_axes(GEOAXES_POS, projection=proj)
     if __version__ < "0.18":
