@@ -424,10 +424,10 @@ class ProductParamsParser(object):
     @staticmethod
     def _uam(buf):
         params = {}
-        Range = np.frombuffer(buf.read(4), "i4")[0]
+        iRange = np.frombuffer(buf.read(4), "i4")[0]
         baseProd1 = np.frombuffer(buf.read(4), "i4")[0]
         dataType1 = np.frombuffer(buf.read(4), "i4")[0]
-        params["Range"] = Range
+        params["Range"] = iRange
         params["baseProd1"] = baseProd1
         params["dataType1"] = dataType1
         params["elevation"] = 0

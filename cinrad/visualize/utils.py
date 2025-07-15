@@ -279,7 +279,7 @@ def create_geoaxes(
     from cartopy import __version__
 
     if style == "transparent":
-        ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.Mercator())
+        ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.GOOGLE_MERCATOR)
         ax.set_aspect("auto")
     else:
         ax = fig.add_axes(GEOAXES_POS, projection=proj)
