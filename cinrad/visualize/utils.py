@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Author: PyCINRAD Developers
+
 import os
 from datetime import datetime
 from typing import Union, Optional, Any, List
