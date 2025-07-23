@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# Author: Puyuan Du
-
 import os
 from datetime import datetime
 from typing import Union, Optional, Any, List
