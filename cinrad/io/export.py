@@ -88,7 +88,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
     fixed_angle["data"] = np.array(f.el)
 
     fields = {}
-    nscans = f.get_nscans()
+    # nscans = f.get_nscans()
 
     all_var = list()
     for lvl in f.data:
@@ -100,7 +100,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
             name = mapping[mom]
             dic = filemetadata(name)
             dic["_FillValue"] = pyart.config.get_fillvalue()
-            raw_arr = [f.get_raw(nel, radius, mom) for nel in range(nscans)]
+            raw_arr = [f.get_raw(nel, radius, mom) for nel in f.available_tilt(mom)]
             sel_arr = [i if not isinstance(i, tuple) else i[0] for i in raw_arr]
             moment_data = np.ma.vstack(sel_arr)
             dic["data"] = moment_data
