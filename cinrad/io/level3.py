@@ -235,6 +235,7 @@ class SWAN(object):
         else:
             # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.masked_equal(out, 0)
+        f.close()
 
     def get_data(self) -> Dataset:
         r"""
