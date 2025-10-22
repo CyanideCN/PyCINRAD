@@ -1,8 +1,12 @@
 # cython: language_level=3
+# cython: c_api_binop_methods=True
 # Author: PyCINRAD Developers
+
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 cimport numpy as np
 import numpy as np
+np.import_array()
 cimport cython
 from libc.math cimport sin
 
