@@ -217,7 +217,7 @@ class SWAN(object):
             if not product
             else product
         )
-        for pname in ["CR", "3DREF", "反射率"]:
+        for pname in ["CR", "REF", "反射率"]:
             if pname in self.product_name:
                 self.product_name = "CR"
         start_lon = header["start_lon"][0]
@@ -235,6 +235,7 @@ class SWAN(object):
         else:
             # Leave data unchanged because the scale and offset are unclear
             self.data = np.ma.masked_equal(out, 0)
+        f.close()
 
     def get_data(self) -> Dataset:
         r"""
@@ -422,6 +423,18 @@ class ProductParamsParser(object):
         return params
 
     @staticmethod
+    def _uam(buf):
+        params = {}
+        iRange = np.frombuffer(buf.read(4), "i4")[0]
+        baseProd1 = np.frombuffer(buf.read(4), "i4")[0]
+        dataType1 = np.frombuffer(buf.read(4), "i4")[0]
+        params["Range"] = iRange
+        params["baseProd1"] = baseProd1
+        params["dataType1"] = dataType1
+        params["elevation"] = 0
+        return params
+    
+    @staticmethod
     def _empty(buf):
         pass
 
@@ -434,6 +447,7 @@ class ProductParamsParser(object):
             3: cls._cappi,
             51: cls._ppi,
             52: cls._ppi,
+            44: cls._uam,
             18: cls._empty,
         }
         params = {"elevation": 0}
@@ -1019,6 +1033,7 @@ class StandardPUP(RadarBase):
                 "site_longitude": self.stationlon,
                 "site_latitude": self.stationlat,
                 "task": self.task_name,
+                **self.params,
             },
         )
         ds["longitude"] = DataArray(lon[:, 0])
