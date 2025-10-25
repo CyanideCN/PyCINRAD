@@ -1,3 +1,12 @@
+# cython: language_level=3
+# cython: c_api_binop_methods=True
+
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+
+cimport numpy as np
+import numpy as np
+np.import_array()
+
 cdef extern from "unwrap_2d_ljmu.c":
     void unwrap2D(double* wrapped_image,
                   double* unwrapped_image,
