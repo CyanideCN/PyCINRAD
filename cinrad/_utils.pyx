@@ -4,6 +4,7 @@
 
 cimport numpy as np
 import numpy as np
+np.import_array()
 cimport cython
 from libc.math cimport sin
 
