@@ -32,7 +32,7 @@ data_pth = join("cinrad", "data")
 
 setup(
     name="cinrad",
-    version="1.9.2",
+    version="1.9.3",
     description="Decode CINRAD radar data and visualize",
     long_description="Decode CINRAD radar data and visualize",
     license="GPL Licence",
@@ -40,7 +40,7 @@ setup(
     author_email="dpy274555447@gmail.com",
     packages=find_packages(),
     include_package_data=True,
-    platforms="Windows",
+    platforms=["Windows", "Linux", "MacOS"],
     python_requires=">=3.9",
     install_requires=[
         "metpy>=0.8",
