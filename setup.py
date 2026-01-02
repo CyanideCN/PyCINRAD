@@ -1,38 +1,42 @@
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from os.path import join, exists, sep
+import numpy as np
 
 try:
     from Cython.Build import cythonize
-    import numpy as np
-
-    pyx_paths = [
-        join("cinrad", "_utils.pyx"),
-        join("cinrad", "correct", "_unwrap_2d.pyx"),
-    ]
-    cythonize_flag = True
-    for _pyx in pyx_paths:
-        if not exists(_pyx):
-            cythonize_flag = False
-            break
-    if cythonize_flag:
-        ext_modules = cythonize(pyx_paths)
-    else:
-        ext_modules = list()
-        for _pyx in pyx_paths:
-            name = _pyx.rstrip(".pyx").replace(sep, ".")
-            source = _pyx.replace(".pyx", ".c")
-            ext_modules.append(Extension(name, [source]))
-    include_dirs = [np.get_include()]
+    USE_CYTHON = True
 except ImportError:
-    ext_modules = None
-    include_dirs = None
+    USE_CYTHON = False
+
+macros = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
+
+pyx_paths = [
+    join("cinrad", "_utils"),
+    join("cinrad", "correct", "_unwrap_2d"),
+]
+
+if not exists(pyx_paths[0]): # sdist
+    USE_CYTHON = False
+
+ext_suffix = ".pyx" if USE_CYTHON else ".c"
+
+ext_modules = [
+    Extension(
+        path.replace(sep, "."),
+        [path + ext_suffix],
+        define_macros=macros,
+    ) for path in pyx_paths
+]
+
+if USE_CYTHON:
+    ext_modules = cythonize(ext_modules)
 
 data_pth = join("cinrad", "data")
 
 setup(
     name="cinrad",
-    version="1.9.2",
+    version="1.9.3",
     description="Decode CINRAD radar data and visualize",
     long_description="Decode CINRAD radar data and visualize",
     license="GPL Licence",
@@ -57,5 +61,5 @@ setup(
     ]},
     scripts=[],
     ext_modules=ext_modules,
-    include_dirs=include_dirs,
+    include_dirs=[np.get_include()],
 )
