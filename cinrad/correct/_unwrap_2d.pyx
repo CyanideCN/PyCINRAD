@@ -1,3 +1,4 @@
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 cdef extern from "unwrap_2d_ljmu.c":
     void unwrap2D(double* wrapped_image,
                   double* unwrapped_image,
