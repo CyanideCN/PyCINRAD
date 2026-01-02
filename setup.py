@@ -16,9 +16,6 @@ pyx_paths = [
     join("cinrad", "correct", "_unwrap_2d"),
 ]
 
-if not exists(pyx_paths[0]): # sdist
-    USE_CYTHON = False
-
 ext_suffix = ".pyx" if USE_CYTHON else ".c"
 
 ext_modules = [

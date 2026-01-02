@@ -1,0 +1,2 @@
+recursive-include cinrad *.pyx
+recursive-include cinrad *.c
