@@ -2,14 +2,12 @@
 # Author: PyCINRAD Developers
 
 import os
-from datetime import datetime
 from typing import Union, Optional, Any, List
 from functools import lru_cache
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colorbar import ColorbarBase
 from matplotlib.lines import Line2D
 import matplotlib.colors as cmx
 from matplotlib.font_manager import FontProperties
@@ -142,8 +140,8 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
              "cHCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice",
                      "Low-Dens Graupel", "High-Dens Graupel", "Hail", "Big Drops", ""],
              "HCL":["Rain", "Heavy Rain", "Hail", "Big Drops", "Clear-Air Echo", "Ground Clutter",
-                    "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""], "SW":["RF", "", "13", "12", "11", "10", "9", "8", "7",
-                                "6", "5", "4", "3", "2", "1", "0"]}
+                    "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""],
+             "SW":["RF", "", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]}
 # fmt: on
 
 # Add entry for VELSZ
