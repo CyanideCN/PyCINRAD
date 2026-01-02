@@ -53,9 +53,14 @@ def _get_uniform_cmap(cmap: Any) -> Any:
 
 r_cmap = _cmap("REF")["cmap"]
 r_cmap_smooth = _cmap("REF_s")["cmap"]
+
+sw_cmap = _cmap("SW")["cmap"]
+sw_cbar = _cmap("SW_reverse")["cmap"]
+
 v_cmap = _cmap("VEL")["cmap"]
 v_cbar = _cmap("VEL_reverse")["cmap"]
 v_cmap_smooth = _cmap("VEL_s")["cmap"]
+
 zdr_cmap = _cmap("ZDR")["cmap"]
 zdr_cbar = _get_uniform_cmap(zdr_cmap)
 zdr_cmap_smooth = _cmap("ZDR_s")["cmap"]
@@ -88,29 +93,33 @@ norm10 = cmx.Normalize(0.1, 6)  # vertically integrated liquid density
 norm11 = cmx.Normalize(0, 204)  # One-hour precipitation
 norm12 = cmx.Normalize(1, 11)
 norm13 = cmx.Normalize(0, 10)  # standard rose HCl
+norm14 = cmx.Normalize(0, 13)
 
 # fmt: off
 norm_plot = {"REF":norm1, "VEL":norm2, "CR":norm1, "ET":norm5, "VIL":norm1, "RF":norm3,
              "ZDR":norm6, "PHI":norm7, "RHO":norm8, "TREF":norm1, "KDP":norm9, "VILD":norm10,
-             "OHP":norm11, "cHCL":norm12, "HCL":norm13} # Normalize object used to plot
+             "OHP":norm11, "cHCL":norm12, "HCL":norm13, "SW":norm14} # Normalize object used to plot
 norm_cbar = {"REF":norm1, "VEL":norm4, "CR":norm1, "ET":norm4, "VIL":norm4,
              "ZDR":norm4, "PHI":norm4, "RHO":norm4, "TREF":norm1, "KDP":norm4,
-             "VILD":norm4, "OHP":norm4, "cHCL":norm4, "HCL":norm4} # Normalize object used for colorbar
+             "VILD":norm4, "OHP":norm4, "cHCL":norm4, "HCL":norm4, "SW": norm4} # Normalize object used for colorbar
+
 cmap_plot = {"REF":r_cmap, "VEL":v_cmap, "CR":r_cmap, "ET":et_cmap, "VIL":vil_cmap, "RF":rf_cmap,
              "ZDR":zdr_cmap, "PHI":kdp_cmap, "RHO":cc_cmap, "TREF":r_cmap, "KDP":kdp_cmap,
-             "VILD":vil_cmap, "OHP":ohp_cmap, "cHCL":mcm.tab10, "HCL":hcl_cmap}
+             "VILD":vil_cmap, "OHP":ohp_cmap, "cHCL":mcm.tab10, "HCL":hcl_cmap, "SW": sw_cmap}
+
 cmap_cbar = {"REF":r_cmap, "VEL":v_cbar, "CR":r_cmap, "ET":et_cbar, "VIL":vil_cbar,
              "ZDR":zdr_cbar, "PHI":kdp_cbar, "RHO":cc_cbar, "TREF":r_cmap, "KDP":kdp_cbar,
-             "VILD":vil_cbar, "OHP":ohp_cbar, "cHCL":mcm.tab10, "HCL":hcl_cbar}
+             "VILD":vil_cbar, "OHP":ohp_cbar, "cHCL":mcm.tab10, "HCL":hcl_cbar,'SW': sw_cbar}
+
 sec_plot = {"REF":r_cmap_smooth, "VEL":v_cmap_smooth, "ZDR":zdr_cmap_smooth, "PHI":kdp_cmap_smooth, "RHO":cc_cmap_smooth,
             "KDP":kdp_cmap_smooth, "cHCL":mcm.tab10, "HCL":hcl_cbar}
 prodname = {"REF":"Base Reflectivity", "VEL":"Base Velocity", "CR":"Composite Ref.",
             "ET":"Echo Tops", "VIL":"V Integrated Liquid", "ZDR":"Differential Ref.",
             "PHI":"Differential Phase", "RHO":"Correlation Coe.", "TREF":"Total Reflectivity",
             "KDP":"Spec. Diff. Phase", "VILD":"VIL Density", "OHP":"One-Hour Precip.",
-            "cHCL":"Hydrometeor Class","HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery"}
+            "cHCL":"Hydrometeor Class","HCL":"Hydrometeor Class", "VELSZ":"Velocity SZ Recovery", "SW": "Spectrum Width"}
 unit = {"REF":"dBZ", "VEL":"m/s", "CR":"dBZ", "ET":"km", "VIL":"kg/m**2", "ZDR":"dB", "PHI":"deg",
-        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "cHCL":"", "HCL":""}
+        "RHO":"", "TREF":"dBZ", "KDP":"deg/km", "VILD":"g/m**3", "OHP":"mm", "cHCL":"", "HCL":"", "SW":"m/s"}
 cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
                                 "-1", "-5", "-10", "-15", "-20", "-27", "-35"],
              "CR":None, "ET":["", "21", "20", "18", "17", "15", "14", "12",
@@ -131,7 +140,8 @@ cbar_text = {"REF":None, "VEL":["RF", "", "27", "20", "15", "10", "5", "1", "0",
              "cHCL":["Drizzle", "Rain", "Ice Crystals", "Dry Snow", "Wet Snow", "Vertical Ice",
                      "Low-Dens Graupel", "High-Dens Graupel", "Hail", "Big Drops", ""],
              "HCL":["Rain", "Heavy Rain", "Hail", "Big Drops", "Clear-Air Echo", "Ground Clutter",
-                    "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""]}
+                    "Dry snow", "Wet snow", "Ice Crystals", "Graupel", "Unknown", ""],
+             "SW":["RF", "", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]}
 # fmt: on
 
 # Add entry for VELSZ
