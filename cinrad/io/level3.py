@@ -178,7 +178,7 @@ class PUP(RadarBase):
             raise RadarDecodeError("Unsupported product type {}".format(spec))
 
 
-class SWAN(object):
+class SWAN(RadarBase):
     r"""
     Class reading SWAN grid data.
 
@@ -213,7 +213,7 @@ class SWAN(object):
         )
         # TODO: Recognize correct product name
         self.product_name = (
-            (b"".join(header["data_name"]).decode("gbk", "ignore").replace("\x00", ""))
+            self.decode(header["data_name"], "gbk")
             if not product
             else product
         )
@@ -433,7 +433,7 @@ class ProductParamsParser(object):
         params["dataType1"] = dataType1
         params["elevation"] = 0
         return params
-    
+
     @staticmethod
     def _empty(buf):
         pass
@@ -476,9 +476,10 @@ class StandardPUP(RadarBase):
         super().__init__()
         self.f = prepare_file(file)
         self._parse_header()
-        self.stationlat = self.geo["lat"][0]
-        self.stationlon = self.geo["lon"][0]
-        self.radarheight = self.geo["height"][0]
+        self.stationlat = self.geo["lat"]
+        self.stationlon = self.geo["lon"]
+        self.radarheight = self.geo["height"]
+        self.name = self.geo["name"]
         if self.name == "None":
             self.name = self.code
         del self.geo
@@ -515,17 +516,14 @@ class StandardPUP(RadarBase):
         if header["magic_number"] != 0x4D545352:
             raise RadarDecodeError("Invalid standard data")
         site_config = np.frombuffer(self.f.read(128), SDD_site)
-        self.code = (
-            site_config["site_code"][0].decode("ascii", "ignore").replace("\x00", "")
-        )
+        self.code = self.decode(site_config["site_code"][0])
         self.geo = geo = dict()
-        geo["lat"] = site_config["Latitude"]
-        geo["lon"] = site_config["Longitude"]
-        geo["height"] = site_config["ground_height"]
+        geo["lat"] = site_config["Latitude"][0]
+        geo["lon"] = site_config["Longitude"][0]
+        geo["height"] = site_config["ground_height"][0]
+        geo["name"] = self.decode(site_config["site_name"][0])
         task = np.frombuffer(self.f.read(256), SDD_task)
-        self.task_name = (
-            task["task_name"][0].decode("ascii", "ignore").replace("\x00", "")
-        )
+        self.task_name = self.decode(task["task_name"][0])
         cut_num = task["cut_number"][0]
         self.scan_config = np.frombuffer(self.f.read(256 * cut_num), SDD_cut)
         ph = np.frombuffer(self.f.read(128), SDD_pheader)
@@ -1061,7 +1059,7 @@ class StandardPUP(RadarBase):
         return self._dataset
 
 
-class MocMosaic(object):
+class MocMosaic(RadarBase):
     """
     解析中国气象局探测中心-天气雷达拼图系统V3.0-产品
     """
@@ -1105,10 +1103,8 @@ class MocMosaic(object):
         block_num = header["block_num"][0]
         compress = header["compress"][0]
         self.vcp = header["vcp"][0]
-        self.code = b"".join(header["site_code"][0]).decode()
-        self.name = (
-            b"".join(header["site_name"]).decode("utf-8", "ignore").replace("\x00", "")
-        )
+        self.code = self.decode(header["site_code"][0])
+        self.name = self.decode(header["site_name"][0])
         self.stationlat = header["Latitude"][0] / 10000
         self.stationlon = header["Longitude"][0] / 10000
         self.data_time = datetime.datetime(
@@ -1157,7 +1153,7 @@ class MocMosaic(object):
                 self.scale = block_header["scale"][0]
                 dx, dy = (block_header["dx"][0] / 1000, block_header["dy"][0] / 1000)
                 self.reso = min(dx, dy)
-                self.dtype = b"".join(block_header["varname"][0]).decode()
+                self.dtype = self.decode(block_header["varname"][0])
                 if nx != 0 and ny != 0:
                     self.nx = nx
                     self.ny = ny
@@ -1200,7 +1196,7 @@ class MocMosaic(object):
         compress = header["compress"][0]
         scale = header["scale"][0]
         self.code = self.name = "MOC"
-        self.dtype = b"".join(header["varname"][0]).decode()
+        self.dtype = self.decode(header["varname"][0])
         self.data_time = datetime.datetime(
             header["year"][0],
             header["month"][0],
