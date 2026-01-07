@@ -191,7 +191,7 @@ class SWAN(RadarBase):
 
     def __init__(self, file: Any, product: Optional[str] = None):
         f = prepare_file(file)
-        header = np.frombuffer(f.read(1024), SWAN_dtype)
+        self.header = header = np.frombuffer(f.read(1024), SWAN_dtype)
         xdim, ydim, zdim = (
             header["x_grid_num"][0],
             header["y_grid_num"][0],
@@ -213,11 +213,9 @@ class SWAN(RadarBase):
         )
         # TODO: Recognize correct product name
         self.product_name = (
-            self.decode(header["data_name"], "gbk")
-            if not product
-            else product
+            self.decode(header["data_name"][0], "gbk") if not product else product
         )
-        for pname in ["CR", "REF", "反射率"]:
+        for pname in ["CR", "REF", "反射率", "FENGL", "风雷"]:
             if pname in self.product_name:
                 self.product_name = "CR"
         start_lon = header["start_lon"][0]
