@@ -483,7 +483,7 @@ class StandardPUP(RadarBase):
         del self.geo
         if self.ptype in [1, 13, 14, 24, 25, 26, 27, 28, 51, 52]:  # PPI radial format
             self._parse_radial_fmt()
-        elif self.ptype in [4, 6, 8, 9, 10, 18, 23]:
+        elif self.ptype in [4, 6, 8, 9, 10, 18, 23, 34]:
             self._parse_raster_fmt()
         elif self.ptype == 3:
             self._parse_cappi_fmt()
