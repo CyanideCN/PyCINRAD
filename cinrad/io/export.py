@@ -107,9 +107,9 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
             fields[name] = dic
 
     nyquist_velocity = filemetadata("nyquist_velocity")
-    nyquist_velocity["data"] = np.array(
-        [i.nyquist_spd for i in f.scan_config], "float32"
-    )
+    nyquist_spd = np.array([i.nyquist_spd for i in f.scan_config], "float32")
+    sweeps_lens = sweep_end_ray_index["data"] - sweep_start_ray_index["data"] + 1
+    nyquist_velocity["data"] = np.repeat(nyquist_spd, sweeps_lens)
     unambiguous_range = filemetadata("unambiguous_range")
     unambiguous_range["data"] = np.array(
         [i.max_range1 for i in f.scan_config], "float32"
