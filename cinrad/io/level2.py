@@ -154,7 +154,7 @@ class CinradReader(RadarBase):
             self.name = self.site_info["name"]
         if "code" in self.site_info:
             self.code = self.site_info["code"]
-        if self.name == '' and self.code:
+        if self.name == "" and self.code:
             self.name = self.code
         if self.code == None and self.name:
             self.code = self.name
@@ -743,7 +743,7 @@ class StandardData(RadarBase):
             out.write(b"".join(all_tilt_data))
 
     def get_raw(
-        self, tilt: int, drange: Number_T, dtype: str
+        self, tilt: int, drange: Number_T, dtype: str, strict: bool = True
     ) -> Union[np.ndarray, tuple]:
         r"""
         Get radar raw data
@@ -755,14 +755,16 @@ class StandardData(RadarBase):
 
             dtype (str): Type of product (REF, VEL, etc.)
 
+            strict (bool): return empty data even if tilt or dtype is not available when set to False
+
         Returns:
             numpy.ndarray or tuple of numpy.ndarray: Raw data
         """
         # The scan number is set to zero in RHI mode.
         self.tilt = tilt if self.scan_type == "PPI" else 0
-        if tilt not in self.data:
+        if strict and tilt not in self.data:
             raise RadarDecodeError("Tilt {} does not exist.".format(tilt))
-        if dtype not in self.data[tilt]:
+        if strict and dtype not in self.data[tilt]:
             raise RadarDecodeError(
                 "Product {} does not exist in tilt {}".format(dtype, tilt)
             )
