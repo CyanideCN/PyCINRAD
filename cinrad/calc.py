@@ -603,7 +603,20 @@ class CAPPI(object):
     """
 
     def __init__(self, r_list: Volume_T, re: float = None, ke: float = None, 
-                 wradlib_mode: bool = False):
+                 wradlib_mode: bool = False, verbose: bool = False):
+        """Initialize CAPPI with optional performance timing.
+        
+        Args:
+            r_list: List of radar data from each elevation angle
+            re: Earth radius in meters (default: 6371000)
+            ke: Refraction coefficient (default: 4/3)
+            wradlib_mode: Use wradlib for coordinate conversion
+            verbose: Print timing information for performance analysis
+        """
+        import time as _time
+        self._verbose = verbose
+        t0 = _time.perf_counter()
+        
         # Remove duplicate elevation angles
         el = [i.elevation for i in r_list]
         if len(el) != len(set(el)):
@@ -626,12 +639,9 @@ class CAPPI(object):
         self.elev_angles = np.array([i.elevation for i in self.rl])
 
         # Earth curvature and refraction parameters
-        # Standard Earth radius
         self.re = re if re is not None else 6371000.0
-        # Default 4/3 Earth radius model for standard atmosphere
-        # Effective radius = ke * Earth radius
         self.ke = ke if ke is not None else 4.0 / 3.0
-        self.reff = self.ke * self.re  # Effective Earth radius
+        self.reff = self.ke * self.re
 
         # Try to import wradlib if requested
         self.wradlib_mode = wradlib_mode
@@ -643,13 +653,25 @@ class CAPPI(object):
             except ImportError:
                 import warnings
                 warnings.warn(
-                    "wradlib not found, falling back to native implementation. "
-                    "Install wradlib for more accurate coordinate transformation: pip install wradlib"
+                    "wradlib not found, falling back to native implementation."
                 )
                 self.wradlib_mode = False
 
+        # KDTree cache for different height levels
+        self._kdtree_cache = {}
+        self._filtered_data_cache = {}
+        
         # Calculate 3D polar coordinates for all data points
         self._calculate_polar_coords()
+        
+        # Pre-filter valid data (non-NaN) once
+        self._valid_mask = ~np.isnan(self.poldata)
+        self._valid_coords = self.polcoords[self._valid_mask]
+        self._valid_data = self.poldata[self._valid_mask]
+        
+        if self._verbose:
+            print(f"[CAPPI] Init time: {(_time.perf_counter()-t0)*1000:.1f}ms, "
+                  f"valid points: {len(self._valid_data)}/{len(self.poldata)}")
 
     def _calculate_polar_coords(self):
         """Calculate 3D Cartesian coordinates for all polar data points.
@@ -814,62 +836,94 @@ class CAPPI(object):
         
         return below, above, out_of_range
 
-    def _interpolate_3d(self, gridcoords: np.ndarray, 
-                        mask: np.ndarray = None) -> np.ndarray:
-        """Perform 3D interpolation from polar to Cartesian grid.
+    def _get_cached_tree(self, target_height: float, v_margin: float = 1500.0):
+        """Get or build cached KDTree for a height range.
         
-        Uses inverse distance weighting (IDW) for interpolation.
+        Uses height binning to maximize cache hits (500m bins).
+        """
+        from scipy.spatial import cKDTree
+        
+        # Round height to 500m bins for cache key
+        cache_key = int(target_height // 500) * 500
+        
+        if cache_key in self._kdtree_cache:
+            return self._kdtree_cache[cache_key]
+        
+        # Filter by height range using pre-filtered valid data
+        z_dist = np.abs(self._valid_coords[:, 2] - target_height)
+        height_mask = z_dist < v_margin
+        
+        if not np.any(height_mask):
+            return None, None, 0
+        
+        src_coords = self._valid_coords[height_mask]
+        src_data = self._valid_data[height_mask]
+        
+        # Build and cache tree
+        tree = cKDTree(src_coords)
+        self._kdtree_cache[cache_key] = (tree, src_data, len(src_coords))
+        self._filtered_data_cache[cache_key] = src_data
+        
+        return tree, src_data, len(src_coords)
+
+    def _interpolate_3d(self, gridcoords: np.ndarray, 
+                        target_height: float,
+                        mask: np.ndarray = None,
+                        v_margin: float = 1500.0) -> np.ndarray:
+        """Optimized 3D interpolation with KDTree caching.
         
         Args:
-            gridcoords: Target grid coordinates, shape (num_voxels, 3)
-            mask: Boolean mask for valid voxels
-            
-        Returns:
-            Interpolated data for each voxel
+            gridcoords: Target grid coordinates (N, 3)
+            target_height: Target CAPPI height in meters
+            mask: Boolean mask for blind spots (True = skip)
+            v_margin: Vertical margin for data filtering (meters)
         """
-        try:
-            from scipy.spatial import cKDTree
-            KDTree = cKDTree
-        except ImportError:
-            from scipy.spatial import KDTree
+        import time as _time
+        t0 = _time.perf_counter()
         
-        # Get valid source points (non-NaN data)
-        valid_mask = ~np.isnan(self.poldata)
-        if not np.any(valid_mask):
+        # 1. Get cached tree or build new one
+        result = self._get_cached_tree(target_height, v_margin)
+        if result[0] is None:
             return np.full(len(gridcoords), np.nan)
         
-        src_coords = self.polcoords[valid_mask]
-        src_data = self.poldata[valid_mask]
+        tree, src_data, n_src = result
+        t1 = _time.perf_counter()
         
-        # Build KDTree for source points
-        tree = KDTree(src_coords)
-        
-        # Get target indices (unmasked voxels)
-        if mask is not None:
-            trg_indices = np.where(~mask)[0]
-        else:
-            trg_indices = np.arange(len(gridcoords))
-        
-        # Initialize output
+        # 2. Prepare target points (skip masked)
+        trg_indices = np.where(~mask)[0] if mask is not None else np.arange(len(gridcoords))
         output = np.full(len(gridcoords), np.nan)
         
-        # For each target point, find nearest neighbors and interpolate
-        for idx in trg_indices:
-            point = gridcoords[idx]
-            # Find k nearest neighbors
-            dists, indices = tree.query(point, k=10)
-            
-            if np.any(dists == 0):
-                # Exact match found
-                output[idx] = src_data[indices[0]]
-            elif np.all(dists > 50000):  # Too far
-                continue
-            else:
-                # Inverse distance weighting
-                # Use 1/distance weighting, with minimum distance to avoid division by zero
-                weights = 1.0 / (dists + 1e-6)
-                weights /= weights.sum()
-                output[idx] = np.sum(weights * src_data[indices])
+        if len(trg_indices) == 0:
+            return output
+
+        # 3. Batch KNN query (k=4 is sufficient for IDW)
+        dists, indices = tree.query(gridcoords[trg_indices], k=4, distance_upper_bound=5000)
+        t2 = _time.perf_counter()
+        
+        # 4. Vectorized IDW interpolation
+        invalid_mask = (indices >= n_src)
+        indices[invalid_mask] = 0
+        
+        weights = 1.0 / (dists + 1e-6)
+        weights[invalid_mask] = 0
+        weights[np.isinf(dists)] = 0
+        
+        sum_weights = np.sum(weights, axis=1)
+        valid_trg_mask = sum_weights > 0
+        
+        if not np.any(valid_trg_mask):
+            return output
+        
+        neighbor_data = src_data[indices[valid_trg_mask]]
+        norm_weights = weights[valid_trg_mask] / sum_weights[valid_trg_mask][:, np.newaxis]
+        interpolated_vals = np.sum(norm_weights * neighbor_data, axis=1)
+        
+        actual_indices = trg_indices[valid_trg_mask]
+        output[actual_indices] = interpolated_vals
+        
+        if self._verbose:
+            print(f"[CAPPI] Interpolate: tree={1000*(t1-t0):.1f}ms, "
+                  f"query={1000*(t2-t1):.1f}ms, total={1000*(_time.perf_counter()-t0):.1f}ms")
         
         return output
 
@@ -906,7 +960,7 @@ class CAPPI(object):
         mask = below | above | out_of_range
         
         # Perform 3D interpolation
-        gridded = self._interpolate_3d(gridcoords, mask)
+        gridded = self._interpolate_3d(gridcoords, level_height, mask)
         
         # Reshape to 2D
         cappi_2d = gridded.reshape(gridshape[1], gridshape[2])
