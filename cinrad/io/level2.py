@@ -154,7 +154,7 @@ class CinradReader(RadarBase):
             self.name = self.site_info["name"]
         if "code" in self.site_info:
             self.code = self.site_info["code"]
-        if self.name == '' and self.code:
+        if self.name == "" and self.code:
             self.name = self.code
         if self.code == None and self.name:
             self.code = self.name
@@ -232,8 +232,8 @@ class CinradReader(RadarBase):
     def _CC_reader(self, f: Any):
         header = np.frombuffer(f.read(1024), CC_header)
         self.site_info = {
-            "name": header["cStation"][0].decode("gbk", "ignore"),
-            "code": header["cStationNumber"][0].decode("utf-8", "ignore")[:5],
+            "name": self.decode(header["cStation"][0], "gbk"),
+            "code": self.decode(header["cStationNumber"][0], "utf-8")[:5],
         }
         scan_mode = header["ucScanMode"][0]
         if scan_mode < 100:
@@ -274,10 +274,8 @@ class CinradReader(RadarBase):
     def _CD_reader(self, f: Any):
         header = np.frombuffer(f.read(CD_dtype.itemsize), CD_dtype)
         self.site_info = {
-            "name": header["site_info"]["station"][0].decode("gbk", "ignore"),
-            "code": header["site_info"]["stationnumber"][0].decode("utf-8", "ignore")[
-                :5
-            ],
+            "name": self.decode(header["site_info"]["station"][0], "gbk"),
+            "code": self.decode(header["site_info"]["stationnumber"][0], "utf-8")[:5],
             "longitude": header["site_info"]["Longitudevalue"][0] / 100,
             "latitude": header["site_info"]["Latitudevalue"][0] / 100,
             "height": header["site_info"]["height"][0] / 1000,
@@ -328,7 +326,7 @@ class CinradReader(RadarBase):
             "longitude": header["lLongitudeValue"][0] / 1000,
             "latitude": header["lLatitudeValue"][0] / 1000,
             "height": header["lHeight"][0] / 1000,
-            "name": header["sStation"][0].decode("gbk"),
+            "name": self.decode(header["sStation"][0], "gbk"),
         }
         obs_param = np.frombuffer(f.read(CC2_obs.itemsize), CC2_obs)
         self.scantime = localdatetime_to_utc(
@@ -591,22 +589,16 @@ class StandardData(RadarBase):
             radial_header_dtype = SDD_rad_header
             self._is_phased_array = False
         site_config = np.frombuffer(self.f.read(128), site_config_dtype)
-        self.code = (
-            site_config["site_code"][0]
-            .decode("ascii", errors="ignore")
-            .replace("\x00", "")
-        )
+        self.code = self.decode(site_config["site_code"][0])
         freq = site_config["frequency"][0]
         self.wavelength = 3e8 / freq / 10000
         self.geo = geo = dict()
         geo["lat"] = site_config["Latitude"][0]
         geo["lon"] = site_config["Longitude"][0]
         geo["height"] = site_config["ground_height"][0]
-        geo["name"] = site_config["site_name"][0].decode("ascii", errors="ignore")
+        geo["name"] = self.decode(site_config["site_name"][0])
         task = np.frombuffer(self.f.read(256), task_dtype)
-        self.task_name = (
-            task["task_name"][0].decode("ascii", errors="ignore").split("\x00")[0]
-        )
+        self.task_name = self.decode(task["task_name"][0])
         epoch_seconds = datetime.timedelta(
             seconds=int(task["scan_start_time"][0])
         ).total_seconds()
