@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
       - name: Build
         run: |
           python -m pip install build
