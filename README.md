@@ -4,7 +4,7 @@
 [![Downloads](https://pepy.tech/badge/cinrad)](https://pepy.tech/project/cinrad)
 [![DOI](https://zenodo.org/badge/139155365.svg)](https://zenodo.org/badge/latestdoi/139155365)
 
-Decode CINRAD (China New Generation Weather Radar) data and visualize. 
+Decode CINRAD (China New Generation Weather Radar) data and visualize.
 
 To check out live examples and docs, visit [pycinrad.cn](https://pycinrad.cn/).
 
@@ -23,7 +23,9 @@ pip install cinrad
 You can also download from github page and build from source
 
 ```
-python setup.py install
+git clone https://github.com/CyanideCN/PyCINRAD.git
+cd PyCINRAD
+pip install .
 ```
 
 ## Modules
