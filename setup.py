@@ -1,13 +1,9 @@
-from setuptools import setup, find_packages
+from os.path import join, sep
+from setuptools import find_packages, setup
 from setuptools.extension import Extension
-from os.path import join, exists, sep
-import numpy as np
 
-try:
-    from Cython.Build import cythonize
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
+import numpy as np
+from Cython.Build import cythonize
 
 macros = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
@@ -16,7 +12,7 @@ pyx_paths = [
     join("cinrad", "correct", "_unwrap_2d"),
 ]
 
-ext_suffix = ".pyx" if USE_CYTHON else ".c"
+ext_suffix = ".pyx"
 
 ext_modules = [
     Extension(
@@ -26,8 +22,7 @@ ext_modules = [
     ) for path in pyx_paths
 ]
 
-if USE_CYTHON:
-    ext_modules = cythonize(ext_modules)
+ext_modules = cythonize(ext_modules)
 
 data_pth = join("cinrad", "data")
 
@@ -41,7 +36,7 @@ setup(
     author_email="dpy274555447@gmail.com",
     packages=find_packages(),
     include_package_data=True,
-    platforms="Windows",
+    platforms=["Windows", "Linux", "MacOS"],
     python_requires=">=3.9",
     install_requires=[
         "metpy>=0.8",
