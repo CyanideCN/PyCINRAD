@@ -30,6 +30,7 @@ __all__ = [
     "quick_vild",
     "GridMapper",
     "hydro_class",
+    "CAPPI",
 ]
 
 
@@ -561,3 +562,421 @@ def hydro_class(
     hcl["cHCL"] = (["azimuth", "distance"], result)
     del hcl["REF"]
     return hcl
+
+
+class CAPPI(object):
+    r"""
+    Class performing CAPPI (Constant Altitude Plan Position Indicator) calculation
+    Based on wradlib's approach with 3D voxel interpolation.
+
+    Supports optional Earth curvature and atmospheric refraction correction using
+    the 4/3 Earth radius model (or custom values via re and ke parameters).
+
+    Args:
+        r_list (list(xarray.Dataset)): List of reflectivity data from each elevation angle.
+        re (float): Effective Earth radius in meters. Default 6371000 (standard Earth radius).
+                     For standard atmospheric refraction, use 4/3 * 6371000 ≈ 8480000.
+        ke (float): Refraction coefficient. Default 4/3 for standard atmosphere.
+                     Set to 1.0 to disable refraction correction.
+        wradlib_mode (bool): If True, use wradlib.spherical_to_proj for coordinate conversion
+                            (requires wradlib). If False, use native implementation.
+                            Default: False (use native implementation).
+
+    Example:
+        >>> f = cinrad.io.CinradReader(radar_file)
+        >>> rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
+        >>> cappi = cinrad.calc.CAPPI(rl)
+
+        Basic usage (standard 4/3 Earth radius model):
+        >>> x1d = np.arange(-150000, 150001, 1000)
+        >>> y1d = np.arange(-150000, 150001, 1000)
+        >>> grid = cappi.get_cappi_xy(x1d, y1d, level_height=3000)
+
+        With custom Earth curvature parameters:
+        >>> cappi = cinrad.calc.CAPPI(rl, re=6371000, ke=1.0)  # No refraction
+        >>> cappi = cinrad.calc.CAPPI(rl, re=8480000, ke=4/3)  # Explicit 4/3 model
+
+        Geographic coordinates:
+        >>> lon1d = np.arange(117, 120.001, 0.01)
+        >>> lat1d = np.arange(31, 34.001, 0.01)
+        >>> grid_geo = cappi.get_cappi_lonlat(lon1d, lat1d, level_height=3000)
+    """
+
+    def __init__(self, r_list: Volume_T, re: float = None, ke: float = None, 
+                 wradlib_mode: bool = False):
+        # Remove duplicate elevation angles
+        el = [i.elevation for i in r_list]
+        if len(el) != len(set(el)):
+            self.rl = list()
+            el_list = list()
+            for data in r_list:
+                if data.elevation not in el_list:
+                    self.rl.append(data)
+                    el_list.append(data.elevation)
+        else:
+            self.rl = r_list
+
+        self.dtype = get_dtype(r_list[0])
+        self.attrs = r_list[0].attrs
+
+        # Get radar location
+        self.radar_lat = self.rl[0].site_latitude
+        self.radar_lon = self.rl[0].site_longitude
+        self.radar_alt = getattr(self.rl[0], 'radar_height', 0)
+        self.elev_angles = np.array([i.elevation for i in self.rl])
+
+        # Earth curvature and refraction parameters
+        # Standard Earth radius
+        self.re = re if re is not None else 6371000.0
+        # Default 4/3 Earth radius model for standard atmosphere
+        # Effective radius = ke * Earth radius
+        self.ke = ke if ke is not None else 4.0 / 3.0
+        self.reff = self.ke * self.re  # Effective Earth radius
+
+        # Try to import wradlib if requested
+        self.wradlib_mode = wradlib_mode
+        self._wradlib = None
+        if wradlib_mode:
+            try:
+                from wradlib.georef import polar as wradlib_polar
+                self._wradlib = wradlib_polar
+            except ImportError:
+                import warnings
+                warnings.warn(
+                    "wradlib not found, falling back to native implementation. "
+                    "Install wradlib for more accurate coordinate transformation: pip install wradlib"
+                )
+                self.wradlib_mode = False
+
+        # Calculate 3D polar coordinates for all data points
+        self._calculate_polar_coords()
+
+    def _calculate_polar_coords(self):
+        """Calculate 3D Cartesian coordinates for all polar data points.
+        
+        Uses the 4/3 Earth radius model for atmospheric refraction correction.
+        Height calculation follows wradlib's spherical_to_proj approach:
+        
+            z = r * sin(θ) + r² / (2 * R_eff)
+            
+        where R_eff = ke * re is the effective Earth radius.
+        
+        For x, y coordinates: uses longitude/latitude conversion with proper
+        projection to account for Earth's curvature.
+        """
+        
+        all_coords = []
+        all_data = []
+        
+        for scan in self.rl:
+            data = scan[self.dtype].values
+            
+            # Get polar coordinates from scan
+            lon = scan["longitude"].values
+            lat = scan["latitude"].values
+            distance = scan["distance"].values  # km, shape (n_distance,)
+            azimuth = scan["azimuth"].values if "azimuth" in scan.coords else None
+            elevation = scan.elevation
+            
+            # Get data shape for broadcasting
+            n_azimuth, n_distance = data.shape
+            
+            # Use wradlib if available and requested
+            if self.wradlib_mode and self._wradlib is not None:
+                # wradlib spherical_to_proj
+                # Note: wradlib expects distance in meters
+                r = distance * 1000  # Convert km to m
+                theta = np.full_like(r, elevation) if azimuth is None else elevation
+                site = (self.radar_lon, self.radar_lat, self.radar_alt)
+                
+                coords = self._wradlib.spherical_to_proj(r, azimuth, theta, site)
+                # coords shape: (n_azimuth, n_range, 3) -> (..., 3) with lon, lat, z
+                # Flatten to (n_points, 3)
+                coords_3d = coords.reshape(-1, 3)
+                
+                # Convert to x, y, z relative to radar (in meters)
+                lat_to_m = 111000.0
+                lon_to_m = 111000.0 * np.cos(np.deg2rad(self.radar_lat))
+                
+                x_coords = (coords_3d[:, 0] - self.radar_lon) * lon_to_m
+                y_coords = (coords_3d[:, 1] - self.radar_lat) * lat_to_m
+                z_coords = coords_3d[:, 2]
+            else:
+                # Native implementation with 4/3 Earth radius model
+                
+                # Calculate x, y from longitude/latitude (meters from radar)
+                lat_to_m = 111000.0
+                lon_to_m = 111000.0 * np.cos(np.deg2rad(self.radar_lat))
+                
+                x_coords = (lon - self.radar_lon) * lon_to_m
+                y_coords = (lat - self.radar_lat) * lat_to_m
+                
+                # Calculate height using 4/3 Earth radius model
+                # Beam height: h = r * sin(θ) + r² / (2 * R_eff)
+                # where r is slant range, θ is elevation angle
+                # R_eff = ke * re is effective Earth radius
+                
+                r = distance * 1000  # Convert km to m, shape (n_distance,)
+                theta_rad = np.deg2rad(elevation)
+                
+                # Beam height above radar: shape (n_distance,)
+                h_beam_1d = r * np.sin(theta_rad) + (r ** 2) / (2 * self.reff)
+                
+                # Broadcast to match data shape (n_azimuth, n_distance)
+                h_beam = np.broadcast_to(h_beam_1d, (n_azimuth, n_distance))
+                z_coords = h_beam + self.radar_alt
+            
+            # Flatten and store
+            coords = np.column_stack([
+                x_coords.ravel(),
+                y_coords.ravel(),
+                z_coords.ravel()
+            ])
+            
+            all_coords.append(coords)
+            all_data.append(data.ravel())
+        
+        # Combine all sweeps
+        self.polcoords = np.vstack(all_coords)
+        self.poldata = np.hstack(all_data)
+        
+        # Store shape info for later reshaping
+        self.polshape = (len(self.rl), 
+                        self.rl[0][self.dtype].shape[0], 
+                        self.rl[0][self.dtype].shape[1])
+
+    def _make_3d_grid(self, x_range: np.ndarray, y_range: np.ndarray, 
+                      z_levels: np.ndarray) -> tuple:
+        """Create 3D Cartesian grid coordinates.
+        
+        Args:
+            x_range: x coordinates (meters from radar)
+            y_range: y coordinates (meters from radar)
+            z_levels: z coordinates (altitude in meters)
+            
+        Returns:
+            gridcoords: Array of shape (num_voxels, 3)
+            gridshape: Tuple (nz, ny, nx) representing the grid shape
+        """
+        # Create 3D meshgrid
+        Z, Y, X = np.meshgrid(z_levels, y_range, x_range, indexing='ij')
+        
+        # Flatten to get voxel coordinates
+        gridcoords = np.column_stack([
+            X.ravel(),
+            Y.ravel(),
+            Z.ravel()
+        ])
+        
+        gridshape = (len(z_levels), len(y_range), len(x_range))
+        
+        return gridcoords, gridshape
+
+    def _calculate_blindspots(self, gridcoords: np.ndarray, 
+                                minelev: float, maxelev: float, 
+                                maxrange: float) -> tuple:
+        """Calculate blind spots for the CAPPI.
+        
+        Blind spots are grid points that are:
+        1. Below the lowest elevation angle (considering Earth curvature)
+        2. Above the highest elevation angle  
+        3. Beyond the maximum range
+        
+        Uses the same 4/3 Earth radius model for consistency.
+        
+        Args:
+            gridcoords: Array of shape (num_voxels, 3)
+            minelev: Minimum elevation angle (degrees)
+            maxelev: Maximum elevation angle (degrees)
+            maxrange: Maximum range (meters)
+            
+        Returns:
+            tuple: (below, above, out_of_range) boolean arrays
+        """
+        # Distance from radar (handle NaN values)
+        dxdy = np.abs(gridcoords[:, :2])  # Use absolute values
+        dist = np.sqrt((dxdy ** 2).sum(axis=1))
+        
+        # Set NaN distances to infinity so they are masked
+        dist = np.where(np.isnan(dist), np.inf, dist)
+        
+        # Below the radar (below min elevation at that distance)
+        # Using 4/3 Earth radius model: h = r * sin(el) + r² / (2 * R_eff)
+        h_min = dist * np.sin(np.deg2rad(minelev)) + dist**2 / (2 * self.reff)
+        below = (gridcoords[:, 2] < h_min) | np.isnan(gridcoords[:, 2])
+        
+        # Above the radar (above max elevation at that distance)
+        h_max = dist * np.sin(np.deg2rad(maxelev)) + dist**2 / (2 * self.reff)
+        above = (gridcoords[:, 2] > h_max) | np.isnan(gridcoords[:, 2])
+        
+        # Out of range
+        out_of_range = (dist > maxrange) | np.isnan(dist)
+        
+        return below, above, out_of_range
+
+    def _interpolate_3d(self, gridcoords: np.ndarray, 
+                        mask: np.ndarray = None) -> np.ndarray:
+        """Perform 3D interpolation from polar to Cartesian grid.
+        
+        Uses inverse distance weighting (IDW) for interpolation.
+        
+        Args:
+            gridcoords: Target grid coordinates, shape (num_voxels, 3)
+            mask: Boolean mask for valid voxels
+            
+        Returns:
+            Interpolated data for each voxel
+        """
+        try:
+            from scipy.spatial import cKDTree
+            KDTree = cKDTree
+        except ImportError:
+            from scipy.spatial import KDTree
+        
+        # Get valid source points (non-NaN data)
+        valid_mask = ~np.isnan(self.poldata)
+        if not np.any(valid_mask):
+            return np.full(len(gridcoords), np.nan)
+        
+        src_coords = self.polcoords[valid_mask]
+        src_data = self.poldata[valid_mask]
+        
+        # Build KDTree for source points
+        tree = KDTree(src_coords)
+        
+        # Get target indices (unmasked voxels)
+        if mask is not None:
+            trg_indices = np.where(~mask)[0]
+        else:
+            trg_indices = np.arange(len(gridcoords))
+        
+        # Initialize output
+        output = np.full(len(gridcoords), np.nan)
+        
+        # For each target point, find nearest neighbors and interpolate
+        for idx in trg_indices:
+            point = gridcoords[idx]
+            # Find k nearest neighbors
+            dists, indices = tree.query(point, k=10)
+            
+            if np.any(dists == 0):
+                # Exact match found
+                output[idx] = src_data[indices[0]]
+            elif np.all(dists > 50000):  # Too far
+                continue
+            else:
+                # Inverse distance weighting
+                # Use 1/distance weighting, with minimum distance to avoid division by zero
+                weights = 1.0 / (dists + 1e-6)
+                weights /= weights.sum()
+                output[idx] = np.sum(weights * src_data[indices])
+        
+        return output
+
+    def get_cappi_xy(self, xRange: np.ndarray, yRange: np.ndarray,
+                      level_height: float) -> Dataset:
+        r"""
+        Generate CAPPI in cartesian coordinates centered on radar.
+        Based on wradlib's 3D voxel interpolation approach.
+
+        Args:
+            xRange (numpy.ndarray): East-west coordinate array in meters from radar.
+            yRange (numpy.ndarray): North-south coordinate array in meters from radar.
+            level_height (float): Target height for CAPPI in meters.
+
+        Returns:
+            xarray.Dataset: CAPPI data with coordinates (x, y) in meters.
+        """
+        from xarray import DataArray, Dataset
+        
+        # Create 3D grid with single height level
+        z_levels = np.array([level_height])
+        gridcoords, gridshape = self._make_3d_grid(xRange, yRange, z_levels)
+        
+        # Calculate blind spots
+        minelev = self.elev_angles.min()
+        maxelev = self.elev_angles.max()
+        maxrange = xRange.max() * 1.5  # Allow some margin
+        
+        below, above, out_of_range = self._calculate_blindspots(
+            gridcoords, minelev, maxelev, maxrange
+        )
+        
+        # Mask for blind voxels
+        mask = below | above | out_of_range
+        
+        # Perform 3D interpolation
+        gridded = self._interpolate_3d(gridcoords, mask)
+        
+        # Reshape to 2D
+        cappi_2d = gridded.reshape(gridshape[1], gridshape[2])
+        
+        # Create output Dataset
+        ret = Dataset({
+            self.dtype: DataArray(
+                cappi_2d,
+                coords=[yRange, xRange],
+                dims=["y", "x"]
+            )
+        })
+
+        # Set attributes
+        r_attr = self.attrs.copy()
+        r_attr["cappi_height"] = level_height
+        r_attr["elevation"] = level_height / 1000.0
+        r_attr["tangential_reso"] = np.nan
+        r_attr["range"] = np.nan
+
+        ret.attrs = r_attr
+
+        return ret
+
+    def get_cappi_lonlat(self, XLon: np.ndarray, YLat: np.ndarray,
+                          level_height: float) -> Dataset:
+        r"""
+        Generate CAPPI in geographic coordinates (longitude, latitude).
+        Based on wradlib's 3D voxel interpolation approach.
+
+        Args:
+            XLon (numpy.ndarray): Longitude array in degrees.
+            YLat (numpy.ndarray): Latitude array in degrees.
+            level_height (float): Target height for CAPPI in meters.
+
+        Returns:
+            xarray.Dataset: CAPPI data with coordinates (lon, lat) in degrees.
+        """
+        from xarray import DataArray, Dataset
+        
+        # Convert lon/lat to x/y relative to radar
+        # 1 degree of longitude ≈ 111km * cos(latitude)
+        # 1 degree of latitude ≈ 111km
+        
+        lat_rad = np.deg2rad(self.radar_lat)
+        lon_to_m = 111000.0 * np.cos(lat_rad)
+        lat_to_m = 111000.0
+        
+        xRange = (XLon - self.radar_lon) * lon_to_m
+        yRange = (YLat - self.radar_lat) * lat_to_m
+        
+        # Generate CAPPI using xy coordinates
+        cappi_xy = self.get_cappi_xy(xRange, yRange, level_height)
+        
+        # Create output with lon/lat coordinates
+        ret = Dataset({
+            self.dtype: DataArray(
+                cappi_xy[self.dtype].values,
+                coords=[YLat, XLon],
+                dims=["lat", "lon"]
+            )
+        })
+
+        # Set attributes
+        r_attr = self.attrs.copy()
+        r_attr["cappi_height"] = level_height
+        r_attr["elevation"] = level_height / 1000.0
+        r_attr["tangential_reso"] = np.nan
+        r_attr["range"] = np.nan
+
+        ret.attrs = r_attr
+
+        return ret
