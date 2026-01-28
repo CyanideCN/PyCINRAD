@@ -57,3 +57,7 @@ class RadarBase(object):
         int_start = int(start / step) + 1
         int_stop = int(stop / step) + 1
         return step * np.arange(int_start, int_stop)
+
+    def decode(self, arg, encoding="ascii") -> str:
+        return arg.decode(encoding, "ignore").replace("\x00", "")
+    
