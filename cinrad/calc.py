@@ -566,471 +566,233 @@ def hydro_class(
 
 class CAPPI(object):
     r"""
-    Class performing CAPPI (Constant Altitude Plan Position Indicator) calculation
-    Based on wradlib's approach with 3D voxel interpolation.
-
-    Supports optional Earth curvature and atmospheric refraction correction using
-    the 4/3 Earth radius model (or custom values via re and ke parameters).
+    CAPPI (Constant Altitude Plan Position Indicator) 等高面计算类
+    
+    使用3D体素插值方法，复用库内现有的高度计算和坐标转换函数。
 
     Args:
-        r_list (list(xarray.Dataset)): List of reflectivity data from each elevation angle.
-        re (float): Effective Earth radius in meters. Default 6371000 (standard Earth radius).
-                     For standard atmospheric refraction, use 4/3 * 6371000 ≈ 8480000.
-        ke (float): Refraction coefficient. Default 4/3 for standard atmosphere.
-                     Set to 1.0 to disable refraction correction.
-        wradlib_mode (bool): If True, use wradlib.spherical_to_proj for coordinate conversion
-                            (requires wradlib). If False, use native implementation.
-                            Default: False (use native implementation).
+        r_list: 各仰角的反射率数据列表
+        verbose: 是否打印性能信息
 
     Example:
         >>> f = cinrad.io.CinradReader(radar_file)
         >>> rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
         >>> cappi = cinrad.calc.CAPPI(rl)
-
-        Basic usage (standard 4/3 Earth radius model):
         >>> x1d = np.arange(-150000, 150001, 1000)
         >>> y1d = np.arange(-150000, 150001, 1000)
         >>> grid = cappi.get_cappi_xy(x1d, y1d, level_height=3000)
-
-        With custom Earth curvature parameters:
-        >>> cappi = cinrad.calc.CAPPI(rl, re=6371000, ke=1.0)  # No refraction
-        >>> cappi = cinrad.calc.CAPPI(rl, re=8480000, ke=4/3)  # Explicit 4/3 model
-
-        Geographic coordinates:
-        >>> lon1d = np.arange(117, 120.001, 0.01)
-        >>> lat1d = np.arange(31, 34.001, 0.01)
-        >>> grid_geo = cappi.get_cappi_lonlat(lon1d, lat1d, level_height=3000)
     """
 
-    def __init__(self, r_list: Volume_T, re: float = None, ke: float = None, 
-                 wradlib_mode: bool = False, verbose: bool = False):
-        """Initialize CAPPI with optional performance timing.
+    # 坐标转换常数（与projection.py一致）
+    LAT_TO_M = 111000.0  # 1度纬度约111km
+    
+    def __init__(self, r_list: Volume_T, re: float = 6371000.0, 
+                 ke: float = 4.0/3.0, verbose: bool = False):
+        from scipy.spatial import cKDTree
         
-        Args:
-            r_list: List of radar data from each elevation angle
-            re: Earth radius in meters (default: 6371000)
-            ke: Refraction coefficient (default: 4/3)
-            wradlib_mode: Use wradlib for coordinate conversion
-            verbose: Print timing information for performance analysis
-        """
-        import time as _time
         self._verbose = verbose
-        t0 = _time.perf_counter()
+        self._cKDTree = cKDTree
         
-        # Remove duplicate elevation angles
-        el = [i.elevation for i in r_list]
-        if len(el) != len(set(el)):
-            self.rl = list()
-            el_list = list()
-            for data in r_list:
-                if data.elevation not in el_list:
-                    self.rl.append(data)
-                    el_list.append(data.elevation)
-        else:
-            self.rl = r_list
-
+        # 去除重复仰角
+        seen = set()
+        self.rl = [d for d in r_list if d.elevation not in seen and not seen.add(d.elevation)]
+        
         self.dtype = get_dtype(r_list[0])
-        self.attrs = r_list[0].attrs
-
-        # Get radar location
+        self.attrs = r_list[0].attrs.copy()
+        
+        # 雷达位置和仰角信息
         self.radar_lat = self.rl[0].site_latitude
         self.radar_lon = self.rl[0].site_longitude
         self.radar_alt = getattr(self.rl[0], 'radar_height', 0)
         self.elev_angles = np.array([i.elevation for i in self.rl])
+        
+        # 等效地球半径参数（保留以兼容旧代码）
+        self.re = re
+        self.ke = ke
+        self.reff = ke * re
+        
+        # 经度转换系数（依赖纬度，与projection.get_coordinate一致）
+        self._lon_to_m = self.LAT_TO_M * np.cos(np.deg2rad(self.radar_lat))
+        
+        # 计算所有数据点的3D坐标（复用scan中已计算的坐标）
+        self._build_polar_coords()
+        
+        # 预过滤有效数据
+        valid = ~np.isnan(self.poldata)
+        self._valid_coords = self.polcoords[valid]
+        self._valid_data = self.poldata[valid]
+        
+        # KDTree缓存
+        self._tree_cache = {}
 
-        # Earth curvature and refraction parameters
-        self.re = re if re is not None else 6371000.0
-        self.ke = ke if ke is not None else 4.0 / 3.0
-        self.reff = self.ke * self.re
-
-        # Try to import wradlib if requested
-        self.wradlib_mode = wradlib_mode
-        self._wradlib = None
-        if wradlib_mode:
-            try:
-                from wradlib.georef import polar as wradlib_polar
-                self._wradlib = wradlib_polar
-            except ImportError:
-                import warnings
-                warnings.warn(
-                    "wradlib not found, falling back to native implementation."
-                )
-                self.wradlib_mode = False
-
-        # KDTree cache for different height levels
-        self._kdtree_cache = {}
-        self._filtered_data_cache = {}
+    def _build_polar_coords(self):
+        """计算所有极坐标数据点的3D笛卡尔坐标
         
-        # Calculate 3D polar coordinates for all data points
-        self._calculate_polar_coords()
-        
-        # Pre-filter valid data (non-NaN) once
-        self._valid_mask = ~np.isnan(self.poldata)
-        self._valid_coords = self.polcoords[self._valid_mask]
-        self._valid_data = self.poldata[self._valid_mask]
-        
-        if self._verbose:
-            print(f"[CAPPI] Init time: {(_time.perf_counter()-t0)*1000:.1f}ms, "
-                  f"valid points: {len(self._valid_data)}/{len(self.poldata)}")
-
-    def _calculate_polar_coords(self):
-        """Calculate 3D Cartesian coordinates for all polar data points.
-        
-        Uses the 4/3 Earth radius model for atmospheric refraction correction.
-        Height calculation follows wradlib's spherical_to_proj approach:
-        
-            z = r * sin(θ) + r² / (2 * R_eff)
-            
-        where R_eff = ke * re is the effective Earth radius.
-        
-        For x, y coordinates: uses longitude/latitude conversion with proper
-        projection to account for Earth's curvature.
+        复用scan中已计算好的坐标数据：
+        - longitude/latitude: 由cinrad.projection.get_coordinate计算
+        - height: 由cinrad.projection.height计算
         """
-        
-        all_coords = []
-        all_data = []
+        coords_list, data_list = [], []
         
         for scan in self.rl:
             data = scan[self.dtype].values
             
-            # Get polar coordinates from scan
+            # 直接使用scan中已计算好的坐标（由get_coordinate计算）
             lon = scan["longitude"].values
             lat = scan["latitude"].values
-            distance = scan["distance"].values  # km, shape (n_distance,)
-            azimuth = scan["azimuth"].values if "azimuth" in scan.coords else None
-            elevation = scan.elevation
             
-            # Get data shape for broadcasting
-            n_azimuth, n_distance = data.shape
+            # 转换为相对雷达的XY坐标（米）
+            x = (lon - self.radar_lon) * self._lon_to_m
+            y = (lat - self.radar_lat) * self.LAT_TO_M
             
-            # Use wradlib if available and requested
-            if self.wradlib_mode and self._wradlib is not None:
-                # wradlib spherical_to_proj
-                # Note: wradlib expects distance in meters
-                r = distance * 1000  # Convert km to m
-                theta = np.full_like(r, elevation) if azimuth is None else elevation
-                site = (self.radar_lon, self.radar_lat, self.radar_alt)
-                
-                coords = self._wradlib.spherical_to_proj(r, azimuth, theta, site)
-                # coords shape: (n_azimuth, n_range, 3) -> (..., 3) with lon, lat, z
-                # Flatten to (n_points, 3)
-                coords_3d = coords.reshape(-1, 3)
-                
-                # Convert to x, y, z relative to radar (in meters)
-                lat_to_m = 111000.0
-                lon_to_m = 111000.0 * np.cos(np.deg2rad(self.radar_lat))
-                
-                x_coords = (coords_3d[:, 0] - self.radar_lon) * lon_to_m
-                y_coords = (coords_3d[:, 1] - self.radar_lat) * lat_to_m
-                z_coords = coords_3d[:, 2]
+            # 直接使用scan中已计算好的高度（由projection.height计算，单位km）
+            # height数据已包含大气折射校正
+            if "height" in scan:
+                z = scan["height"].values * 1000  # km -> m
             else:
-                # Native implementation with 4/3 Earth radius model
-                
-                # Calculate x, y from longitude/latitude (meters from radar)
-                lat_to_m = 111000.0
-                lon_to_m = 111000.0 * np.cos(np.deg2rad(self.radar_lat))
-                
-                x_coords = (lon - self.radar_lon) * lon_to_m
-                y_coords = (lat - self.radar_lat) * lat_to_m
-                
-                # Calculate height using 4/3 Earth radius model
-                # Beam height: h = r * sin(θ) + r² / (2 * R_eff)
-                # where r is slant range, θ is elevation angle
-                # R_eff = ke * re is effective Earth radius
-                
-                r = distance * 1000  # Convert km to m, shape (n_distance,)
-                theta_rad = np.deg2rad(elevation)
-                
-                # Beam height above radar: shape (n_distance,)
-                h_beam_1d = r * np.sin(theta_rad) + (r ** 2) / (2 * self.reff)
-                
-                # Broadcast to match data shape (n_azimuth, n_distance)
-                h_beam = np.broadcast_to(h_beam_1d, (n_azimuth, n_distance))
-                z_coords = h_beam + self.radar_alt
+                # 如果scan中没有height，使用projection.height计算
+                from cinrad.projection import height as calc_height
+                dist_km = scan["distance"].values
+                h_km = calc_height(dist_km, scan.elevation, self.radar_alt)
+                n_az = data.shape[0]
+                z = np.broadcast_to(h_km * 1000, (n_az, len(dist_km)))
             
-            # Flatten and store
-            coords = np.column_stack([
-                x_coords.ravel(),
-                y_coords.ravel(),
-                z_coords.ravel()
-            ])
-            
-            all_coords.append(coords)
-            all_data.append(data.ravel())
+            coords_list.append(np.column_stack([x.ravel(), y.ravel(), z.ravel()]))
+            data_list.append(data.ravel())
         
-        # Combine all sweeps
-        self.polcoords = np.vstack(all_coords)
-        self.poldata = np.hstack(all_data)
-        
-        # Store shape info for later reshaping
-        self.polshape = (len(self.rl), 
-                        self.rl[0][self.dtype].shape[0], 
-                        self.rl[0][self.dtype].shape[1])
+        self.polcoords = np.vstack(coords_list)
+        self.poldata = np.hstack(data_list)
 
-    def _make_3d_grid(self, x_range: np.ndarray, y_range: np.ndarray, 
-                      z_levels: np.ndarray) -> tuple:
-        """Create 3D Cartesian grid coordinates.
+    def _get_tree(self, height: float, margin: float = 2000.0):
+        """获取指定高度范围的KDTree（带缓存）"""
+        key = int(height // 500) * 500
         
-        Args:
-            x_range: x coordinates (meters from radar)
-            y_range: y coordinates (meters from radar)
-            z_levels: z coordinates (altitude in meters)
-            
-        Returns:
-            gridcoords: Array of shape (num_voxels, 3)
-            gridshape: Tuple (nz, ny, nx) representing the grid shape
-        """
-        # Create 3D meshgrid
-        Z, Y, X = np.meshgrid(z_levels, y_range, x_range, indexing='ij')
+        if key not in self._tree_cache:
+            mask = np.abs(self._valid_coords[:, 2] - height) < margin
+            if not mask.any():
+                return None, None, 0
+            coords, data = self._valid_coords[mask], self._valid_data[mask]
+            self._tree_cache[key] = (self._cKDTree(coords), data, len(data))
         
-        # Flatten to get voxel coordinates
-        gridcoords = np.column_stack([
-            X.ravel(),
-            Y.ravel(),
-            Z.ravel()
-        ])
-        
-        gridshape = (len(z_levels), len(y_range), len(x_range))
-        
-        return gridcoords, gridshape
+        return self._tree_cache[key]
 
-    def _calculate_blindspots(self, gridcoords: np.ndarray, 
-                                minelev: float, maxelev: float, 
-                                maxrange: float) -> tuple:
-        """Calculate blind spots for the CAPPI.
-        
-        Blind spots are grid points that are:
-        1. Below the lowest elevation angle (considering Earth curvature)
-        2. Above the highest elevation angle  
-        3. Beyond the maximum range
-        
-        Uses the same 4/3 Earth radius model for consistency.
-        
-        Args:
-            gridcoords: Array of shape (num_voxels, 3)
-            minelev: Minimum elevation angle (degrees)
-            maxelev: Maximum elevation angle (degrees)
-            maxrange: Maximum range (meters)
-            
-        Returns:
-            tuple: (below, above, out_of_range) boolean arrays
-        """
-        # Distance from radar (handle NaN values)
-        dxdy = np.abs(gridcoords[:, :2])  # Use absolute values
-        dist = np.sqrt((dxdy ** 2).sum(axis=1))
-        
-        # Set NaN distances to infinity so they are masked
-        dist = np.where(np.isnan(dist), np.inf, dist)
-        
-        # Below the radar (below min elevation at that distance)
-        # Using 4/3 Earth radius model: h = r * sin(el) + r² / (2 * R_eff)
-        h_min = dist * np.sin(np.deg2rad(minelev)) + dist**2 / (2 * self.reff)
-        below = (gridcoords[:, 2] < h_min) | np.isnan(gridcoords[:, 2])
-        
-        # Above the radar (above max elevation at that distance)
-        h_max = dist * np.sin(np.deg2rad(maxelev)) + dist**2 / (2 * self.reff)
-        above = (gridcoords[:, 2] > h_max) | np.isnan(gridcoords[:, 2])
-        
-        # Out of range
-        out_of_range = (dist > maxrange) | np.isnan(dist)
-        
-        return below, above, out_of_range
-
-    def _get_cached_tree(self, target_height: float, v_margin: float = 1500.0):
-        """Get or build cached KDTree for a height range.
-        
-        Uses height binning to maximize cache hits (500m bins).
-        """
-        from scipy.spatial import cKDTree
-        
-        # Round height to 500m bins for cache key
-        cache_key = int(target_height // 500) * 500
-        
-        if cache_key in self._kdtree_cache:
-            return self._kdtree_cache[cache_key]
-        
-        # Filter by height range using pre-filtered valid data
-        z_dist = np.abs(self._valid_coords[:, 2] - target_height)
-        height_mask = z_dist < v_margin
-        
-        if not np.any(height_mask):
-            return None, None, 0
-        
-        src_coords = self._valid_coords[height_mask]
-        src_data = self._valid_data[height_mask]
-        
-        # Build and cache tree
-        tree = cKDTree(src_coords)
-        self._kdtree_cache[cache_key] = (tree, src_data, len(src_coords))
-        self._filtered_data_cache[cache_key] = src_data
-        
-        return tree, src_data, len(src_coords)
-
-    def _interpolate_3d(self, gridcoords: np.ndarray, 
-                        target_height: float,
-                        mask: np.ndarray = None,
-                        v_margin: float = 1500.0) -> np.ndarray:
-        """Optimized 3D interpolation with KDTree caching.
-        
-        Args:
-            gridcoords: Target grid coordinates (N, 3)
-            target_height: Target CAPPI height in meters
-            mask: Boolean mask for blind spots (True = skip)
-            v_margin: Vertical margin for data filtering (meters)
-        """
-        import time as _time
-        t0 = _time.perf_counter()
-        
-        # 1. Get cached tree or build new one
-        result = self._get_cached_tree(target_height, v_margin)
+    def _interpolate(self, grid: np.ndarray, height: float, 
+                     skip_mask: np.ndarray = None) -> np.ndarray:
+        """3D IDW插值"""
+        result = self._get_tree(height)
         if result[0] is None:
-            return np.full(len(gridcoords), np.nan)
+            return np.full(len(grid), np.nan)
         
         tree, src_data, n_src = result
-        t1 = _time.perf_counter()
+        output = np.full(len(grid), np.nan)
         
-        # 2. Prepare target points (skip masked)
-        trg_indices = np.where(~mask)[0] if mask is not None else np.arange(len(gridcoords))
-        output = np.full(len(gridcoords), np.nan)
-        
-        if len(trg_indices) == 0:
-            return output
-
-        # 3. Batch KNN query (k=4 is sufficient for IDW)
-        dists, indices = tree.query(gridcoords[trg_indices], k=4, distance_upper_bound=5000)
-        t2 = _time.perf_counter()
-        
-        # 4. Vectorized IDW interpolation
-        invalid_mask = (indices >= n_src)
-        indices[invalid_mask] = 0
-        
-        weights = 1.0 / (dists + 1e-6)
-        weights[invalid_mask] = 0
-        weights[np.isinf(dists)] = 0
-        
-        sum_weights = np.sum(weights, axis=1)
-        valid_trg_mask = sum_weights > 0
-        
-        if not np.any(valid_trg_mask):
+        # 确定需要插值的点
+        idx = np.where(~skip_mask)[0] if skip_mask is not None else np.arange(len(grid))
+        if len(idx) == 0:
             return output
         
-        neighbor_data = src_data[indices[valid_trg_mask]]
-        norm_weights = weights[valid_trg_mask] / sum_weights[valid_trg_mask][:, np.newaxis]
-        interpolated_vals = np.sum(norm_weights * neighbor_data, axis=1)
+        # KNN查询 - 使用更大的搜索半径以填补雷达上空空白
+        dist_from_center = np.sqrt(grid[idx, 0]**2 + grid[idx, 1]**2)
+        # 对于距离雷达中心近的点，使用更大的搜索半径
+        max_dist = np.where(dist_from_center < 30000, 15000.0, 8000.0)
         
-        actual_indices = trg_indices[valid_trg_mask]
-        output[actual_indices] = interpolated_vals
+        # 批量查询
+        dists, inds = tree.query(grid[idx], k=6)
         
-        if self._verbose:
-            print(f"[CAPPI] Interpolate: tree={1000*(t1-t0):.1f}ms, "
-                  f"query={1000*(t2-t1):.1f}ms, total={1000*(_time.perf_counter()-t0):.1f}ms")
+        # IDW权重计算
+        valid = (inds < n_src) & ~np.isinf(dists)
+        
+        # 对每个点应用距离上限
+        for i, md in enumerate(max_dist):
+            valid[i] &= (dists[i] < md)
+        
+        inds = np.where(valid, inds, 0)
+        weights = np.where(valid, 1.0 / (dists + 1e-6), 0.0)
+        
+        w_sum = weights.sum(axis=1)
+        has_data = w_sum > 0
+        
+        if has_data.any():
+            norm_w = weights[has_data] / w_sum[has_data, np.newaxis]
+            output[idx[has_data]] = (norm_w * src_data[inds[has_data]]).sum(axis=1)
         
         return output
 
+    def _calc_height_at_dist(self, dist_m: np.ndarray, elevation: float) -> np.ndarray:
+        """计算指定距离和仰角处的高度（复用projection.height的公式）
+        
+        使用与projection.height相同的公式：h = r*sin(θ) + r²/(2*RM)
+        但接受米为单位的输入，返回米为单位的输出
+        """
+        # projection.py中 RM = 8500 km，对应 reff = 8500000 m
+        # 与 ke * re = 4/3 * 6371000 ≈ 8494667 m 差异<0.1%
+        RM_M = 8500000.0  # 与projection.py中RM=8500km一致
+        theta = np.deg2rad(elevation)
+        return dist_m * np.sin(theta) + dist_m**2 / (2 * RM_M)
+
     def get_cappi_xy(self, xRange: np.ndarray, yRange: np.ndarray,
-                      level_height: float) -> Dataset:
-        r"""
-        Generate CAPPI in cartesian coordinates centered on radar.
-        Based on wradlib's 3D voxel interpolation approach.
+                     level_height: float) -> Dataset:
+        """生成笛卡尔坐标系的CAPPI
 
         Args:
-            xRange (numpy.ndarray): East-west coordinate array in meters from radar.
-            yRange (numpy.ndarray): North-south coordinate array in meters from radar.
-            level_height (float): Target height for CAPPI in meters.
+            xRange: 东西向坐标数组（米，相对雷达）
+            yRange: 南北向坐标数组（米，相对雷达）
+            level_height: CAPPI高度（米）
 
         Returns:
-            xarray.Dataset: CAPPI data with coordinates (x, y) in meters.
+            xarray.Dataset: CAPPI数据
         """
-        from xarray import DataArray, Dataset
+        # 创建网格
+        Y, X = np.meshgrid(yRange, xRange, indexing='ij')
+        Z = np.full_like(X, level_height)
+        grid = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
         
-        # Create 3D grid with single height level
-        z_levels = np.array([level_height])
-        gridcoords, gridshape = self._make_3d_grid(xRange, yRange, z_levels)
+        # 计算盲区
+        dist = np.sqrt(grid[:, 0]**2 + grid[:, 1]**2)
+        min_el, max_el = self.elev_angles.min(), self.elev_angles.max()
         
-        # Calculate blind spots
-        minelev = self.elev_angles.min()
-        maxelev = self.elev_angles.max()
-        maxrange = xRange.max() * 1.5  # Allow some margin
+        # 高度范围（使用与projection.height一致的公式）
+        h_min = self._calc_height_at_dist(dist, min_el)
+        h_max = self._calc_height_at_dist(dist, max_el)
         
-        below, above, out_of_range = self._calculate_blindspots(
-            gridcoords, minelev, maxelev, maxrange
-        )
+        # 对于距离雷达较近的区域（<30km），放宽盲区限制
+        near_radar = dist < 30000
+        skip = np.where(near_radar,
+                        False,  # 近雷达区域不跳过
+                        (grid[:, 2] < h_min) | (grid[:, 2] > h_max) | (dist > max(abs(xRange.max()), abs(yRange.max())) * 1.5))
         
-        # Mask for blind voxels
-        mask = below | above | out_of_range
+        # 插值
+        cappi = self._interpolate(grid, level_height, skip).reshape(len(yRange), len(xRange))
         
-        # Perform 3D interpolation
-        gridded = self._interpolate_3d(gridcoords, level_height, mask)
-        
-        # Reshape to 2D
-        cappi_2d = gridded.reshape(gridshape[1], gridshape[2])
-        
-        # Create output Dataset
-        ret = Dataset({
-            self.dtype: DataArray(
-                cappi_2d,
-                coords=[yRange, xRange],
-                dims=["y", "x"]
-            )
-        })
-
-        # Set attributes
-        r_attr = self.attrs.copy()
-        r_attr["cappi_height"] = level_height
-        r_attr["elevation"] = level_height / 1000.0
-        r_attr["tangential_reso"] = np.nan
-        r_attr["range"] = np.nan
-
-        ret.attrs = r_attr
-
+        # 构建结果
+        ret = Dataset({self.dtype: DataArray(cappi, coords=[yRange, xRange], dims=["y", "x"])})
+        ret.attrs = {**self.attrs, "cappi_height": level_height, 
+                     "elevation": level_height / 1000.0}
         return ret
 
     def get_cappi_lonlat(self, XLon: np.ndarray, YLat: np.ndarray,
-                          level_height: float) -> Dataset:
-        r"""
-        Generate CAPPI in geographic coordinates (longitude, latitude).
-        Based on wradlib's 3D voxel interpolation approach.
+                         level_height: float) -> Dataset:
+        """生成经纬度坐标系的CAPPI
 
         Args:
-            XLon (numpy.ndarray): Longitude array in degrees.
-            YLat (numpy.ndarray): Latitude array in degrees.
-            level_height (float): Target height for CAPPI in meters.
+            XLon: 经度数组（度）
+            YLat: 纬度数组（度）
+            level_height: CAPPI高度（米）
 
         Returns:
-            xarray.Dataset: CAPPI data with coordinates (lon, lat) in degrees.
+            xarray.Dataset: CAPPI数据
         """
-        from xarray import DataArray, Dataset
+        # 转换为相对坐标（与projection.get_coordinate一致的转换方式）
+        xRange = (XLon - self.radar_lon) * self._lon_to_m
+        yRange = (YLat - self.radar_lat) * self.LAT_TO_M
         
-        # Convert lon/lat to x/y relative to radar
-        # 1 degree of longitude ≈ 111km * cos(latitude)
-        # 1 degree of latitude ≈ 111km
-        
-        lat_rad = np.deg2rad(self.radar_lat)
-        lon_to_m = 111000.0 * np.cos(lat_rad)
-        lat_to_m = 111000.0
-        
-        xRange = (XLon - self.radar_lon) * lon_to_m
-        yRange = (YLat - self.radar_lat) * lat_to_m
-        
-        # Generate CAPPI using xy coordinates
+        # 计算CAPPI
         cappi_xy = self.get_cappi_xy(xRange, yRange, level_height)
         
-        # Create output with lon/lat coordinates
-        ret = Dataset({
-            self.dtype: DataArray(
-                cappi_xy[self.dtype].values,
-                coords=[YLat, XLon],
-                dims=["lat", "lon"]
-            )
-        })
-
-        # Set attributes
-        r_attr = self.attrs.copy()
-        r_attr["cappi_height"] = level_height
-        r_attr["elevation"] = level_height / 1000.0
-        r_attr["tangential_reso"] = np.nan
-        r_attr["range"] = np.nan
-
-        ret.attrs = r_attr
-
+        # 转换坐标
+        ret = Dataset({self.dtype: DataArray(
+            cappi_xy[self.dtype].values, coords=[YLat, XLon], dims=["lat", "lon"]
+        )})
+        ret.attrs = cappi_xy.attrs
         return ret
+
