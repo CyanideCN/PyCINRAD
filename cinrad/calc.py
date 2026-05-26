@@ -30,6 +30,7 @@ __all__ = [
     "quick_vild",
     "GridMapper",
     "hydro_class",
+    "CAPPI",
 ]
 
 
@@ -561,3 +562,277 @@ def hydro_class(
     hcl["cHCL"] = (["azimuth", "distance"], result)
     del hcl["REF"]
     return hcl
+
+
+class CAPPI(object):
+    r"""
+    CAPPI (Constant Altitude Plan Position Indicator) 等高面计算类
+    
+    使用3D体素插值方法，复用库内现有的高度计算和坐标转换函数。
+
+    Args:
+        r_list: 各仰角的反射率数据列表
+        verbose: 是否打印性能信息
+
+    Example:
+        >>> f = cinrad.io.CinradReader(radar_file)
+        >>> rl = [f.get_data(i, 230, 'REF') for i in f.angleindex_r]
+        >>> cappi = cinrad.calc.CAPPI(rl)
+        >>> x1d = np.arange(-150000, 150001, 1000)
+        >>> y1d = np.arange(-150000, 150001, 1000)
+        >>> grid = cappi.get_cappi_xy(x1d, y1d, level_height=3000)
+    """
+
+    # 坐标转换常数（与projection.py一致）
+    LAT_TO_M = 111000.0  # 1度纬度约111km
+    
+    def __init__(self, r_list: Volume_T, re: float = 6371000.0, 
+                 ke: float = 4.0/3.0, verbose: bool = False):
+        from scipy.spatial import cKDTree
+        
+        self._verbose = verbose
+        self._cKDTree = cKDTree
+        
+        # 去除重复仰角
+        seen = set()
+        self.rl = [d for d in r_list if d.elevation not in seen and not seen.add(d.elevation)]
+        
+        self.dtype = get_dtype(r_list[0])
+        self.attrs = r_list[0].attrs.copy()
+        
+        # 雷达位置和仰角信息
+        self.radar_lat = self.rl[0].site_latitude
+        self.radar_lon = self.rl[0].site_longitude
+        self.radar_alt = getattr(self.rl[0], 'radar_height', 0)
+        self.elev_angles = np.array([i.elevation for i in self.rl])
+        
+        # 等效地球半径参数（保留以兼容旧代码）
+        self.re = re
+        self.ke = ke
+        self.reff = ke * re
+        
+        # 经度转换系数（依赖纬度，与projection.get_coordinate一致）
+        self._lon_to_m = self.LAT_TO_M * np.cos(np.deg2rad(self.radar_lat))
+        
+        # 计算所有数据点的3D坐标（复用scan中已计算的坐标）
+        self._build_polar_coords()
+        
+        # 预过滤有效数据
+        valid = ~np.isnan(self.poldata)
+        self._valid_coords = self.polcoords[valid]
+        self._valid_data = self.poldata[valid]
+        
+        # KDTree缓存
+        self._tree_cache = {}
+
+    def _build_polar_coords(self):
+        """计算所有极坐标数据点的3D笛卡尔坐标
+        
+        复用scan中已计算好的坐标数据：
+        - longitude/latitude: 由cinrad.projection.get_coordinate计算
+        - height: 由cinrad.projection.height计算
+        """
+        coords_list, data_list = [], []
+        
+        for scan in self.rl:
+            data = scan[self.dtype].values
+            
+            # 直接使用scan中已计算好的坐标（由get_coordinate计算）
+            lon = scan["longitude"].values
+            lat = scan["latitude"].values
+            
+            # 转换为相对雷达的XY坐标（米）
+            x = (lon - self.radar_lon) * self._lon_to_m
+            y = (lat - self.radar_lat) * self.LAT_TO_M
+            
+            # 直接使用scan中已计算好的高度（由projection.height计算，单位km）
+            # height数据已包含大气折射校正
+            if "height" in scan:
+                z = scan["height"].values * 1000  # km -> m
+            else:
+                # 如果scan中没有height，使用projection.height计算
+                from cinrad.projection import height as calc_height
+                dist_km = scan["distance"].values
+                h_km = calc_height(dist_km, scan.elevation, self.radar_alt)
+                n_az = data.shape[0]
+                z = np.broadcast_to(h_km * 1000, (n_az, len(dist_km)))
+            
+            coords_list.append(np.column_stack([x.ravel(), y.ravel(), z.ravel()]))
+            data_list.append(data.ravel())
+        
+        self.polcoords = np.vstack(coords_list)
+        self.poldata = np.hstack(data_list)
+
+    def _get_tree(self, height: float, margin: float = 1500.0):
+        """获取指定高度范围的KDTree（带缓存）"""
+        key = int(height // 500) * 500
+        
+        if key not in self._tree_cache:
+            mask = np.abs(self._valid_coords[:, 2] - height) < margin
+            if not mask.any():
+                return None, None, 0
+            coords, data = self._valid_coords[mask], self._valid_data[mask]
+            self._tree_cache[key] = (self._cKDTree(coords), data, len(data))
+        
+        return self._tree_cache[key]
+
+    @staticmethod
+    def _calc_weight(dist: np.ndarray, r: float, method: str = "barnes") -> np.ndarray:
+        """计算插值权重（与pycwr一致）
+        
+        Args:
+            dist: 距离数组
+            r: 影响半径
+            method: 'barnes', 'cressman', 或 'idw'
+        
+        Returns:
+            权重数组
+        """
+        if method == "barnes":
+            # Barnes权重：exp(-4*d²/r²)
+            return np.exp(-4 * dist**2 / r**2)
+        elif method == "cressman":
+            # Cressman权重：(r²-d²)/(d²+r²)
+            return np.maximum(0, (r**2 - dist**2) / (dist**2 + r**2))
+        else:  # idw
+            # 反距离权重：1/d
+            return 1.0 / (dist + 1e-6)
+
+    def _interpolate(self, grid: np.ndarray, height: float, 
+                     skip_mask: np.ndarray = None,
+                     method: str = "barnes",
+                     influence_radius: float = None) -> np.ndarray:
+        """3D加权插值（标准3D欧氏空间）"""
+        result = self._get_tree(height)
+        if result[0] is None:
+            return np.full(len(grid), np.nan, dtype=np.float64)
+        
+        tree, src_data_raw, n_src = result
+        src_data = np.asarray(src_data_raw, dtype=np.float64)
+        output = np.full(len(grid), np.nan, dtype=np.float64)
+        
+        idx = np.where(~skip_mask)[0] if skip_mask is not None else np.arange(len(grid))
+        if len(idx) == 0:
+            return output
+        
+        target_coords = np.asarray(grid[idx], dtype=np.float64)
+        dist_from_center = np.sqrt(target_coords[:, 0]**2 + target_coords[:, 1]**2)
+        
+        if influence_radius is None:
+            min_roi = 500.0  # 进一步减小以对齐标准
+            beam_width = 1.0
+            roi = min_roi + (dist_from_center / 1000.0) * beam_width * 20
+        else:
+            roi = np.full(len(idx), influence_radius)
+        
+        # 标准3D查询，不使用Z缩放
+        k_neighbors = 8  # 减少邻居数以避免过度外推
+        dists, inds = tree.query(target_coords, k=k_neighbors)
+        
+        valid = (inds < n_src)
+        for i in range(len(idx)):
+            v_mask = valid[i]
+            if not v_mask.any():
+                continue
+            
+            d = dists[i, v_mask]
+            r = roi[i]
+            
+            # 过滤超出影响半径的点
+            dist_filter = d < r
+            if not dist_filter.any():
+                continue
+                
+            w = self._calc_weight(d[dist_filter], r, method)
+            v = src_data[inds[i, v_mask][dist_filter]]
+            
+            finite = np.isfinite(v) & (w > 0)
+            if not finite.any():
+                continue
+                
+            w_sum = np.sum(w[finite])
+            if w_sum > 1e-6:
+                output[idx[i]] = np.sum(w[finite] * v[finite]) / w_sum
+                
+        return output
+
+    def _calc_height_at_dist(self, dist_m: np.ndarray, elevation: float) -> np.ndarray:
+        """计算指定距离和仰角处的高度（复用projection.height的公式）
+        
+        使用与projection.height相同的公式：h = r*sin(θ) + r²/(2*RM)
+        但接受米为单位的输入，返回米为单位的输出
+        """
+        # projection.py中 RM = 8500 km，对应 reff = 8500000 m
+        # 与 ke * re = 4/3 * 6371000 ≈ 8494667 m 差异<0.1%
+        RM_M = 8500000.0  # 与projection.py中RM=8500km一致
+        theta = np.deg2rad(elevation)
+        return dist_m * np.sin(theta) + dist_m**2 / (2 * RM_M)
+
+    def get_cappi_xy(self, xRange: np.ndarray, yRange: np.ndarray,
+                     level_height: float, method: str = "barnes") -> Dataset:
+        """生成笛卡尔坐标系的CAPPI
+
+        Args:
+            xRange: 东西向坐标数组（米，相对雷达）
+            yRange: 南北向坐标数组（米，相对雷达）
+            level_height: CAPPI高度（米）
+            method: 插值方法 'barnes', 'cressman', 或 'idw'（默认barnes，与pycwr一致）
+
+        Returns:
+            xarray.Dataset: CAPPI数据
+        """
+        # 定义网格
+        Y, X = np.meshgrid(yRange, xRange, indexing='ij')
+        Z = np.full_like(X, level_height)
+        grid = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
+        
+        # 计算盲区（恢复物理采样范围限制）
+        dist_2d = np.sqrt(X**2 + Y**2).ravel()
+        min_el, max_el = self.elev_angles.min(), self.elev_angles.max()
+        
+        h_min = self._calc_height_at_dist(dist_2d, min_el)
+        h_max = self._calc_height_at_dist(dist_2d, max_el)
+        
+        # 允许极小余量
+        margin_h = 500.0 
+        skip = (grid[:, 2] < h_min - margin_h) | (grid[:, 2] > h_max + margin_h) | \
+               (dist_2d > max(abs(xRange.max()), abs(yRange.max())) * 1.5)
+        
+        # 插值
+        cappi = self._interpolate(grid, level_height, skip, method=method).reshape(len(yRange), len(xRange))
+        
+        # 构建结果
+        ret = Dataset({self.dtype: DataArray(cappi, coords=[yRange, xRange], dims=["y", "x"])})
+        ret.attrs = {**self.attrs, "cappi_height": level_height, 
+                     "elevation": level_height / 1000.0,
+                     "interpolation_method": method}
+        return ret
+
+    def get_cappi_lonlat(self, XLon: np.ndarray, YLat: np.ndarray,
+                         level_height: float, method: str = "barnes") -> Dataset:
+        """生成经纬度坐标系的CAPPI
+
+        Args:
+            XLon: 经度数组（度）
+            YLat: 纬度数组（度）
+            level_height: CAPPI高度（米）
+            method: 插值方法 'barnes', 'cressman', 或 'idw'
+
+        Returns:
+            xarray.Dataset: CAPPI数据
+        """
+        # 转换为相对坐标（与projection.get_coordinate一致的转换方式）
+        xRange = (XLon - self.radar_lon) * self._lon_to_m
+        yRange = (YLat - self.radar_lat) * self.LAT_TO_M
+        
+        # 计算CAPPI
+        cappi_xy = self.get_cappi_xy(xRange, yRange, level_height, method=method)
+        
+        # 转换坐标
+        ret = Dataset({self.dtype: DataArray(
+            cappi_xy[self.dtype].values, coords=[YLat, XLon], dims=["lat", "lon"]
+        )})
+        ret.attrs = cappi_xy.attrs
+        return ret
+
+
