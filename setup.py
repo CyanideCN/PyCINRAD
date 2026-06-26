@@ -31,7 +31,7 @@ setup(
     version="1.9.3",
     description="Decode CINRAD radar data and visualize",
     long_description="Decode CINRAD radar data and visualize",
-    license="GPL Licence",
+    license="GPL License",
     author="PyCINRAD Developers",
     author_email="dpy274555447@gmail.com",
     packages=find_packages(),
