@@ -21,6 +21,7 @@ from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
 from cinrad.common import get_dtype
 from cinrad.hca import hydro_class as _hca
+from cinrad.cappi import CAPPI
 
 __all__ = [
     "quick_cr",
@@ -30,6 +31,7 @@ __all__ = [
     "quick_vild",
     "GridMapper",
     "hydro_class",
+    "CAPPI",
 ]
 
 
