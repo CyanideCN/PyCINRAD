@@ -97,7 +97,7 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
     Returns:
         xarray.Dataset: composite reflectivity
     """
-    r_data = list()
+
     # Get grid from the first tilt
     r, x, y = grid_2d(
         r_list[0]["REF"].values,
@@ -105,9 +105,9 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
         r_list[0]["latitude"].values,
         resolution=resolution,
     )
-    r_data.append(r)
+    cr = r
     for i in r_list[1:]:
-        r, x, y = grid_2d(
+        r, _, _ = grid_2d(
             i["REF"].values,
             i["longitude"].values,
             i["latitude"].values,
@@ -115,10 +115,9 @@ def quick_cr(r_list: Volume_T, resolution: tuple = (1000, 1000)) -> Dataset:
             y_out=y,
             resolution=resolution,
         )
-        r_data.append(r)
-    cr = np.nanmax(r_data, axis=0)
+        cr = np.fmax(cr, r)
     ret = Dataset({"CR": DataArray(cr, coords=[y, x], dims=["latitude", "longitude"])})
-    ret.attrs = i.attrs
+    ret.attrs = r_list[0].attrs.copy()
     ret.attrs["elevation"] = 0
     return ret
 
@@ -469,12 +468,13 @@ class GridMapper(object):
 
     def _merge_xy(self, x: np.ndarray, y: np.ndarray) -> Dataset:
         # interpolate datas to full grid
-        r_data = list()
-        for field in self.fields:
+        grid0 = self.fields[0].interp(longitude=x[0], latitude=y[:, 0], method="linear")
+        r_data_max = grid0[self.dtype].values
+        for field in self.fields[1:]:
             field_grid = field.interp(longitude=x[0], latitude=y[:, 0], method="linear")
-            r_data.append(field_grid[self.dtype].values)
-        # select max value in each grid
-        r_data_max = np.nanmax(r_data, axis=0)
+            current = field_grid[self.dtype].values
+            r_data_max = np.fmax(r_data_max, current)
+       
         ret = Dataset(
             {
                 self.dtype: DataArray(
