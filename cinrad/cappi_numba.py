@@ -289,8 +289,19 @@ if HAS_NUMBA:
         xc = np.ascontiguousarray(x, dtype=np.float64)
         yc = np.ascontiguousarray(y, dtype=np.float64)
 
-        return _cappi_kernel(
+        result = _cappi_kernel(
             xc, yc, level_height, h_radar, reff,
             elevs, az_list, r_list, data_list,
-            fillvalue, beam_half,
+            np.nan, beam_half,
         )
+
+        try:
+            fill_is_nan = bool(np.isnan(fillvalue))
+        except (TypeError, ValueError):
+            fill_is_nan = False
+        if not fill_is_nan:
+            result = np.where(np.isnan(result), fillvalue, result)
+        return result
+else:
+    def cappi_sweep_interp(*args, **kwargs):
+        raise ImportError("numba is required for cappi_sweep_interp")

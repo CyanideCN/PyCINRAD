@@ -1,5 +1,10 @@
+import os
+import subprocess
+import sys
+
 import numpy as np
 import xarray as xr
+import cinrad.calc as calc_mod
 from cinrad.calc import CAPPI
 from cinrad.common import get_dtype
 
@@ -88,12 +93,50 @@ def _make_volume(naz=360, nrange=230, elevations=None, refl_value=20.0):
     return sweeps
 
 
+def _make_azimuth_value_sweep():
+    ds = _make_sweep_data(naz=36, nrange=60, elevation=1.0, noise=np.nan)
+    az_deg = np.array([350] + list(range(0, 350, 10)), dtype=np.float64)
+    az = np.deg2rad(az_deg)
+    data = np.repeat(az_deg[:, None], ds.sizes["distance"], axis=1)
+    ds = ds.assign_coords(azimuth=az)
+    ds["REF"] = (["azimuth", "distance"], data)
+    return ds
+
+
 # =============== 基本功能测试 ===============
 
 def test_cappi_import():
     """测试 CAPPI 类能正确导入."""
     from cinrad import CAPPI as CAPI
     assert CAPI is CAPPI
+
+
+def test_cappi_import_without_numba():
+    """测试未安装 numba 时 cinrad 仍可导入."""
+    code = """
+import builtins
+real_import = builtins.__import__
+
+def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == "numba" or name.startswith("numba."):
+        raise ImportError("blocked numba")
+    return real_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = fake_import
+import cinrad
+from cinrad.calc import CAPPI, HAS_NUMBA
+assert HAS_NUMBA is False
+assert CAPPI is cinrad.CAPPI
+"""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.getcwd() + os.pathsep + env.get("PYTHONPATH", "")
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_cappi_init_single():
@@ -119,6 +162,17 @@ def test_cappi_dedup():
     s = [_make_sweep_data(elevation=1.0), _make_sweep_data(elevation=1.0)]
     cappi = CAPPI(s)
     assert len(cappi.rl) == 1
+
+
+def test_cappi_sorts_rolled_azimuth():
+    """测试从 350 度起扫、跨 360 度的径向顺序."""
+    cappi = CAPPI([_make_azimuth_value_sweep()])
+    assert np.all(np.diff(cappi._sweep_azimuths[0]) >= 0)
+
+    v_0 = cappi._interp_sweep_sample(0, 0.0, 30000.0, np.nan)
+    v_350 = cappi._interp_sweep_sample(0, 350.0, 30000.0, np.nan)
+    assert np.isclose(v_0, 0.0, atol=1e-6)
+    assert np.isclose(v_350, 350.0, atol=1e-6)
 
 
 # =============== 坐标转换测试 ===============
@@ -310,6 +364,25 @@ def test_cappi_single_sweep():
     ds = cappi.get_cappi_xy(x, y, level_height=1000.0)
     assert ds is not None
     assert ds["REF"].shape == (11, 11)
+
+
+def test_cappi_custom_fillvalue_not_interpolated(monkeypatch):
+    """测试自定义填充值不会作为有效数据参与仰角层间插值."""
+    sweeps = _make_volume(
+        naz=36, nrange=120, elevations=[0.5, 3.0], refl_value=20.0
+    )
+    sweeps[0]["REF"] = xr.full_like(sweeps[0]["REF"], np.nan)
+    sweeps[1]["REF"] = xr.full_like(sweeps[1]["REF"], 20.0)
+    cappi = CAPPI(sweeps)
+
+    for use_numba in [calc_mod.HAS_NUMBA, False]:
+        monkeypatch.setattr(calc_mod, "HAS_NUMBA", use_numba)
+        ds = cappi.get_cappi_xy(
+            np.array([0.0]), np.array([100000.0]),
+            level_height=3000.0, fillvalue=-999.0,
+        )
+        value = float(ds["REF"].values[0, 0])
+        assert np.isclose(value, 20.0, atol=1e-6)
 
 
 def test_cappi_get_cappi_lonlat():

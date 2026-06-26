@@ -21,7 +21,7 @@ from cinrad.error import RadarCalculationError
 from cinrad._typing import Volume_T
 from cinrad.common import get_dtype
 from cinrad.hca import hydro_class as _hca
-from cinrad.cappi_numba import HAS_NUMBA, cappi_sweep_interp
+from cinrad.cappi_numba import HAS_NUMBA
 
 __all__ = [
     "quick_cr",
@@ -596,14 +596,19 @@ class CAPPI(object):
     def __init__(self, r_list: Volume_T, re: float = 6371000.0,
                  ke: float = 4.0 / 3.0, verbose: bool = False):
         self._verbose = verbose
+        if not r_list:
+            raise ValueError("Input radar volume cannot be empty")
 
-        # 去除重复仰角
+        # 去除重复仰角，并按仰角升序排列，后续 searchsorted 依赖该顺序。
         seen = set()
-        self.rl = [d for d in r_list
-                   if d.elevation not in seen and not seen.add(d.elevation)]
+        self.rl = sorted(
+            [d for d in r_list
+             if d.elevation not in seen and not seen.add(d.elevation)],
+            key=lambda d: d.elevation,
+        )
 
-        self.dtype = get_dtype(r_list[0])
-        self.attrs = r_list[0].attrs.copy()
+        self.dtype = get_dtype(self.rl[0])
+        self.attrs = self.rl[0].attrs.copy()
 
         # 雷达位置
         self.radar_lat = self.rl[0].site_latitude
@@ -624,15 +629,23 @@ class CAPPI(object):
         self._sweep_data = []      # list of 2D ndarray (naz, nrange)
 
         for scan in self.rl:
-            data = scan[self.dtype].values
-            az = scan["azimuth"].values       # radians, sorted
-            r = scan["distance"].values       # km
+            data = np.asarray(scan[self.dtype].values, dtype=np.float64)
+            az = np.mod(np.asarray(scan["azimuth"].values,
+                                   dtype=np.float64), 2.0 * np.pi)
+            r = np.asarray(scan["distance"].values, dtype=np.float64)
+
+            az_order = np.argsort(az, kind="mergesort")
+            r_order = np.argsort(r, kind="mergesort")
+            az = az[az_order]
+            r = r[r_order]
+            data = data[np.ix_(az_order, r_order)]
+
             self._sweep_azimuths.append(
-                np.ascontiguousarray(az, dtype=np.float64))
+                np.ascontiguousarray(az))
             self._sweep_ranges.append(
-                np.ascontiguousarray(r, dtype=np.float64))
+                np.ascontiguousarray(r))
             self._sweep_data.append(
-                np.ascontiguousarray(data, dtype=np.float64))
+                np.ascontiguousarray(data))
 
         # 雷达天线海拔高度 (m MSL)
         self.radar_height = 0.0
@@ -829,6 +842,7 @@ class CAPPI(object):
         # 2. 对每个网格点做 sweep-based 插值
         t1 = time.time()
         beam_half = max(beam_width_deg * 0.5, 0.1)
+        internal_fill = np.nan
 
         if HAS_NUMBA:
             # numba 并行加速路径（~20-50×）
@@ -838,12 +852,12 @@ class CAPPI(object):
                 level_height, self.radar_height, self.reff,
                 self._sweep_azimuths, self._sweep_ranges, self._sweep_data,
                 self.elev_angles,
-                fillvalue=fillvalue, beam_half=beam_half,
+                fillvalue=internal_fill, beam_half=beam_half,
             )
         else:
             # 纯 Python 路径
             ne = len(self.elev_angles)
-            result = np.full(n_total, fillvalue, dtype=np.float64)
+            result = np.full(n_total, internal_fill, dtype=np.float64)
 
             for i in range(n_total):
                 el = el_deg[i]
@@ -857,7 +871,7 @@ class CAPPI(object):
                     if abs(el - self.elev_angles[0]) > beam_half:
                         continue
                     result[i] = self._interp_sweep_sample(
-                        0, az, r, fillvalue)
+                        0, az, r, internal_fill)
                     continue
 
                 if el < self.elev_angles[0] - beam_half:
@@ -867,10 +881,10 @@ class CAPPI(object):
 
                 if el <= self.elev_angles[0] + beam_half:
                     result[i] = self._interp_sweep_sample(
-                        0, az, r, fillvalue)
+                        0, az, r, internal_fill)
                 elif el >= self.elev_angles[-1] - beam_half:
                     result[i] = self._interp_sweep_sample(
-                        ne - 1, az, r, fillvalue)
+                        ne - 1, az, r, internal_fill)
                 else:
                     ie = np.searchsorted(self.elev_angles, el, side='right')
                     if ie >= ne:
@@ -879,12 +893,12 @@ class CAPPI(object):
                     upper = ie
 
                     val_low = self._interp_sweep_sample(
-                        lower, az, r, fillvalue)
+                        lower, az, r, internal_fill)
                     val_up = self._interp_sweep_sample(
-                        upper, az, r, fillvalue)
+                        upper, az, r, internal_fill)
 
                     if np.isnan(val_low) and np.isnan(val_up):
-                        result[i] = fillvalue
+                        result[i] = internal_fill
                     elif np.isnan(val_low):
                         result[i] = val_up
                     elif np.isnan(val_up):
@@ -899,6 +913,12 @@ class CAPPI(object):
             print(f"[CAPPI] 插值耗时: {time.time() - t1:.2f}s")
 
         result_2d = result.reshape(ny, nx)
+        try:
+            fill_is_nan = bool(np.isnan(fillvalue))
+        except (TypeError, ValueError):
+            fill_is_nan = False
+        if not fill_is_nan:
+            result_2d = np.where(np.isnan(result_2d), fillvalue, result_2d)
         ret = Dataset({
             self.dtype:
                 DataArray(result_2d, coords=[yRange, xRange], dims=["y", "x"])
