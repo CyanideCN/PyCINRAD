@@ -7,6 +7,7 @@ from functools import wraps
 import numpy as np
 
 from cinrad.io.level2 import StandardData
+from cinrad.error import RadarDecodeError
 
 try:
     import pyart
@@ -35,6 +36,24 @@ mapping = {
     "RHO": "cross_correlation_ratio",
     "KDP": "specific_differential_phase",
 }
+
+
+
+def _get_raw_or_empty(f, tilt, drange, dtype):
+    """Get raw data for given tilt; return empty masked array if product missing."""
+    try:
+        return f.get_raw(tilt, drange, dtype)
+    except RadarDecodeError:
+        nrays = len(f.aux[tilt]["azimuth"])
+        if dtype in ["VEL", "SW", "VELSZ"]:
+            reso = f.scan_config[tilt].dop_reso / 1000
+        else:
+            reso = f.scan_config[tilt].log_reso / 1000
+        ngates = int(drange // reso)
+        empty = np.zeros((nrays, ngates)) * np.ma.masked
+        if dtype in ["VEL", "SW", "VELSZ"]:
+            return (empty, empty.copy())
+        return empty
 
 
 @check_pyart_installed
@@ -101,7 +120,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
             dic = filemetadata(name)
             dic["_FillValue"] = pyart.config.get_fillvalue()
             raw_arr = [
-                f.get_raw(nel, radius, mom, strict=False) for nel in range(nscans)
+                _get_raw_or_empty(f, nel, radius, mom) for nel in range(nscans)
             ]
             sel_arr = [i if not isinstance(i, tuple) else i[0] for i in raw_arr]
             moment_data = np.ma.vstack(sel_arr)
