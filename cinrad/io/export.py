@@ -7,6 +7,7 @@ from functools import wraps
 import numpy as np
 
 from cinrad.io.level2 import StandardData
+from cinrad.error import RadarDecodeError
 
 try:
     import pyart
@@ -35,6 +36,24 @@ mapping = {
     "RHO": "cross_correlation_ratio",
     "KDP": "specific_differential_phase",
 }
+
+
+
+def _get_raw_or_empty(f, tilt, drange, dtype):
+    """Get raw data for given tilt; return empty masked array if product missing."""
+    try:
+        return f.get_raw(tilt, drange, dtype)
+    except RadarDecodeError:
+        nrays = len(f.aux[tilt]["azimuth"])
+        if dtype in ["VEL", "SW", "VELSZ"]:
+            reso = f.scan_config[tilt].dop_reso / 1000
+        else:
+            reso = f.scan_config[tilt].log_reso / 1000
+        ngates = int(drange // reso)
+        empty = np.zeros((nrays, ngates)) * np.ma.masked
+        if dtype in ["VEL", "SW", "VELSZ"]:
+            return (empty, empty.copy())
+        return empty
 
 
 @check_pyart_installed
@@ -88,7 +107,7 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
     fixed_angle["data"] = np.array(f.el)
 
     fields = {}
-    # nscans = f.get_nscans()
+    nscans = f.get_nscans()
 
     all_var = list()
     for lvl in f.data:
@@ -100,16 +119,18 @@ def standard_data_to_pyart(f: StandardData, radius: int = 460) -> pyart.core.Rad
             name = mapping[mom]
             dic = filemetadata(name)
             dic["_FillValue"] = pyart.config.get_fillvalue()
-            raw_arr = [f.get_raw(nel, radius, mom) for nel in f.available_tilt(mom)]
+            raw_arr = [
+                _get_raw_or_empty(f, nel, radius, mom) for nel in range(nscans)
+            ]
             sel_arr = [i if not isinstance(i, tuple) else i[0] for i in raw_arr]
             moment_data = np.ma.vstack(sel_arr)
             dic["data"] = moment_data
             fields[name] = dic
 
     nyquist_velocity = filemetadata("nyquist_velocity")
-    nyquist_velocity["data"] = np.array(
-        [i.nyquist_spd for i in f.scan_config], "float32"
-    )
+    nyquist_spd = np.array([i.nyquist_spd for i in f.scan_config], "float32")
+    sweeps_lens = sweep_end_ray_index["data"] - sweep_start_ray_index["data"] + 1
+    nyquist_velocity["data"] = np.repeat(nyquist_spd, sweeps_lens)
     unambiguous_range = filemetadata("unambiguous_range")
     unambiguous_range["data"] = np.array(
         [i.max_range1 for i in f.scan_config], "float32"
