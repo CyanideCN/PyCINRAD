@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 import xarray as xr
-import cinrad.calc as calc_mod
+import cinrad.cappi as cappi_mod
 from cinrad.calc import CAPPI
 from cinrad.common import get_dtype
 
@@ -124,7 +124,8 @@ def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 builtins.__import__ = fake_import
 import cinrad
-from cinrad.calc import CAPPI, HAS_NUMBA
+from cinrad.calc import CAPPI
+from cinrad.cappi import HAS_NUMBA
 assert HAS_NUMBA is False
 assert CAPPI is cinrad.CAPPI
 """
@@ -375,8 +376,8 @@ def test_cappi_custom_fillvalue_not_interpolated(monkeypatch):
     sweeps[1]["REF"] = xr.full_like(sweeps[1]["REF"], 20.0)
     cappi = CAPPI(sweeps)
 
-    for use_numba in [calc_mod.HAS_NUMBA, False]:
-        monkeypatch.setattr(calc_mod, "HAS_NUMBA", use_numba)
+    for use_numba in [cappi_mod.HAS_NUMBA, False]:
+        monkeypatch.setattr(cappi_mod, "HAS_NUMBA", use_numba)
         ds = cappi.get_cappi_xy(
             np.array([0.0]), np.array([100000.0]),
             level_height=3000.0, fillvalue=-999.0,
