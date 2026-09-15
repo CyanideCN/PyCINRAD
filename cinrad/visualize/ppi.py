@@ -581,13 +581,16 @@ class PPI(object):
             os.path.join(MODULE_DIR, "data", "chinaCity.json"), encoding="utf-8"
         ) as j:
             js = json.load(j)
-        name = np.concatenate([[j["name"] for j in i["children"]] for i in js])
-        lon = np.concatenate([[j["log"] for j in i["children"]] for i in js]).astype(
-            float
-        )
-        lat = np.concatenate([[j["lat"] for j in i["children"]] for i in js]).astype(
-            float
-        )
+        counties = [
+            county
+            for province in js["districts"][0]["districts"]
+            for city in province.get("districts", [])
+            for county in city.get("districts", [])
+            if county["level"] in ["city", "district"]
+        ]
+        name = np.array([c["name"] for c in counties])
+        lon = np.array([float(c["center"].split(",")[0]) for c in counties])
+        lat = np.array([float(c["center"].split(",")[1]) for c in counties])
         extent = self.settings["extent"]
         fraction = (extent[1] - extent[0]) * 0.04
         target_city = (

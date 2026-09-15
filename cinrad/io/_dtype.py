@@ -111,7 +111,7 @@ S_SPECIAL_dtype = np.dtype(_S_HEADER + _S_INFO + _S_RES_2 + _SPECIAL_DATA)
 
 SWAN_HEADER = [
     ("data_type", "12c"),
-    ("data_name", "38c"),
+    ("data_name", "S38"),
     ("name", "8c"),
     ("version", "8c"),
     ("year", "u2"),
@@ -165,7 +165,7 @@ MOCM_HEADER = [
     ("file_bytes", "i4"),
     ("mosaic_id", "u2"),
     ("coordinate", "u2"),
-    ("varname", "8c"),
+    ("varname", "S8"),
     ("description", "64c"),
     ("block_pos", "i4"),
     ("block_len", "i4"),
@@ -207,8 +207,8 @@ MOCM_SI_HEADER = [
     ("label", "4c"),
     ("version", "4c"),
     ("file_bytes", "i4"),
-    ("site_code", "8c"),
-    ("site_name", "20c"),
+    ("site_code", "S8"),
+    ("site_name", "S20"),
     ("province_name", "20c"),
     ("radar_type", "12c"),
     ("Latitude", "i4"),
@@ -238,7 +238,7 @@ mocm_si_dtype = np.dtype(MOCM_SI_HEADER)
 MOCM_SI_BLOCK = [
     ("pid", "u2"),
     ("coordinate", "u2"),
-    ("varname", "8c"),
+    ("varname", "S8"),
     ("description", "52c"),
     ("edge_s", "i4"),
     ("edge_w", "i4"),
