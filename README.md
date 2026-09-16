@@ -132,7 +132,7 @@ This submodule provides algorithms to correct raw radar fields.
 
 #### cinrad.correct.dealias
 
-This function can unwrap the folded velocity using algorithm originated from `pyart`. (needs C compiler)
+This function can unwrap the folded velocity using 2D phase unwrapping from `scikit-image`.
 
 ```python
 import cinrad

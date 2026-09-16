@@ -3,17 +3,7 @@
 
 import numpy as np
 from xarray import Dataset
-
-try:
-    from cinrad.correct._unwrap_2d import unwrap_2d
-except ImportError:
-    from cinrad.error import RadarCalculationError, ExceptionOnCall
-
-    unwrap_2d = ExceptionOnCall(
-        RadarCalculationError,
-        "Cython is not installed, velocity dealias function cannot be used. If you "
-        "installed Cython after installing cinrad, please re-install cinrad.",
-    )
+from skimage.restoration import unwrap_phase
 
 
 def dealias_unwrap_2d(vdata: np.ndarray, nyquist_vel: float) -> np.ndarray:
@@ -21,11 +11,9 @@ def dealias_unwrap_2d(vdata: np.ndarray, nyquist_vel: float) -> np.ndarray:
     scaled_sweep = vdata * np.pi / nyquist_vel
     sweep_mask = np.isnan(vdata)
     scaled_sweep[sweep_mask] = 0
-    wrapped = np.require(scaled_sweep, np.float64, ["C"])
-    mask = np.require(sweep_mask, np.uint8, ["C"])
-    unwrapped = np.empty_like(wrapped, dtype=np.float64, order="C")
-    unwrap_2d(wrapped, mask, unwrapped, [True, False])
-    return unwrapped * nyquist_vel / np.pi
+    wrapped = np.ma.array(scaled_sweep, mask=sweep_mask)
+    unwrapped = unwrap_phase(wrapped, wrap_around=(True, False))
+    return np.asarray(unwrapped) * nyquist_vel / np.pi
 
 
 def dealias(v_data: Dataset) -> Dataset:

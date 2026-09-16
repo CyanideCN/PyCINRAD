@@ -95,7 +95,7 @@ data = f.get_data(0, 40, 'REF')
 函数名：
 `composite_reflectivity`, `echo_tops`, `vert_integrated_liquid`
 
-计算ET和VIL时，考虑到速度问题，模块提供由cython转换而来的python扩展，可以大大提升速度。如果要使用此扩展，请安装cython以及C编译器，并重新安装此模块。（由pip直接安装的版本都是带有cython扩展的。）
+计算ET和VIL时使用 NumPy 向量化实现，安装时不再需要 Cython 或 C 编译器。
 
 注：对于当反射率很强时，得到的VIL值可能会很大，这是因为该计算函数没有对强回波进行滤除，算法本身并无问题，如有滤除需要可以先使用`np.clip`将回波最大值设置为55dBZ再进行计算。
 
@@ -106,7 +106,7 @@ data = f.get_data(0, 40, 'REF')
 
 传入一个包含每个仰角数据的list即可计算。
 
-注：当模块使用编译的C扩展的时候提供VIL密度的计算。
+注：`quick_vild` 可计算 VIL 密度。
 
 列表生成示例：
 ```python
@@ -145,7 +145,7 @@ fig('D:\\')
 
 #### cinrad.correct.dealias
 
-利用`pyart`的算法进行速度退模糊。（需要C编译器）
+利用 scikit-image 的二维相位解缠进行速度退模糊。
 
 ```python
 import cinrad

@@ -1,5 +1,5 @@
 numpy
-cython>0.15
+scikit-image>=0.19
 metpy>=0.8
 cartopy>=0.15
 pyshp!=2.0.0, !=2.0.1

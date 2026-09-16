@@ -7,7 +7,7 @@ dependencies:
   - matplotlib
   - cartopy
   - setuptools
-  - cython
+  - scikit-image
   - xarray
   - metpy
   - pyshp

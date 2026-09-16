@@ -10,7 +10,7 @@ dependencies:
   - setuptools
   - sphinx
   - sphinx_rtd_theme
-  - cython
+  - scikit-image
   - xarray
   - metpy
   - pyshp

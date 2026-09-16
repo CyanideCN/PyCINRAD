@@ -162,9 +162,7 @@ def quick_vil(r_list: Volume_T) -> Dataset:
     r"""Calculate vertically integrated liquid.
 
     This algorithm process data in polar coordinates, which avoids the loss of
-    data. By default, this function calls low-level function `vert_integrated_liquid`
-    in C-extension. If the C-extension is not available, the python version will
-    be used instead but with much slower speed.
+    data.
 
     Args:
         r_list (list(xarray.Dataset)): Reflectivity data.
@@ -199,10 +197,6 @@ def quick_vil(r_list: Volume_T) -> Dataset:
 
 def quick_vild(r_list: Volume_T) -> Dataset:
     r"""Calculate vertically integrated liquid density.
-
-    By default, this function calls low-level function `vert_integrated_liquid`
-    in C-extension. If the C-extension is not available, the python version will
-    be used instead but with much slower speed.
 
     Args:
         r_list (list(xarray.Dataset)): Reflectivity data.
