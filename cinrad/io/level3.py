@@ -1145,11 +1145,11 @@ class MocMosaic(RadarBase):
                     block_header["edge_n"][0] / 1000,
                     block_header["edge_e"][0] / 1000,
                 )
-                self.lon = np.linspace(edge_w, edge_e, nx)
-                self.lat = np.linspace(edge_s, edge_n, ny)
                 self.range = block_header["range"][0]
                 self.scale = block_header["scale"][0]
                 dx, dy = (block_header["dx"][0] / 1000, block_header["dy"][0] / 1000)
+                self.lon = edge_w + np.arange(nx) * dx
+                self.lat = edge_s + np.arange(ny) * dy
                 self.reso = min(dx, dy)
                 self.dtype = self.decode(block_header["varname"][0])
                 if nx != 0 and ny != 0:
@@ -1209,8 +1209,9 @@ class MocMosaic(RadarBase):
             header["edge_n"][0] / 1000,
             header["edge_e"][0] / 1000,
         )
-        self.lon = np.linspace(edge_w, edge_e, nx)
-        self.lat = np.linspace(edge_s, edge_n, ny)
+        dx, dy = header["dx"][0] / 1000, header["dy"][0] / 1000
+        self.lon = edge_w + np.arange(nx) * dx
+        self.lat = edge_s + np.arange(ny) * dy
         databody = self.f.read()
         if compress == 0:
             databody = databody
