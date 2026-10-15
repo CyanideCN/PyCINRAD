@@ -553,7 +553,7 @@ def hydro_class(
     rho_data = rho["RHO"].values
     kdp_data = kdp["KDP"].values
     result = _hca(
-        z_data.ravel(), zdr_data.ravel(), rho_data.ravel(), kdp_data.ravel(), band=band
+        z_data.ravel(), zdr_data.ravel(), kdp_data.ravel(), rho_data.ravel(), band=band
     )
     result = result.reshape(z_data.shape).astype(float)
     result[np.isnan(z_data)] = np.nan
